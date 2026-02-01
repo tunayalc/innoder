@@ -2,6 +2,7 @@ import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { RootStackParamList } from '../types';
 import { colors } from '../theme';
+import { BackButton } from '../components';
 
 // Screens
 import { HomeScreen } from '../screens/home';
@@ -37,6 +38,8 @@ const screenOptions = {
     color: colors.textPrimary,
   },
   headerBackTitleVisible: false,
+  headerLeft: (props: { canGoBack?: boolean }) => 
+    props.canGoBack ? <BackButton /> : null,
   cardStyle: {
     backgroundColor: colors.background,
   },

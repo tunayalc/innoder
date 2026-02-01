@@ -1,3 +1,4 @@
+export { BackButton } from './BackButton';
 export { Button } from './Button';
 export { Pill } from './Pill';
 export { MenuItem } from './MenuItem';
