@@ -1,8 +1,14 @@
 import { useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { selectUser, selectIsAuthenticated, selectUserRole } from '../store/selectors';
-import { setUser, clearUser, updateUser } from '../store/slices/userSlice';
 import { User } from '../types';
+import {
+  loginCandidate as loginCandidateThunk,
+  loginAdmin as loginAdminThunk,
+  registerCandidate as registerCandidateThunk,
+  logout as logoutThunk,
+  updateProfile as updateProfileThunk,
+} from '../store/thunks/authThunks';
 
 export const useAuth = () => {
   const dispatch = useAppDispatch();
@@ -10,22 +16,44 @@ export const useAuth = () => {
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
   const role = useAppSelector(selectUserRole);
 
-  const login = useCallback(
-    (userData: User) => {
-      dispatch(setUser(userData));
+  const loginCandidate = useCallback(
+    (params: { email: string; password: string }) => {
+      dispatch(loginCandidateThunk(params));
     },
-    [dispatch]
+    [dispatch],
+  );
+
+  const registerCandidate = useCallback(
+    (params: {
+      fullName: string;
+      email: string;
+      phone?: string;
+      country?: string;
+      city?: string;
+      password: string;
+      kvkkAccepted: boolean;
+    }) => {
+      dispatch(registerCandidateThunk(params));
+    },
+    [dispatch],
+  );
+
+  const loginAdmin = useCallback(
+    (params: { username: string; password: string }) => {
+      dispatch(loginAdminThunk(params));
+    },
+    [dispatch],
   );
 
   const logout = useCallback(() => {
-    dispatch(clearUser());
+    dispatch(logoutThunk());
   }, [dispatch]);
 
   const update = useCallback(
     (data: Partial<User>) => {
-      dispatch(updateUser(data));
+      dispatch(updateProfileThunk(data));
     },
-    [dispatch]
+    [dispatch],
   );
 
   return {
@@ -34,7 +62,9 @@ export const useAuth = () => {
     role,
     isAdmin: role === 'admin',
     isCandidate: role === 'candidate',
-    login,
+    loginCandidate,
+    registerCandidate,
+    loginAdmin,
     logout,
     update,
   };

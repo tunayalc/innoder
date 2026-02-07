@@ -1,4 +1,4 @@
-import { Application, Document, Message, AuditLog } from '../types';
+import { Application, Message, AuditLog } from '../types';
 
 // Generate unique IDs
 let idCounter = Date.now();

@@ -16,22 +16,24 @@ import { colors } from '../../theme';
 import { Button, InputField } from '../../components';
 import { useAuth } from '../../hooks';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { selectApplications } from '../../store/selectors';
-import { addApplication } from '../../store/slices/applicationSlice';
-import { addLog } from '../../store/slices/auditSlice';
-import { createNewApplication, createAuditEntry } from '../../services/seedData';
+import { selectApplicationLoading, selectApplications, selectUserLoading } from '../../store/selectors';
 import { isValidEmail, isValidPhoneNumber } from '../../utils/validation';
 import { RootStackNavigationProp } from '../../types';
+import { ensureDraftApplication } from '../../store/thunks/applicationThunks';
 
 export const AdayKayitScreen: React.FC = () => {
   const navigation = useNavigation<RootStackNavigationProp>();
   const { user, update } = useAuth();
   const dispatch = useAppDispatch();
   const applications = useAppSelector(selectApplications);
+  const isUserLoading = useAppSelector(selectUserLoading);
+  const isApplicationLoading = useAppSelector(selectApplicationLoading);
 
   const [fullName, setFullName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState(user?.phone || '');
+  const [country, setCountry] = useState(user?.country || 'Türkiye');
+  const [city, setCity] = useState(user?.city || '');
   const [kvkkAccepted, setKvkkAccepted] = useState(user?.kvkkAccepted || false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
@@ -65,28 +67,11 @@ export const AdayKayitScreen: React.FC = () => {
     if (!user) return;
 
     // Update user info
-    update({ name: fullName, phone, kvkkAccepted });
+    update({ name: fullName, email, phone, country, city, kvkkAccepted });
 
-    if (!hasExistingApplication) {
-      // Create a draft application
-      const app = createNewApplication(user.id, 'Program A', {
-        fullName,
-        programSelection: 'Program A',
-      });
-      dispatch(addApplication(app));
-
-      // Audit log
-      dispatch(
-        addLog(
-          createAuditEntry(
-            'USER_REGISTERED',
-            user.id,
-            user.id,
-            `${fullName} kayıt bilgilerini güncelledi`,
-          ),
-        ),
-      );
-    }
+    // Ensure the draft application exists (server/DB would create it after personal info step;
+    // for the prototype we create a draft so checklist + docs are visible).
+    dispatch(ensureDraftApplication({ programId: 'prog-a' }));
 
     setSubmitted(true);
     Alert.alert(
@@ -105,7 +90,10 @@ export const AdayKayitScreen: React.FC = () => {
     validate,
     user,
     fullName,
+    email,
     phone,
+    country,
+    city,
     kvkkAccepted,
     hasExistingApplication,
     dispatch,
@@ -152,6 +140,20 @@ export const AdayKayitScreen: React.FC = () => {
           keyboardType="phone-pad"
         />
 
+        <InputField
+          label="Ülke"
+          value={country}
+          onChangeText={setCountry}
+          placeholder="Türkiye"
+        />
+
+        <InputField
+          label="Şehir"
+          value={city}
+          onChangeText={setCity}
+          placeholder="İstanbul"
+        />
+
         <View style={styles.switchRow}>
           <View style={styles.switchLabel}>
             <Text style={styles.bodyText}>KVKK Aydınlatma & Açık Rıza Onayı *</Text>
@@ -173,6 +175,8 @@ export const AdayKayitScreen: React.FC = () => {
         <Button
           label={hasExistingApplication ? 'Bilgileri Güncelle' : 'Hesap Oluştur'}
           onPress={handleSubmit}
+          // Prevent repeated taps while backend operations are in-flight.
+          style={isUserLoading || isApplicationLoading ? { opacity: 0.7 } : undefined}
         />
 
         {submitted && (

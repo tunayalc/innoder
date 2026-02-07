@@ -16,17 +16,15 @@ import { Button, Pill } from '../../components';
 import { useAuth } from '../../hooks';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { selectApplicationById } from '../../store/selectors';
-import { updateDocument, updateApplication } from '../../store/slices/applicationSlice';
-import { addMessage } from '../../store/slices/messageSlice';
-import { addLog } from '../../store/slices/auditSlice';
-import { createAuditEntry } from '../../services/seedData';
+import { selectApplicationLoading } from '../../store/selectors/applicationSelectors';
 import { DOCUMENT_TYPES, DOCUMENT_STATUS_LABELS } from '../../constants';
 import {
   DocumentStatus,
-  Document,
   AdminDogrulamaRouteProp,
   RootStackNavigationProp,
 } from '../../types';
+import { verifyDocument } from '../../store/thunks/applicationThunks';
+import { sendMessageThunk } from '../../store/thunks/messageThunks';
 
 type StatusOption = {
   key: DocumentStatus;
@@ -51,14 +49,15 @@ const QUICK_MESSAGES: Record<DocumentStatus, string> = {
 export const AdminDogrulamaScreen: React.FC = () => {
   const navigation = useNavigation<RootStackNavigationProp>();
   const route = useRoute<AdminDogrulamaRouteProp>();
-  const { applicationId } = route.params;
+  const { applicationId, documentId } = route.params;
   const { user } = useAuth();
   const dispatch = useAppDispatch();
 
   const application = useAppSelector(selectApplicationById(applicationId));
+  const isLoading = useAppSelector(selectApplicationLoading);
 
   const [selectedDocId, setSelectedDocId] = useState<string | null>(
-    application?.documents[0]?.id || null,
+    documentId || application?.documents[0]?.id || null,
   );
   const [selectedStatus, setSelectedStatus] = useState<DocumentStatus | null>(
     null,
@@ -77,93 +76,22 @@ export const AdminDogrulamaScreen: React.FC = () => {
       return;
     }
 
-    const now = new Date().toISOString();
-
-    // Update document status
-    const updatedDoc: Document = {
-      ...selectedDoc!,
-      status: selectedStatus,
-      verifiedAt: now,
-    };
-
     dispatch(
-      updateDocument({
+      verifyDocument({
         applicationId: application.id,
-        document: updatedDoc,
+        documentId: selectedDocId,
+        status: selectedStatus,
+        note: notes.trim() || undefined,
       }),
     );
 
-    // Audit log
-    dispatch(
-      addLog(
-        createAuditEntry(
-          'ADMIN_VERIFIED',
-          user.id,
-          selectedDocId,
-          `${DOCUMENT_TYPES[selectedDoc!.type]} → ${DOCUMENT_STATUS_LABELS[selectedStatus]}${notes ? ` (${notes})` : ''}`,
-        ),
-      ),
-    );
-
-    // Send automatic message if enabled
     if (sendMessage && selectedStatus !== 'ok') {
-      const msgContent =
-        notes.trim() || QUICK_MESSAGES[selectedStatus];
+      const msgContent = notes.trim() || QUICK_MESSAGES[selectedStatus];
       dispatch(
-        addMessage({
-          id: Date.now().toString(),
+        sendMessageThunk({
           applicationId: application.id,
-          senderId: user.id,
-          senderRole: 'admin',
+          relatedDocumentId: selectedDocId,
           content: `[${DOCUMENT_TYPES[selectedDoc!.type]}] ${msgContent}`,
-          createdAt: now,
-        }),
-      );
-      dispatch(
-        addLog(
-          createAuditEntry(
-            'MESSAGE_SENT',
-            user.id,
-            application.id,
-            `Doğrulama mesajı gönderildi (${DOCUMENT_STATUS_LABELS[selectedStatus]})`,
-          ),
-        ),
-      );
-    }
-
-    // Check if all docs are OK → update app status
-    const allDocsAfterUpdate = application.documents.map((d) =>
-      d.id === selectedDocId ? updatedDoc : d,
-    );
-    const allOk = allDocsAfterUpdate.every((d) => d.status === 'ok');
-    const hasIssue = allDocsAfterUpdate.some(
-      (d) => d.status !== 'ok',
-    );
-
-    if (allOk) {
-      dispatch(
-        updateApplication({
-          ...application,
-          status: 'approved',
-          updatedAt: now,
-        }),
-      );
-      dispatch(
-        addLog(
-          createAuditEntry(
-            'STATUS_CHANGED',
-            user.id,
-            application.id,
-            `Tüm belgeler onaylandı → Başvuru ONAYLI`,
-          ),
-        ),
-      );
-    } else if (hasIssue && selectedStatus !== 'ok') {
-      dispatch(
-        updateApplication({
-          ...application,
-          status: 'needs_fix',
-          updatedAt: now,
         }),
       );
     }
@@ -296,6 +224,9 @@ export const AdminDogrulamaScreen: React.FC = () => {
       )}
 
       <Button label="Durumu Kaydet" onPress={handleSave} />
+      {isLoading ? (
+        <Text style={styles.loadingText}>Kaydediliyor...</Text>
+      ) : null}
     </ScrollView>
   );
 };
@@ -410,5 +341,11 @@ const styles = StyleSheet.create({
   toggleText: {
     fontSize: 13,
     color: colors.textPrimary,
+  } as TextStyle,
+  loadingText: {
+    fontSize: 12,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: 6,
   } as TextStyle,
 });

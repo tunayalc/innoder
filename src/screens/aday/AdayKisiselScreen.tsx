@@ -15,23 +15,20 @@ import { colors } from '../../theme';
 import { Button, InputField, Pill } from '../../components';
 import { useAuth } from '../../hooks';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { selectApplications } from '../../store/selectors';
-import {
-  updateApplication,
-  updatePersonalInfo,
-} from '../../store/slices/applicationSlice';
-import { addLog } from '../../store/slices/auditSlice';
-import { createAuditEntry } from '../../services/seedData';
+import { selectApplicationError, selectApplicationLoading, selectApplications } from '../../store/selectors';
 import { APPLICATION_STATUS_LABELS } from '../../constants';
 import { RootStackNavigationProp } from '../../types';
-
-const PROGRAMS = ['Program A', 'Program B', 'Program C'];
+import { PROGRAM_CATALOG } from '../../services/programCatalog';
+import { isValidTCKN } from '../../utils/validation';
+import { submitApplication, updatePersonalInfoDraft } from '../../store/thunks/applicationThunks';
 
 export const AdayKisiselScreen: React.FC = () => {
   const navigation = useNavigation<RootStackNavigationProp>();
   const { user } = useAuth();
   const dispatch = useAppDispatch();
   const applications = useAppSelector(selectApplications);
+  const isLoading = useAppSelector(selectApplicationLoading);
+  const error = useAppSelector(selectApplicationError);
 
   const myApplication = useMemo(
     () => applications.find((app) => app.userId === user?.id),
@@ -39,7 +36,7 @@ export const AdayKisiselScreen: React.FC = () => {
   );
 
   const [programSelection, setProgramSelection] = useState(
-    myApplication?.personalInfo.programSelection || PROGRAMS[0],
+    myApplication?.programId || myApplication?.personalInfo.programSelection || PROGRAM_CATALOG[0].id,
   );
   const [birthDate, setBirthDate] = useState(
     myApplication?.personalInfo.birthDate || '',
@@ -56,66 +53,43 @@ export const AdayKisiselScreen: React.FC = () => {
     }
     if (!identityNumber.trim()) {
       newErrors.identityNumber = 'Kimlik numarası zorunludur';
-    } else if (identityNumber.length !== 11) {
-      newErrors.identityNumber = 'TC Kimlik No 11 haneli olmalıdır';
+    } else if (!isValidTCKN(identityNumber)) {
+      newErrors.identityNumber = 'Geçerli bir TC Kimlik No giriniz';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }, [birthDate, identityNumber]);
 
-  const handleSaveDraft = useCallback(() => {
+  const handleSaveDraft = useCallback(async () => {
     if (!myApplication || !user) return;
-    dispatch(
-      updatePersonalInfo({
+    await dispatch(
+      updatePersonalInfoDraft({
         applicationId: myApplication.id,
-        info: { programSelection, birthDate, identityNumber },
+        patch: { programSelection, birthDate, identityNumber },
+        programId: programSelection,
       }),
     );
     Alert.alert('Taslak Kaydedildi', 'Bilgileriniz taslak olarak saklandı.');
   }, [myApplication, user, dispatch, programSelection, birthDate, identityNumber]);
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     if (!validate()) return;
     if (!myApplication || !user) return;
 
-    dispatch(
-      updatePersonalInfo({
+    await dispatch(
+      updatePersonalInfoDraft({
         applicationId: myApplication.id,
-        info: {
+        patch: {
           fullName: user.name,
           programSelection,
           birthDate,
           identityNumber,
         },
+        programId: programSelection,
       }),
     );
 
-    // Change application status to submitted
-    dispatch(
-      updateApplication({
-        ...myApplication,
-        status: 'submitted',
-        personalInfo: {
-          ...myApplication.personalInfo,
-          programSelection,
-          birthDate,
-          identityNumber,
-        },
-        updatedAt: new Date().toISOString(),
-        submittedAt: new Date().toISOString(),
-      }),
-    );
-
-    dispatch(
-      addLog(
-        createAuditEntry(
-          'APPLICATION_SUBMITTED',
-          user.id,
-          myApplication.id,
-          `${user.name} başvurusunu gönderdi (${programSelection})`,
-        ),
-      ),
-    );
+    await dispatch(submitApplication({ applicationId: myApplication.id }));
 
     Alert.alert(
       'Başvuru Gönderildi',
@@ -178,12 +152,12 @@ export const AdayKisiselScreen: React.FC = () => {
         <View style={styles.programRow}>
           <Text style={styles.label}>Program Seçimi</Text>
           <View style={styles.programChips}>
-            {PROGRAMS.map((prog) => (
+            {PROGRAM_CATALOG.map((prog) => (
               <Button
-                key={prog}
-                label={prog}
-                variant={programSelection === prog ? 'solid' : 'ghost'}
-                onPress={() => setProgramSelection(prog)}
+                key={prog.id}
+                label={prog.name}
+                variant={programSelection === prog.id ? 'solid' : 'ghost'}
+                onPress={() => setProgramSelection(prog.id)}
                 style={styles.chip}
               />
             ))}
@@ -219,19 +193,27 @@ export const AdayKisiselScreen: React.FC = () => {
           </Text>
         </View>
 
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
         {!isSubmitted && (
           <>
             <Button
-              label="Taslak Kaydet"
+              label={isLoading ? 'Kaydediliyor...' : 'Taslak Kaydet'}
               variant="ghost"
               onPress={handleSaveDraft}
             />
-            <Button label="Başvuru Gönder" onPress={handleSubmit} />
+            <Button
+              label={isLoading ? 'Gönderiliyor...' : 'Başvuru Gönder'}
+              onPress={handleSubmit}
+            />
           </>
         )}
 
         {myApplication.status === 'needs_fix' && (
-          <Button label="Düzelterek Yeniden Gönder" onPress={handleSubmit} />
+          <Button
+            label={isLoading ? 'Gönderiliyor...' : 'Düzelterek Yeniden Gönder'}
+            onPress={handleSubmit}
+          />
         )}
       </ScrollView>
     </KeyboardAvoidingView>
@@ -298,5 +280,10 @@ const styles = StyleSheet.create({
     color: colors.noticeText,
     textAlign: 'center',
     lineHeight: 20,
+  } as TextStyle,
+  errorText: {
+    fontSize: 12,
+    color: '#DC2626',
+    textAlign: 'center',
   } as TextStyle,
 });

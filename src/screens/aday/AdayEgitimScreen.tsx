@@ -15,6 +15,8 @@ import { useAppSelector } from '../../store/hooks';
 import { selectApplications } from '../../store/selectors';
 import { DOCUMENT_STATUS_LABELS, DOCUMENT_TYPES } from '../../constants';
 import { DocumentStatus, RootStackNavigationProp } from '../../types';
+import { getProgramById } from '../../services/programCatalog';
+import { formatDateShort } from '../../utils/date';
 
 const statusToVariant = (status: DocumentStatus) => {
   switch (status) {
@@ -41,6 +43,11 @@ export const AdayEgitimScreen: React.FC = () => {
     [applications, user?.id],
   );
 
+  const program = useMemo(
+    () => (myApplication ? getProgramById(myApplication.programId) : null),
+    [myApplication],
+  );
+
   const completedCount = useMemo(
     () => myApplication?.documents.filter((d) => d.status === 'ok').length ?? 0,
     [myApplication],
@@ -52,7 +59,7 @@ export const AdayEgitimScreen: React.FC = () => {
       <Text style={styles.h2}>Eğitim Bilgilendirme</Text>
       <Text style={styles.subtitle}>
         {myApplication
-          ? `${myApplication.programName} / 2026`
+          ? `${myApplication.programName} / ${program?.year ?? 2026}`
           : 'Henüz başvuru yok'}
       </Text>
 
@@ -76,29 +83,72 @@ export const AdayEgitimScreen: React.FC = () => {
           </Text>
 
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Gerekli Belgeler</Text>
+            <Text style={styles.cardTitle}>Katılım Adımları</Text>
             <Text style={styles.cardHint}>
-              Aşağıdaki belgeleri eksiksiz yükleyin. EKSİK veya OKUNMADI durumunda
-              Belge Tarama ekranından tekrar yükleyebilirsiniz.
+              Program bazlı bilgilendirme ve checklist, yanlış anlamaları en başta azaltmak için tasarlanır.
             </Text>
           </View>
 
-          {myApplication.documents.map((doc) => (
-            <ChecklistRow
-              key={doc.id}
-              label={DOCUMENT_TYPES[doc.type] || doc.type}
-              status={DOCUMENT_STATUS_LABELS[doc.status] || doc.status}
-              variant={statusToVariant(doc.status)}
-            />
-          ))}
+          {program?.steps?.length ? (
+            <View style={styles.card}>
+              {program.steps.map((s, idx) => (
+                <Text key={`${idx}-${s}`} style={styles.stepText}>
+                  {idx + 1}) {s}
+                </Text>
+              ))}
+            </View>
+          ) : null}
+
+          {program?.deadlines?.length ? (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Teslim Tarihleri</Text>
+              {program.deadlines.map((d) => (
+                <View key={d.label} style={styles.deadlineRow}>
+                  <Text style={styles.deadlineLabel}>{d.label}</Text>
+                  <Text style={styles.deadlineValue}>
+                    {formatDateShort(d.dateISO)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Gerekli Belgeler</Text>
+            <Text style={styles.cardHint}>
+              Belge durumları server tarafı parse/doğrulama çıktısı olarak düşünülür:
+              OK / EKSİK / YANLIŞ FORMAT / OKUNMADI.
+            </Text>
+          </View>
+
+          {(program?.checklist || []).map((item) => {
+            const doc = myApplication.documents.find((d) => d.type === item.documentType);
+            const status = doc?.status || 'missing';
+            return (
+              <ChecklistRow
+                key={item.documentType}
+                label={DOCUMENT_TYPES[item.documentType] || item.documentType}
+                hint={item.expectedFormat}
+                status={DOCUMENT_STATUS_LABELS[status] || status}
+                variant={statusToVariant(status as DocumentStatus)}
+              />
+            );
+          })}
 
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Sık Yapılan Hatalar</Text>
             <Text style={styles.cardHint}>
-              • Bulanık/karanlık fotoğraf → OKUNMADI{'\n'}
-              • PDF yerine fotoğraf → YANLIŞ FORMAT{'\n'}
-              • Eksik sayfa → EKSİK{'\n'}
-              • Yanlış belge türü seçimi
+              {(program?.commonMistakes?.length
+                ? program.commonMistakes
+                : [
+                    'Bulanık/karanlık fotoğraf → OKUNMADI',
+                    'PDF yerine fotoğraf → YANLIŞ FORMAT',
+                    'Eksik sayfa → EKSİK',
+                    'Yanlış belge türü seçimi',
+                  ]
+              )
+                .map((m) => `• ${m}`)
+                .join('\\n')}
             </Text>
           </View>
 
@@ -181,6 +231,26 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
     lineHeight: 18,
+  } as TextStyle,
+  stepText: {
+    fontSize: 12,
+    color: colors.textPrimary,
+    lineHeight: 18,
+  } as TextStyle,
+  deadlineRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  } as ViewStyle,
+  deadlineLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: '600',
+  } as TextStyle,
+  deadlineValue: {
+    fontSize: 12,
+    color: colors.textPrimary,
+    fontWeight: '700',
   } as TextStyle,
   emptyCard: {
     backgroundColor: colors.noticeBg,

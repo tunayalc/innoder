@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   StyleSheet,
   ViewStyle,
   TextStyle,
@@ -14,19 +13,18 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../../theme';
-import { Button } from '../../components';
+import { Button, InputField } from '../../components';
 import { useAuth } from '../../hooks';
-import { User } from '../../types';
-
-const ADMIN_USERNAME = 'admin';
-const ADMIN_PASSWORD = '123123';
+import { useAppSelector } from '../../store/hooks';
+import { selectUserError, selectUserLoading } from '../../store/selectors';
 
 export const AdminLoginScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const { login } = useAuth();
+  const { loginAdmin } = useAuth();
+  const isLoading = useAppSelector(selectUserLoading);
+  const error = useAppSelector(selectUserError);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
 
   const handleAdminLogin = () => {
     if (!username.trim() || !password.trim()) {
@@ -34,26 +32,7 @@ export const AdminLoginScreen: React.FC = () => {
       return;
     }
 
-    setIsLoading(true);
-
-    // Simulate network delay
-    setTimeout(() => {
-      if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-        const adminUser: User = {
-          id: 'admin-001',
-          email: 'admin@inno.com',
-          name: 'Admin',
-          role: 'admin',
-          kvkkAccepted: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        login(adminUser);
-      } else {
-        Alert.alert('Hata', 'Kullanıcı adı veya şifre yanlış.');
-      }
-      setIsLoading(false);
-    }, 500);
+    loginAdmin({ username, password });
   };
 
   return (
@@ -71,30 +50,24 @@ export const AdminLoginScreen: React.FC = () => {
         </View>
 
         <View style={styles.form}>
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Kullanıcı Adı</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Kullanıcı adınız"
-              placeholderTextColor={colors.textSecondary}
-              value={username}
-              onChangeText={setUsername}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
+          <InputField
+            label="Kullanıcı Adı"
+            value={username}
+            onChangeText={setUsername}
+            placeholder="admin"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Şifre</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="••••••••"
-              placeholderTextColor={colors.textSecondary}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-          </View>
+          <InputField
+            label="Şifre"
+            value={password}
+            onChangeText={setPassword}
+            placeholder="••••••••"
+            secureTextEntry
+          />
+
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
           <Button
             label={isLoading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
@@ -142,22 +115,10 @@ const styles = StyleSheet.create({
   form: {
     gap: 16,
   } as ViewStyle,
-  inputContainer: {
-    gap: 6,
-  } as ViewStyle,
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  } as TextStyle,
-  input: {
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.borderMedium,
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 16,
-    color: colors.textPrimary,
+  errorText: {
+    fontSize: 12,
+    color: '#DC2626',
+    textAlign: 'center',
   } as TextStyle,
   backLink: {
     alignItems: 'center',

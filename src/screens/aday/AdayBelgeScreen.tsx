@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,14 +14,14 @@ import { colors } from '../../theme';
 import { Button, Pill } from '../../components';
 import { useAuth } from '../../hooks';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { selectApplications } from '../../store/selectors';
-import { updateDocument, updateApplication } from '../../store/slices/applicationSlice';
-import { addLog } from '../../store/slices/auditSlice';
-import { createAuditEntry } from '../../services/seedData';
+import { selectApplicationError, selectApplicationLoading, selectApplications } from '../../store/selectors';
 import { DOCUMENT_TYPES, DOCUMENT_STATUS_LABELS } from '../../constants';
-import { Document, DocumentStatus, RootStackNavigationProp } from '../../types';
+import { DocumentStatus, RootStackNavigationProp } from '../../types';
+import { uploadDocument } from '../../store/thunks/applicationThunks';
+import { getProgramById } from '../../services/programCatalog';
 
 type DocType = 'identity' | 'form' | 'extra';
+type CaptureFormat = 'jpg' | 'pdf';
 
 const DOC_TYPE_OPTIONS: { key: DocType; label: string }[] = [
   { key: 'identity', label: 'Kimlik Belgesi' },
@@ -44,6 +44,8 @@ export const AdayBelgeScreen: React.FC = () => {
   const { user } = useAuth();
   const dispatch = useAppDispatch();
   const applications = useAppSelector(selectApplications);
+  const isLoading = useAppSelector(selectApplicationLoading);
+  const error = useAppSelector(selectApplicationError);
 
   const myApplication = useMemo(
     () => applications.find((app) => app.userId === user?.id),
@@ -51,24 +53,87 @@ export const AdayBelgeScreen: React.FC = () => {
   );
 
   const [selectedDocType, setSelectedDocType] = useState<DocType>('identity');
-  const [isUploading, setIsUploading] = useState(false);
   const [qualityScore, setQualityScore] = useState(0); // 0-3
+  const [captureFormat, setCaptureFormat] = useState<CaptureFormat>('jpg');
+  const [pages, setPages] = useState<string[]>([]);
+
+  const availableDocTypes = useMemo(() => {
+    if (!myApplication) return DOC_TYPE_OPTIONS;
+    return DOC_TYPE_OPTIONS.filter((opt) =>
+      myApplication.documents.some((d) => d.type === opt.key),
+    );
+  }, [myApplication]);
+
+  useEffect(() => {
+    if (availableDocTypes.some((o) => o.key === selectedDocType)) return;
+    setSelectedDocType(availableDocTypes[0]?.key || 'identity');
+  }, [availableDocTypes, selectedDocType]);
 
   const selectedDocument = useMemo(
     () => myApplication?.documents.find((d) => d.type === selectedDocType),
     [myApplication, selectedDocType],
   );
 
+  const expectedFormat = useMemo(() => {
+    if (!myApplication) return '';
+    const program = getProgramById(myApplication.programId);
+    return (
+      program.checklist.find((x) => x.documentType === selectedDocType)?.expectedFormat ||
+      ''
+    );
+  }, [myApplication, selectedDocType]);
+
   const simulateCapture = useCallback(() => {
     // Simulate camera capture & quality check
     const score = Math.floor(Math.random() * 3) + 1; // 1, 2, or 3
     setQualityScore(score);
-  }, []);
+
+    const ext = captureFormat === 'pdf' ? 'pdf' : 'jpg';
+    const pageFile = `${selectedDocType}_${Date.now()}_${pages.length + 1}.${ext}`;
+    setPages((prev) => [...prev, pageFile]);
+  }, [captureFormat, pages.length, selectedDocType]);
+
+  const performUpload = useCallback(() => {
+    if (!myApplication || !user || !selectedDocument) return;
+
+    // Determine file name / mimeType by selected format (mock upload).
+    const ext = captureFormat === 'pdf' ? 'pdf' : 'jpg';
+    const mimeType = captureFormat === 'pdf' ? 'application/pdf' : 'image/jpeg';
+    const fileName = `${selectedDocType}_${user.id}_${Date.now()}_${pages.length}p.${ext}`;
+
+    // Mock parse attempt: extra docs may contain QR/Barcode.
+    const parseResult =
+      selectedDocType === 'extra'
+        ? Math.random() > 0.5
+          ? `QR_OK:${Math.floor(Math.random() * 999999)}`
+          : 'QR_NOT_FOUND'
+        : undefined;
+
+    dispatch(
+      uploadDocument({
+        applicationId: myApplication.id,
+        documentType: selectedDocType,
+        fileName,
+        fileUrl: `local://${fileName}`,
+        pageCount: pages.length,
+        mimeType,
+        qualityScore,
+        parseResult,
+      }),
+    );
+
+    setQualityScore(0);
+    setPages([]);
+    Alert.alert(
+      'Yükleme Başlatıldı',
+      'Belge backend’e gönderiliyor. Durum güncellenince checklist üzerinden takip edebilirsiniz.',
+    );
+  }, [myApplication, user, selectedDocument, selectedDocType, captureFormat, pages.length, qualityScore, dispatch]);
 
   const handleUpload = useCallback(() => {
     if (!myApplication || !user || !selectedDocument) return;
-    if (qualityScore === 0) {
-      Alert.alert('Uyarı', 'Önce belgeyi tarayın (kamerayı kullanın).');
+    if (pages.length === 0) {
+      Alert.alert('Uyarı', 'Önce belgeyi tarayın (en az 1 sayfa).');
       return;
     }
     if (qualityScore < 2) {
@@ -76,64 +141,20 @@ export const AdayBelgeScreen: React.FC = () => {
         'Kalite Düşük',
         'Çekilen görüntü bulanık veya karanlık. Yeniden çekmek ister misiniz?',
         [
-          { text: 'Yeniden Çek', onPress: () => setQualityScore(0) },
+          {
+            text: 'Yeniden Çek',
+            onPress: () => {
+              setQualityScore(0);
+              setPages([]);
+            },
+          },
           { text: 'Yine de Yükle', onPress: () => performUpload() },
         ],
       );
       return;
     }
     performUpload();
-  }, [myApplication, user, selectedDocument, qualityScore]);
-
-  const performUpload = useCallback(() => {
-    if (!myApplication || !user || !selectedDocument) return;
-    setIsUploading(true);
-
-    // Simulate upload delay
-    setTimeout(() => {
-      const now = new Date().toISOString();
-      const fileName = `${selectedDocType}_${user.id}_${Date.now()}.jpg`;
-
-      // Determine status based on quality
-      let newStatus: DocumentStatus = 'ok';
-      if (qualityScore === 1) {
-        newStatus = 'unread'; // Too blurry
-      }
-
-      const updatedDoc: Document = {
-        ...selectedDocument,
-        fileName,
-        status: newStatus,
-        uploadedAt: now,
-        fileUrl: `local://${fileName}`,
-      };
-
-      dispatch(
-        updateDocument({
-          applicationId: myApplication.id,
-          document: updatedDoc,
-        }),
-      );
-
-      dispatch(
-        addLog(
-          createAuditEntry(
-            'DOCUMENT_UPLOADED',
-            user.id,
-            selectedDocument.id,
-            `${DOCUMENT_TYPES[selectedDocType]} yüklendi (${fileName}) → ${DOCUMENT_STATUS_LABELS[newStatus]}`,
-          ),
-        ),
-      );
-
-      setIsUploading(false);
-      setQualityScore(0);
-      Alert.alert(
-        'Yükleme Tamamlandı',
-        `${DOCUMENT_TYPES[selectedDocType]} başarıyla yüklendi.\nDurum: ${DOCUMENT_STATUS_LABELS[newStatus]}`,
-      );
-    }, 1500);
-  }, [myApplication, user, selectedDocument, selectedDocType, qualityScore, dispatch]);
+  }, [myApplication, user, selectedDocument, qualityScore, pages.length, performUpload]);
 
   if (!myApplication) {
     return (
@@ -158,8 +179,8 @@ export const AdayBelgeScreen: React.FC = () => {
 
       {/* Document type selector */}
       <Text style={styles.label}>Belge Tipi Seçin</Text>
-      <View style={styles.typeRow}>
-        {DOC_TYPE_OPTIONS.map((opt) => {
+        <View style={styles.typeRow}>
+        {availableDocTypes.map((opt) => {
           const doc = myApplication.documents.find((d) => d.type === opt.key);
           return (
             <TouchableOpacity
@@ -170,7 +191,9 @@ export const AdayBelgeScreen: React.FC = () => {
               ]}
               onPress={() => {
                 setSelectedDocType(opt.key);
+                setCaptureFormat(opt.key === 'form' ? 'pdf' : 'jpg');
                 setQualityScore(0);
+                setPages([]);
               }}
             >
               <Text
@@ -192,21 +215,59 @@ export const AdayBelgeScreen: React.FC = () => {
         })}
       </View>
 
+      {/* Format selector */}
+      <Text style={styles.label}>Beklenen Format</Text>
+      {expectedFormat ? (
+        <Text style={styles.formatHint}>{expectedFormat}</Text>
+      ) : null}
+      <View style={styles.formatRow}>
+        {(['jpg', 'pdf'] as const).map((fmt) => (
+          <TouchableOpacity
+            key={fmt}
+            style={[
+              styles.formatChip,
+              captureFormat === fmt && styles.formatChipActive,
+            ]}
+            onPress={() => {
+              setCaptureFormat(fmt);
+              setQualityScore(0);
+              setPages([]);
+            }}
+          >
+            <Text
+              style={[
+                styles.formatChipText,
+                captureFormat === fmt && styles.formatChipTextActive,
+              ]}
+            >
+              {fmt.toUpperCase()}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       {/* Camera/scan area */}
       <TouchableOpacity style={styles.scanBox} onPress={simulateCapture}>
         <View style={styles.scanGuide}>
-          {qualityScore > 0 ? (
-            <Text style={styles.scanOkText}>Görüntü Alındı</Text>
-          ) : (
-            <Text style={styles.scanHintText}>Belgeyi Tara</Text>
-          )}
+          <Text style={styles.scanOkText}>
+            {pages.length > 0 ? `${pages.length} sayfa eklendi` : 'Belgeyi Tara'}
+          </Text>
         </View>
         <Text style={styles.bodyText}>
-          {qualityScore > 0
-            ? 'Tekrar çekmek için dokunun'
+          {pages.length > 0
+            ? 'Yeni sayfa eklemek için dokunun'
             : 'Kamerayı hizalayıp dokunun'}
         </Text>
       </TouchableOpacity>
+
+      {pages.length > 0 && (
+        <View style={styles.rowBetween}>
+          <Text style={styles.bodyText}>Sayfalar</Text>
+          <TouchableOpacity onPress={() => { setPages([]); setQualityScore(0); }}>
+            <Text style={styles.resetText}>Sıfırla</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Quality indicator */}
       <View style={styles.rowBetween}>
@@ -234,9 +295,10 @@ export const AdayBelgeScreen: React.FC = () => {
 
       {/* Upload button */}
       <Button
-        label={isUploading ? 'Yükleniyor...' : 'Yükle'}
+        label={isLoading ? 'Yükleniyor...' : 'Yükle'}
         onPress={handleUpload}
       />
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       {/* Current document statuses */}
       <View style={styles.statusCard}>
@@ -395,5 +457,46 @@ const styles = StyleSheet.create({
     color: colors.noticeText,
     textAlign: 'center',
     lineHeight: 20,
+  } as TextStyle,
+  formatRow: {
+    flexDirection: 'row',
+    gap: 8,
+  } as ViewStyle,
+  formatChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    backgroundColor: colors.cardBg,
+  } as ViewStyle,
+  formatChipActive: {
+    borderColor: colors.teal,
+    backgroundColor: colors.tealBg,
+  } as ViewStyle,
+  formatChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textSecondary,
+  } as TextStyle,
+  formatChipTextActive: {
+    color: colors.teal,
+  } as TextStyle,
+  resetText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.primaryDark,
+    textDecorationLine: 'underline',
+  } as TextStyle,
+  formatHint: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginLeft: 4,
+    marginTop: -6,
+  } as TextStyle,
+  errorText: {
+    fontSize: 12,
+    color: '#DC2626',
+    textAlign: 'center',
   } as TextStyle,
 });

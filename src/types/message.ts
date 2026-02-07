@@ -6,6 +6,7 @@ export interface Message {
   content: string;
   createdAt: string;
   readAt?: string;
+  relatedDocumentId?: string;
 }
 
 export interface MessageState {

@@ -27,9 +27,10 @@ const rootReducer = combineReducers({
 
 const persistConfig = {
   key: 'root',
-  version: 2,
+  version: 3,
   storage: AsyncStorage,
-  whitelist: ['user', 'application', 'message', 'audit'],
+  // Backend (mock/remote) is the source of truth. Persist only the session + UI prefs.
+  whitelist: ['user', 'ui'],
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

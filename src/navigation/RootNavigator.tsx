@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { RootStackParamList } from '../types';
 import { colors } from '../theme';
 import { BackButton, LogoutButton } from '../components';
 import { useAuth } from '../hooks';
+import { useAppDispatch } from '../store/hooks';
+import { hydrateSession } from '../store/thunks/sessionThunks';
 
 // Screens
 import { LoginScreen, RegisterScreen, AdminLoginScreen } from '../screens/auth';
@@ -17,11 +19,11 @@ import {
   AdayMesajScreen 
 } from '../screens/aday';
 import { 
-  AdminMenuScreen, 
   AdminListeScreen, 
   AdminDetayScreen, 
   AdminDogrulamaScreen, 
-  AdminAuditScreen 
+  AdminAuditScreen,
+  DocumentViewerScreen,
 } from '../screens/admin';
 import { DataModelScreen } from '../screens/data';
 
@@ -47,13 +49,17 @@ const screenOptions = {
   },
 };
 
-const authenticatedScreenOptions = {
-  ...screenOptions,
-  headerRight: () => <LogoutButton />,
-};
-
 export const RootNavigator: React.FC = () => {
-  const { isAuthenticated, isAdmin } = useAuth();
+  const dispatch = useAppDispatch();
+  const { user, isAuthenticated, isAdmin } = useAuth();
+  const lastHydratedUserId = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+    if (lastHydratedUserId.current === user.id) return;
+    lastHydratedUserId.current = user.id;
+    dispatch(hydrateSession(user));
+  }, [dispatch, isAuthenticated, user]);
 
   return (
     <Stack.Navigator screenOptions={screenOptions}>
@@ -98,6 +104,11 @@ export const RootNavigator: React.FC = () => {
             name="AdminAudit" 
             component={AdminAuditScreen}
             options={{ title: 'Audit Log', headerRight: () => <LogoutButton /> }}
+          />
+          <Stack.Screen
+            name="DocumentViewer"
+            component={DocumentViewerScreen}
+            options={{ title: 'Belge Görüntüleme', headerRight: () => <LogoutButton /> }}
           />
           <Stack.Screen 
             name="AdayMesaj" 
@@ -147,6 +158,11 @@ export const RootNavigator: React.FC = () => {
             name="AdayMesaj" 
             component={AdayMesajScreen}
             options={{ title: 'Mesajlaşma', headerRight: () => <LogoutButton /> }}
+          />
+          <Stack.Screen
+            name="DocumentViewer"
+            component={DocumentViewerScreen}
+            options={{ title: 'Belge Görüntüleme', headerRight: () => <LogoutButton /> }}
           />
           <Stack.Screen 
             name="Main" 

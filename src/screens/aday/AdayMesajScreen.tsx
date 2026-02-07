@@ -17,9 +17,8 @@ import { useAuth } from '../../hooks';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { selectApplications } from '../../store/selectors';
 import { selectMessagesByApplicationId } from '../../store/selectors/messageSelectors';
-import { addMessage } from '../../store/slices/messageSlice';
-import { addLog } from '../../store/slices/auditSlice';
-import { createAuditEntry } from '../../services/seedData';
+import { selectMessageLoading } from '../../store/selectors/messageSelectors';
+import { loadMessageThread, markThreadRead, sendMessageThunk } from '../../store/thunks/messageThunks';
 import { getRelativeTime } from '../../utils/date';
 import { Message, AdayMesajRouteProp } from '../../types';
 
@@ -38,12 +37,20 @@ export const AdayMesajScreen: React.FC = () => {
   }, [route.params?.applicationId, applications, user?.id]);
 
   const messages = useAppSelector(selectMessagesByApplicationId(applicationId));
+  const isLoading = useAppSelector(selectMessageLoading);
+  const error = useAppSelector((s) => s.message.error);
   const [newMessage, setNewMessage] = useState('');
 
   const application = useMemo(
     () => applications.find((app) => app.id === applicationId),
     [applications, applicationId],
   );
+
+  useEffect(() => {
+    if (!applicationId) return;
+    dispatch(loadMessageThread({ applicationId }));
+    dispatch(markThreadRead({ applicationId }));
+  }, [dispatch, applicationId]);
 
   useEffect(() => {
     // Scroll to bottom when messages change
@@ -57,27 +64,7 @@ export const AdayMesajScreen: React.FC = () => {
   const handleSend = useCallback(() => {
     if (!newMessage.trim() || !user || !applicationId) return;
 
-    const msg: Message = {
-      id: Date.now().toString(),
-      applicationId,
-      senderId: user.id,
-      senderRole: user.role,
-      content: newMessage.trim(),
-      createdAt: new Date().toISOString(),
-    };
-
-    dispatch(addMessage(msg));
-    dispatch(
-      addLog(
-        createAuditEntry(
-          'MESSAGE_SENT',
-          user.id,
-          applicationId,
-          `${user.name} mesaj gönderdi`,
-        ),
-      ),
-    );
-
+    dispatch(sendMessageThunk({ applicationId, content: newMessage.trim() }));
     setNewMessage('');
   }, [newMessage, user, applicationId, dispatch]);
 
@@ -123,10 +110,16 @@ export const AdayMesajScreen: React.FC = () => {
 
       {messages.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>
-            Henüz mesaj yok. Eksik veya hatalı belgeler hakkında admin ile
-            iletişime geçebilirsiniz.
-          </Text>
+          {isLoading ? (
+            <Text style={styles.emptyText}>Mesajlar yükleniyor...</Text>
+          ) : error ? (
+            <Text style={styles.emptyText}>{error}</Text>
+          ) : (
+            <Text style={styles.emptyText}>
+              Henüz mesaj yok. Eksik veya hatalı belgeler hakkında admin ile
+              iletişime geçebilirsiniz.
+            </Text>
+          )}
         </View>
       ) : (
         <FlatList

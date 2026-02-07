@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   StyleSheet,
   ViewStyle,
   TextStyle,
@@ -11,28 +10,44 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Switch,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../../theme';
-import { Button } from '../../components';
+import { Button, InputField, Card } from '../../components';
 import { useAuth } from '../../hooks';
-import { User } from '../../types';
-
-const USERS_STORAGE_KEY = '@inno_users';
+import { useAppSelector } from '../../store/hooks';
+import { selectUserError, selectUserLoading } from '../../store/selectors';
+import { isValidEmail, isValidPhoneNumber } from '../../utils/validation';
 
 export const RegisterScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const { login } = useAuth();
-  const [name, setName] = useState('');
+  const { registerCandidate } = useAuth();
+  const isLoading = useAppSelector(selectUserLoading);
+  const error = useAppSelector(selectUserError);
+
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [country, setCountry] = useState('Türkiye');
+  const [city, setCity] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [kvkkAccepted, setKvkkAccepted] = useState(false);
 
   const handleRegister = async () => {
-    if (!name.trim() || !email.trim() || !password.trim()) {
+    if (!fullName.trim() || !email.trim() || !password.trim()) {
       Alert.alert('Hata', 'Lütfen tüm alanları doldurun.');
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      Alert.alert('Hata', 'Geçerli bir e-posta giriniz.');
+      return;
+    }
+
+    if (phone.trim() && !isValidPhoneNumber(phone)) {
+      Alert.alert('Hata', 'Geçerli bir telefon numarası giriniz.');
       return;
     }
 
@@ -46,51 +61,20 @@ export const RegisterScreen: React.FC = () => {
       return;
     }
 
-    setIsLoading(true);
-    try {
-      const usersJson = await AsyncStorage.getItem(USERS_STORAGE_KEY);
-      const users: User[] = usersJson ? JSON.parse(usersJson) : [];
-
-      // Check if email already exists
-      const existingUser = users.find(
-        (u) => u.email.toLowerCase() === email.toLowerCase()
-      );
-
-      if (existingUser) {
-        Alert.alert('Hata', 'Bu email adresi zaten kayıtlı.');
-        setIsLoading(false);
-        return;
-      }
-
-      // Create new user
-      const newUser: User = {
-        id: `user-${Date.now()}`,
-        email: email.toLowerCase().trim(),
-        name: name.trim(),
-        role: 'candidate', // Always register as candidate
-        kvkkAccepted: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      // Save user
-      users.push(newUser);
-      await AsyncStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-
-      // Save password separately (in real app, use proper hashing)
-      const passwordsJson = await AsyncStorage.getItem('@inno_passwords');
-      const passwords: Record<string, string> = passwordsJson ? JSON.parse(passwordsJson) : {};
-      passwords[newUser.id] = password;
-      await AsyncStorage.setItem('@inno_passwords', JSON.stringify(passwords));
-
-      // Login the user
-      login(newUser);
-      Alert.alert('Başarılı', 'Hesabınız oluşturuldu!');
-    } catch (error) {
-      Alert.alert('Hata', 'Kayıt olurken bir hata oluştu.');
-    } finally {
-      setIsLoading(false);
+    if (!kvkkAccepted) {
+      Alert.alert('Hata', 'KVKK onayı zorunludur.');
+      return;
     }
+
+    registerCandidate({
+      fullName,
+      email,
+      phone: phone.trim() || undefined,
+      country: country.trim() || undefined,
+      city: city.trim() || undefined,
+      password,
+      kvkkAccepted,
+    });
   };
 
   const handleAdminLogin = () => {
@@ -112,55 +96,85 @@ export const RegisterScreen: React.FC = () => {
         </View>
 
         <View style={styles.form}>
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Ad Soyad</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Adınız Soyadınız"
-              placeholderTextColor={colors.textSecondary}
-              value={name}
-              onChangeText={setName}
-              autoCapitalize="words"
-            />
+          <InputField
+            label="Ad Soyad *"
+            value={fullName}
+            onChangeText={setFullName}
+            placeholder="Adınız Soyadınız"
+            autoCapitalize="words"
+          />
+
+          <InputField
+            label="Email *"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="ornek@email.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+
+          <InputField
+            label="Telefon"
+            value={phone}
+            onChangeText={setPhone}
+            placeholder="+90 5xx xxx xx xx"
+            keyboardType="phone-pad"
+          />
+
+          <View style={styles.row2}>
+            <View style={styles.flex1}>
+              <InputField
+                label="Ülke"
+                value={country}
+                onChangeText={setCountry}
+                placeholder="Türkiye"
+              />
+            </View>
+            <View style={styles.flex1}>
+              <InputField
+                label="Şehir"
+                value={city}
+                onChangeText={setCity}
+                placeholder="İstanbul"
+              />
+            </View>
           </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="ornek@email.com"
-              placeholderTextColor={colors.textSecondary}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
+          <InputField
+            label="Şifre *"
+            value={password}
+            onChangeText={setPassword}
+            placeholder="••••••••"
+            secureTextEntry
+          />
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Şifre</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="••••••••"
-              placeholderTextColor={colors.textSecondary}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-          </View>
+          <InputField
+            label="Şifre Tekrar *"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            placeholder="••••••••"
+            secureTextEntry
+          />
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Şifre Tekrar</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="••••••••"
-              placeholderTextColor={colors.textSecondary}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-            />
-          </View>
+          <Card style={styles.kvkkCard}>
+            <View style={styles.kvkkRow}>
+              <View style={styles.kvkkTextWrap}>
+                <Text style={styles.kvkkTitle}>KVKK Aydınlatma & Açık Rıza *</Text>
+                <Text style={styles.kvkkHint}>
+                  Kişisel verilerimin amaçla sınırlı şekilde işlenmesini kabul ediyorum.
+                </Text>
+              </View>
+              <Switch
+                value={kvkkAccepted}
+                onValueChange={setKvkkAccepted}
+                trackColor={{ false: colors.muted, true: colors.teal }}
+                thumbColor={colors.white}
+              />
+            </View>
+          </Card>
+
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
           <Button
             label={isLoading ? 'Kayıt yapılıyor...' : 'Kayıt Ol'}
@@ -215,22 +229,40 @@ const styles = StyleSheet.create({
   form: {
     gap: 16,
   } as ViewStyle,
-  inputContainer: {
-    gap: 6,
+  row2: {
+    flexDirection: 'row',
+    gap: 10,
   } as ViewStyle,
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
+  flex1: {
+    flex: 1,
+  } as ViewStyle,
+  kvkkCard: {
+    padding: 14,
+  } as ViewStyle,
+  kvkkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  } as ViewStyle,
+  kvkkTextWrap: {
+    flex: 1,
+  } as ViewStyle,
+  kvkkTitle: {
+    fontSize: 13,
+    fontWeight: '700',
     color: colors.textPrimary,
   } as TextStyle,
-  input: {
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.borderMedium,
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 16,
-    color: colors.textPrimary,
+  kvkkHint: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 3,
+    lineHeight: 16,
+  } as TextStyle,
+  errorText: {
+    fontSize: 12,
+    color: '#DC2626',
+    textAlign: 'center',
   } as TextStyle,
   loginLink: {
     alignItems: 'center',

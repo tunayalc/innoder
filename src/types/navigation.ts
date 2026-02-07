@@ -18,8 +18,9 @@ export type RootStackParamList = {
   AdayMesaj: { applicationId?: string };
   AdminListe: undefined;
   AdminDetay: { applicationId: string };
-  AdminDogrulama: { applicationId: string };
+  AdminDogrulama: { applicationId: string; documentId?: string };
   AdminAudit: undefined;
+  DocumentViewer: { applicationId: string; documentId: string };
   DataModel: undefined;
 };
 
@@ -47,6 +48,7 @@ export type HomeScreenNavigationProp = CompositeNavigationProp<
 
 export type AdminDetayRouteProp = RouteProp<RootStackParamList, 'AdminDetay'>;
 export type AdminDogrulamaRouteProp = RouteProp<RootStackParamList, 'AdminDogrulama'>;
+export type DocumentViewerRouteProp = RouteProp<RootStackParamList, 'DocumentViewer'>;
 export type AdayMesajRouteProp = RouteProp<RootStackParamList, 'AdayMesaj'>;
 
 // Legacy support for existing screens

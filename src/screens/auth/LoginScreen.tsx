@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   StyleSheet,
   ViewStyle,
   TextStyle,
@@ -12,21 +11,20 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../../theme';
-import { Button } from '../../components';
+import { Button, InputField } from '../../components';
 import { useAuth } from '../../hooks';
-import { User } from '../../types';
-
-const USERS_STORAGE_KEY = '@inno_users';
+import { useAppSelector } from '../../store/hooks';
+import { selectUserError, selectUserLoading } from '../../store/selectors';
 
 export const LoginScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const { login } = useAuth();
+  const { loginCandidate } = useAuth();
+  const isLoading = useAppSelector(selectUserLoading);
+  const error = useAppSelector(selectUserError);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -34,38 +32,7 @@ export const LoginScreen: React.FC = () => {
       return;
     }
 
-    setIsLoading(true);
-    try {
-      const usersJson = await AsyncStorage.getItem(USERS_STORAGE_KEY);
-      const users: User[] = usersJson ? JSON.parse(usersJson) : [];
-      
-      const user = users.find(
-        (u) => u.email.toLowerCase() === email.toLowerCase()
-      );
-
-      if (!user) {
-        Alert.alert('Hata', 'Kullanıcı bulunamadı.');
-        setIsLoading(false);
-        return;
-      }
-
-      // In a real app, you'd check hashed password
-      // For now, we store password in a separate key
-      const passwordsJson = await AsyncStorage.getItem('@inno_passwords');
-      const passwords: Record<string, string> = passwordsJson ? JSON.parse(passwordsJson) : {};
-      
-      if (passwords[user.id] !== password) {
-        Alert.alert('Hata', 'Şifre yanlış.');
-        setIsLoading(false);
-        return;
-      }
-
-      login(user);
-    } catch (error) {
-      Alert.alert('Hata', 'Giriş yapılırken bir hata oluştu.');
-    } finally {
-      setIsLoading(false);
-    }
+    loginCandidate({ email, password });
   };
 
   const handleAdminLogin = () => {
@@ -87,31 +54,25 @@ export const LoginScreen: React.FC = () => {
         </View>
 
         <View style={styles.form}>
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="ornek@email.com"
-              placeholderTextColor={colors.textSecondary}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
+          <InputField
+            label="Email"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="ornek@email.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Şifre</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="••••••••"
-              placeholderTextColor={colors.textSecondary}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-          </View>
+          <InputField
+            label="Şifre"
+            value={password}
+            onChangeText={setPassword}
+            placeholder="••••••••"
+            secureTextEntry
+          />
+
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
           <Button
             label={isLoading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
@@ -166,22 +127,10 @@ const styles = StyleSheet.create({
   form: {
     gap: 16,
   } as ViewStyle,
-  inputContainer: {
-    gap: 6,
-  } as ViewStyle,
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  } as TextStyle,
-  input: {
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.borderMedium,
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 16,
-    color: colors.textPrimary,
+  errorText: {
+    fontSize: 12,
+    color: '#DC2626',
+    textAlign: 'center',
   } as TextStyle,
   registerLink: {
     alignItems: 'center',

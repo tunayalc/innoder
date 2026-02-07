@@ -14,10 +14,14 @@ export interface Document {
   type: 'identity' | 'form' | 'extra';
   fileName: string;
   fileUrl?: string;
+  pageCount?: number;
+  mimeType?: string;
   status: DocumentStatus;
   parseResult?: string;
   uploadedAt: string;
   verifiedAt?: string;
+  verifiedByUserId?: string;
+  verifyNote?: string;
 }
 
 export interface Application {

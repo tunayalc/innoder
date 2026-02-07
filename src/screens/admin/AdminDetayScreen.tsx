@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -7,12 +7,14 @@ import {
   TextStyle,
   ScrollView,
   TouchableOpacity,
+  TextInput,
+  Alert,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { colors } from '../../theme';
 import { Button, ChecklistRow, Pill, Field } from '../../components';
-import { useAppSelector } from '../../store/hooks';
-import { selectApplicationById } from '../../store/selectors';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { selectApplicationById, selectApplicationLoading, selectApplicationError } from '../../store/selectors';
 import { selectMessagesByApplicationId } from '../../store/selectors/messageSelectors';
 import {
   APPLICATION_STATUS_LABELS,
@@ -25,6 +27,7 @@ import {
   AdminDetayRouteProp,
   RootStackNavigationProp,
 } from '../../types';
+import { approveApplication, rejectApplication } from '../../store/thunks/applicationThunks';
 
 const statusToVariant = (status: DocumentStatus) => {
   switch (status) {
@@ -46,10 +49,14 @@ export const AdminDetayScreen: React.FC = () => {
   const route = useRoute<AdminDetayRouteProp>();
   const { applicationId } = route.params;
 
+  const dispatch = useAppDispatch();
   const application = useAppSelector(selectApplicationById(applicationId));
+  const isLoading = useAppSelector(selectApplicationLoading);
+  const error = useAppSelector(selectApplicationError);
   const messages = useAppSelector(
     selectMessagesByApplicationId(applicationId),
   );
+  const [rejectReason, setRejectReason] = useState('');
 
   const initials = useMemo(() => {
     if (!application) return '?';
@@ -137,12 +144,22 @@ export const AdminDetayScreen: React.FC = () => {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Belgeler</Text>
         {application.documents.map((doc) => (
-          <ChecklistRow
+          <TouchableOpacity
             key={doc.id}
-            label={DOCUMENT_TYPES[doc.type] || doc.type}
-            status={DOCUMENT_STATUS_LABELS[doc.status] || doc.status}
-            variant={statusToVariant(doc.status)}
-          />
+            activeOpacity={0.75}
+            onPress={() =>
+              navigation.navigate('DocumentViewer', {
+                applicationId,
+                documentId: doc.id,
+              })
+            }
+          >
+            <ChecklistRow
+              label={DOCUMENT_TYPES[doc.type] || doc.type}
+              status={DOCUMENT_STATUS_LABELS[doc.status] || doc.status}
+              variant={statusToVariant(doc.status)}
+            />
+          </TouchableOpacity>
         ))}
       </View>
 
@@ -183,6 +200,61 @@ export const AdminDetayScreen: React.FC = () => {
           navigation.navigate('AdayMesaj', { applicationId })
         }
       />
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Başvuru Kararı</Text>
+        <Text style={styles.cardHint}>
+          Bu bölüm, belge doğrulaması dışında (operasyonel) onay/ret kararı vermek içindir.
+        </Text>
+
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+        <Button
+          label={isLoading ? 'İşleniyor...' : 'Başvuruyu Onayla'}
+          onPress={() => {
+            Alert.alert('Onay', 'Başvuruyu onaylamak istiyor musunuz?', [
+              { text: 'İptal', style: 'cancel' },
+              {
+                text: 'Onayla',
+                onPress: () => dispatch(approveApplication({ applicationId })),
+              },
+            ]);
+          }}
+        />
+
+        <Text style={styles.label}>Reddetme Nedeni</Text>
+        <TextInput
+          style={styles.textArea}
+          value={rejectReason}
+          onChangeText={setRejectReason}
+          placeholder="Ret gerekçesi..."
+          placeholderTextColor={colors.textMuted}
+          multiline
+          numberOfLines={3}
+          textAlignVertical="top"
+        />
+        <Button
+          label={isLoading ? 'İşleniyor...' : 'Başvuruyu Reddet'}
+          variant="ghost"
+          onPress={() => {
+            if (!rejectReason.trim()) {
+              Alert.alert('Uyarı', 'Lütfen ret gerekçesi giriniz.');
+              return;
+            }
+            Alert.alert('Ret', 'Başvuruyu reddetmek istiyor musunuz?', [
+              { text: 'İptal', style: 'cancel' },
+              {
+                text: 'Reddet',
+                style: 'destructive',
+                onPress: () =>
+                  dispatch(
+                    rejectApplication({ applicationId, reason: rejectReason.trim() }),
+                  ),
+              },
+            ]);
+          }}
+        />
+      </View>
     </ScrollView>
   );
 };
@@ -270,5 +342,31 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: colors.textMuted,
     alignSelf: 'flex-end',
+  } as TextStyle,
+  cardHint: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    lineHeight: 18,
+  } as TextStyle,
+  errorText: {
+    fontSize: 12,
+    color: '#DC2626',
+  } as TextStyle,
+  label: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginLeft: 4,
+    marginTop: 4,
+  } as TextStyle,
+  textArea: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.borderMedium,
+    padding: 12,
+    fontSize: 13,
+    color: colors.textPrimary,
+    minHeight: 80,
+    backgroundColor: colors.cardBg,
   } as TextStyle,
 });

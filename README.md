@@ -1,5 +1,12 @@
 This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 
+# Project Notes (Prototype Mode)
+
+- Source of truth: `Mobil_Uygulama.pptx` (development extract: `docs/Mobil_Uygulama.extract.md`).
+- Backend is currently unreachable, so the app runs on a swappable backend abstraction: `src/config/appConfig.ts` → `dataSource: 'mock' | 'remote'`.
+- `mock` backend persists to AsyncStorage under `@inno_mock/*` keys and simulates latency.
+- `remote` backend is a placeholder wrapper for when real endpoints are available.
+
 # Getting Started
 
 > **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
