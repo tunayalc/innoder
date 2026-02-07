@@ -100,6 +100,11 @@ export const RootNavigator: React.FC = () => {
             options={{ title: 'Audit Log', headerRight: () => <LogoutButton /> }}
           />
           <Stack.Screen 
+            name="AdayMesaj" 
+            component={AdayMesajScreen}
+            options={{ title: 'Mesajlaşma', headerRight: () => <LogoutButton /> }}
+          />
+          <Stack.Screen 
             name="Main" 
             component={HomeScreen}
             options={{ title: 'Inno Prototype', headerRight: () => <LogoutButton /> }}
@@ -114,9 +119,14 @@ export const RootNavigator: React.FC = () => {
         // Candidate (Aday) screens - show aday menu first
         <>
           <Stack.Screen 
-            name="AdayKayit" 
+            name="AdayMenu" 
             component={AdayMenuScreen}
             options={{ title: 'Aday Ekranları', headerRight: () => <LogoutButton /> }}
+          />
+          <Stack.Screen 
+            name="AdayKayit" 
+            component={AdayKayitScreen}
+            options={{ title: 'Kayıt Formu', headerRight: () => <LogoutButton /> }}
           />
           <Stack.Screen 
             name="AdayEgitim" 

@@ -10,6 +10,7 @@ export type RootStackParamList = {
   Splash: undefined;
   Auth: undefined;
   Main: { screen?: keyof MainTabParamList };
+  AdayMenu: undefined;
   AdayKayit: undefined;
   AdayEgitim: undefined;
   AdayKisisel: undefined;

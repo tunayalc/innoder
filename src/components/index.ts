@@ -6,4 +6,5 @@ export { Field } from './Field';
 export { ChecklistRow } from './ChecklistRow';
 export { ListRow } from './ListRow';
 export { Card } from './Card';
+export { InputField } from './InputField';
 export { LogoutButton } from './LogoutButton';
