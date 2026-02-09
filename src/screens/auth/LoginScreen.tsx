@@ -11,6 +11,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../../theme';
 import { Button, InputField } from '../../components';
@@ -20,6 +21,7 @@ import { selectUserError, selectUserLoading } from '../../store/selectors';
 
 export const LoginScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const { loginCandidate } = useAuth();
   const isLoading = useAppSelector(selectUserLoading);
   const error = useAppSelector(selectUserError);
@@ -35,22 +37,24 @@ export const LoginScreen: React.FC = () => {
     loginCandidate({ email, password });
   };
 
-  const handleAdminLogin = () => {
-    navigation.navigate('AdminLogin');
-  };
-
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingTop: insets.top + 60, paddingBottom: insets.bottom + 24 },
+        ]}
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
-          <Text style={styles.title}>Hoş Geldiniz</Text>
-          <Text style={styles.subtitle}>Hesabınıza giriş yapın</Text>
+          <View style={styles.accentBar} />
+          <Text style={styles.title}>Giriş Yap</Text>
+          <Text style={styles.subtitle}>
+            Devam etmek için hesap bilgilerinizi girin
+          </Text>
         </View>
 
         <View style={styles.form}>
@@ -64,37 +68,44 @@ export const LoginScreen: React.FC = () => {
             autoCorrect={false}
           />
 
+          <View style={{ height: 20 }} />
+
           <InputField
             label="Şifre"
             value={password}
             onChangeText={setPassword}
-            placeholder="••••••••"
+            placeholder="Şifrenizi girin"
             secureTextEntry
           />
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
+          <View style={{ height: 16 }} />
+
           <Button
             label={isLoading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
             onPress={handleLogin}
           />
-
-          <TouchableOpacity
-            style={styles.registerLink}
-            onPress={() => navigation.navigate('Register')}
-          >
-            <Text style={styles.registerText}>
-              Hesabınız yok mu? <Text style={styles.registerTextBold}>Kayıt Olun</Text>
-            </Text>
-          </TouchableOpacity>
         </View>
 
         <TouchableOpacity
-          style={styles.adminLink}
-          onPress={handleAdminLogin}
+          style={styles.registerLink}
+          onPress={() => navigation.navigate('Register')}
         >
-          <Text style={styles.adminText}>Admin misiniz?</Text>
+          <Text style={styles.registerText}>
+            Hesabınız yok mu?{' '}
+            <Text style={styles.registerTextBold}>Kayıt Olun</Text>
+          </Text>
         </TouchableOpacity>
+
+        <View style={styles.footer}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('AdminLogin')}
+            hitSlop={{ top: 12, bottom: 12, left: 20, right: 20 }}
+          >
+            <Text style={styles.adminText}>Yönetici girişi</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -107,51 +118,58 @@ const styles = StyleSheet.create({
   } as ViewStyle,
   scrollContent: {
     flexGrow: 1,
-    padding: 20,
-    justifyContent: 'center',
+    paddingHorizontal: 24,
+    justifyContent: 'flex-start',
   } as ViewStyle,
   header: {
-    marginBottom: 32,
-    alignItems: 'center',
+    marginBottom: 36,
+  } as ViewStyle,
+  accentBar: {
+    width: 28,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: colors.primary,
+    marginBottom: 16,
   } as ViewStyle,
   title: {
-    fontSize: 28,
+    fontSize: 34,
     fontWeight: '700',
     color: colors.textPrimary,
-    marginBottom: 8,
+    letterSpacing: -0.5,
+    marginBottom: 10,
   } as TextStyle,
   subtitle: {
-    fontSize: 14,
+    fontSize: 16,
     color: colors.textSecondary,
+    lineHeight: 23,
   } as TextStyle,
   form: {
-    gap: 16,
+    paddingHorizontal: 0,
   } as ViewStyle,
   errorText: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#DC2626',
-    textAlign: 'center',
+    marginTop: 10,
   } as TextStyle,
   registerLink: {
-    alignItems: 'center',
-    marginTop: 16,
+    marginTop: 28,
+    alignSelf: 'center',
   } as ViewStyle,
   registerText: {
-    fontSize: 14,
+    fontSize: 15,
     color: colors.textSecondary,
   } as TextStyle,
   registerTextBold: {
     color: colors.primary,
     fontWeight: '600',
   } as TextStyle,
-  adminLink: {
+  footer: {
+    marginTop: 'auto' as any,
+    paddingTop: 32,
     alignItems: 'center',
-    marginTop: 40,
-    paddingVertical: 12,
   } as ViewStyle,
   adminText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    textDecorationLine: 'underline',
+    fontSize: 14,
+    color: colors.textMuted,
   } as TextStyle,
 });

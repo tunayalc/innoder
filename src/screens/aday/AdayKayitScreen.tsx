@@ -107,11 +107,17 @@ export const AdayKayitScreen: React.FC = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.section}>
-        <Text style={styles.h2}>Kayıt Formu</Text>
-        <Text style={styles.subtitle}>
-          Hesap bilgilerinizi doldurun. Verileriniz güvenli biçimde kaydedilir.
-        </Text>
+        <View style={styles.headerCard}>
+          <View style={styles.accentBar} />
+          <View style={styles.headerContent}>
+            <Text style={styles.h2}>Kayıt Formu</Text>
+            <Text style={styles.subtitle}>
+              Hesap bilgilerinizi doldurun. Verileriniz güvenli biçimde kaydedilir.
+            </Text>
+          </View>
+        </View>
 
+        <Text style={styles.sectionLabel}>HESAP BİLGİLERİ</Text>
         <InputField
           label="Ad Soyad *"
           value={fullName}
@@ -131,6 +137,7 @@ export const AdayKayitScreen: React.FC = () => {
           autoCapitalize="none"
         />
 
+        <Text style={styles.sectionLabel}>İLETİŞİM</Text>
         <InputField
           label="Telefon"
           value={phone}
@@ -154,6 +161,7 @@ export const AdayKayitScreen: React.FC = () => {
           placeholder="İstanbul"
         />
 
+        <Text style={styles.sectionLabel}>GİZLİLİK</Text>
         <View style={styles.switchRow}>
           <View style={styles.switchLabel}>
             <Text style={styles.bodyText}>KVKK Aydınlatma & Açık Rıza Onayı *</Text>
@@ -197,57 +205,81 @@ const styles = StyleSheet.create({
   } as ViewStyle,
   section: {
     paddingTop: 16,
-    gap: 12,
+    gap: 16,
     padding: 20,
     paddingBottom: 40,
   } as ViewStyle,
+  headerCard: {
+    backgroundColor: colors.cardBg,
+    borderRadius: 14,
+    padding: 18,
+    flexDirection: 'row',
+    gap: 14,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  } as ViewStyle,
+  accentBar: {
+    width: 4,
+    borderRadius: 2,
+    backgroundColor: colors.teal,
+  } as ViewStyle,
+  headerContent: {
+    flex: 1,
+    gap: 4,
+  } as ViewStyle,
   h2: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '700',
     color: colors.textPrimary,
   } as TextStyle,
   subtitle: {
     color: colors.textSecondary,
+    fontSize: 15,
+  } as TextStyle,
+  sectionLabel: {
     fontSize: 12,
-    marginBottom: 4,
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 0.8,
+    marginTop: 4,
   } as TextStyle,
   bodyText: {
     color: colors.textPrimary,
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '600',
   } as TextStyle,
   kvkkHint: {
     color: colors.textMuted,
-    fontSize: 11,
-    marginTop: 2,
+    fontSize: 13,
+    marginTop: 3,
   } as TextStyle,
   switchRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: colors.switchRowBg,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
     borderRadius: 12,
-    gap: 12,
+    gap: 14,
   } as ViewStyle,
   switchLabel: {
     flex: 1,
   } as ViewStyle,
   errorText: {
-    fontSize: 11,
+    fontSize: 13,
     color: '#DC2626',
     marginLeft: 4,
     marginTop: -4,
   } as TextStyle,
   notice: {
     backgroundColor: '#E7F5F3',
-    padding: 12,
+    padding: 14,
     borderRadius: 12,
   } as ViewStyle,
   noticeText: {
     color: colors.teal,
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '600',
   } as TextStyle,
 });

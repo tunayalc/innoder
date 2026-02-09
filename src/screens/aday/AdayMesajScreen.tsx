@@ -100,12 +100,17 @@ export const AdayMesajScreen: React.FC = () => {
       keyboardVerticalOffset={100}
     >
       <View style={styles.header}>
-        <Text style={styles.h2}>Mesajlaşma</Text>
-        {application && (
-          <Text style={styles.subtitle}>
-            {application.personalInfo.fullName} - {application.programName}
-          </Text>
-        )}
+        <View style={styles.headerCard}>
+          <View style={styles.accentBar} />
+          <View style={styles.headerContent}>
+            <Text style={styles.h2}>Mesajlaşma</Text>
+            {application && (
+              <Text style={styles.subtitle}>
+                {application.personalInfo.fullName} - {application.programName}
+              </Text>
+            )}
+          </View>
+        </View>
       </View>
 
       {messages.length === 0 ? (
@@ -164,22 +169,40 @@ const styles = StyleSheet.create({
   } as ViewStyle,
   header: {
     padding: 20,
-    paddingBottom: 8,
+    paddingBottom: 10,
+  } as ViewStyle,
+  headerCard: {
+    backgroundColor: colors.cardBg,
+    borderRadius: 14,
+    padding: 18,
+    flexDirection: 'row',
+    gap: 14,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  } as ViewStyle,
+  accentBar: {
+    width: 4,
+    borderRadius: 2,
+    backgroundColor: colors.primary,
+  } as ViewStyle,
+  headerContent: {
+    flex: 1,
+    gap: 4,
   } as ViewStyle,
   h2: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '700',
     color: colors.textPrimary,
   } as TextStyle,
   subtitle: {
     color: colors.textSecondary,
-    fontSize: 12,
-    marginTop: 2,
+    fontSize: 14,
+    marginTop: 4,
   } as TextStyle,
   messageList: {
     padding: 20,
     paddingTop: 8,
-    gap: 10,
+    gap: 14,
   } as ViewStyle,
   emptyContainer: {
     flex: 1,
@@ -188,16 +211,16 @@ const styles = StyleSheet.create({
     padding: 40,
   } as ViewStyle,
   emptyText: {
-    fontSize: 13,
+    fontSize: 15,
     color: colors.textMuted,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 22,
   } as TextStyle,
   msgBubble: {
-    padding: 12,
+    padding: 14,
     borderRadius: 14,
     maxWidth: '80%',
-    gap: 4,
+    gap: 5,
   } as ViewStyle,
   msgAdmin: {
     backgroundColor: colors.msgAdmin,
@@ -210,18 +233,18 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 4,
   } as ViewStyle,
   msgSender: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
     color: colors.textMuted,
     textTransform: 'uppercase',
   } as TextStyle,
   msgText: {
     color: colors.textPrimary,
-    fontSize: 13,
-    lineHeight: 19,
+    fontSize: 15,
+    lineHeight: 21,
   } as TextStyle,
   msgTime: {
-    fontSize: 10,
+    fontSize: 11,
     color: colors.textMuted,
     alignSelf: 'flex-end',
   } as TextStyle,
@@ -240,16 +263,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     borderRadius: 20,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    fontSize: 14,
+    paddingVertical: 12,
+    fontSize: 15,
     color: colors.textPrimary,
     maxHeight: 100,
   } as TextStyle,
   sendButton: {
     backgroundColor: colors.primary,
     borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
   } as ViewStyle,
   sendButtonDisabled: {
     opacity: 0.4,
@@ -257,6 +280,6 @@ const styles = StyleSheet.create({
   sendButtonText: {
     color: colors.white,
     fontWeight: '700',
-    fontSize: 13,
+    fontSize: 15,
   } as TextStyle,
 });

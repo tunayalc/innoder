@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { View, Text, StyleSheet, ViewStyle, TextStyle, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RootStackNavigationProp } from '../../types';
 import { colors } from '../../theme';
 import { MenuItem, Pill } from '../../components';
@@ -24,83 +25,130 @@ export const AdayMenuScreen: React.FC = () => {
     return myApplication.documents.filter((d) => d.status !== 'ok').length;
   }, [myApplication]);
 
+  const totalDocs = myApplication?.documents.length ?? 0;
+  const completedDocs = totalDocs - missingDocs;
+
   return (
-    <View style={styles.section}>
-      <Text style={styles.h2}>Hoş geldiniz, {user?.name || 'Aday'}</Text>
-      <Text style={styles.subtitle}>Kullanıcı tarafındaki temel adımlar.</Text>
+    <ScrollView contentContainerStyle={styles.section}>
+      <Text style={styles.greeting}>Merhaba, {user?.name || 'Aday'}</Text>
 
       {myApplication && (
         <View style={styles.statusCard}>
-          <View style={styles.statusRow}>
-            <Text style={styles.statusLabel}>Başvuru Durumu</Text>
-            <Pill
-              label={APPLICATION_STATUS_LABELS[myApplication.status] || myApplication.status}
-              variant={
-                myApplication.status === 'approved'
-                  ? 'ok'
-                  : myApplication.status === 'needs_fix'
-                    ? 'warn'
-                    : myApplication.status === 'rejected'
-                      ? 'err'
-                      : 'info'
-              }
-            />
+          <View style={styles.statusAccent} />
+          <View style={styles.statusContent}>
+            <View style={styles.statusRow}>
+              <Text style={styles.statusLabel}>Başvuru</Text>
+              <Pill
+                label={APPLICATION_STATUS_LABELS[myApplication.status] || myApplication.status}
+                variant={
+                  myApplication.status === 'approved'
+                    ? 'ok'
+                    : myApplication.status === 'needs_fix'
+                      ? 'warn'
+                      : myApplication.status === 'rejected'
+                        ? 'err'
+                        : 'info'
+                }
+              />
+            </View>
+            <View style={styles.progressRow}>
+              <View style={styles.progressTrack}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    { width: totalDocs > 0 ? `${(completedDocs / totalDocs) * 100}%` : '0%' },
+                  ]}
+                />
+              </View>
+              <Text style={styles.progressLabel}>
+                {completedDocs}/{totalDocs}
+              </Text>
+            </View>
+            {missingDocs > 0 && (
+              <Text style={styles.statusHint}>
+                {missingDocs} belge eksik veya hatalı
+              </Text>
+            )}
           </View>
-          {missingDocs > 0 && (
-            <Text style={styles.statusHint}>
-              {missingDocs} belge eksik/hatalı
-            </Text>
-          )}
         </View>
       )}
 
-      <MenuItem 
-        label="Kayıt Formu" 
-        onPress={() => navigation.navigate('AdayKayit')} 
+      <Text style={styles.sectionLabel}>Başvuru Adımları</Text>
+
+      <MenuItem
+        label="Kayıt Formu"
+        subtitle="Kişisel bilgilerinizi girin"
+        iconName="account-edit-outline"
+        iconColor={colors.primary}
+        iconBg={colors.warning}
+        onPress={() => navigation.navigate('AdayKayit')}
       />
-      <MenuItem 
-        label="Eğitim Bilgilendirme" 
-        onPress={() => navigation.navigate('AdayEgitim')} 
+      <MenuItem
+        label="Eğitim Bilgilendirme"
+        subtitle="Program detayları ve checklist"
+        iconName="school-outline"
+        iconColor={colors.teal}
+        iconBg={colors.success}
+        onPress={() => navigation.navigate('AdayEgitim')}
       />
-      <MenuItem 
-        label="Kişisel Bilgi Formu" 
-        onPress={() => navigation.navigate('AdayKisisel')} 
+      <MenuItem
+        label="Kişisel Bilgi Formu"
+        subtitle="TC, doğum tarihi ve program seçimi"
+        iconName="card-account-details-outline"
+        iconColor="#6366F1"
+        iconBg={colors.info}
+        onPress={() => navigation.navigate('AdayKisisel')}
       />
-      <MenuItem 
-        label="Belge Tarama / Yükleme" 
-        onPress={() => navigation.navigate('AdayBelge')} 
+      <MenuItem
+        label="Belge Tarama / Yükleme"
+        subtitle="Belgelerinizi tarayıp yükleyin"
+        iconName="file-document-outline"
+        iconColor={colors.primary}
+        iconBg={colors.warning}
+        onPress={() => navigation.navigate('AdayBelge')}
       />
-      <MenuItem 
-        label="Mesajlaşma" 
-        onPress={() => navigation.navigate('AdayMesaj', { applicationId: myApplication?.id })} 
+      <MenuItem
+        label="Mesajlaşma"
+        subtitle="Admin ile iletişim"
+        iconName="message-text-outline"
+        iconColor={colors.teal}
+        iconBg={colors.success}
+        onPress={() => navigation.navigate('AdayMesaj', { applicationId: myApplication?.id })}
       />
-    </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   section: {
-    marginTop: 16,
-    gap: 12,
     padding: 20,
+    paddingTop: 20,
+    paddingBottom: 40,
+    gap: 14,
   } as ViewStyle,
-  h2: {
-    fontSize: 20,
+  greeting: {
+    fontSize: 26,
     fontWeight: '700',
     color: colors.textPrimary,
-  } as TextStyle,
-  subtitle: {
-    color: colors.textSecondary,
-    fontSize: 12,
     marginBottom: 4,
   } as TextStyle,
   statusCard: {
+    flexDirection: 'row',
     backgroundColor: colors.cardBg,
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.borderLight,
-    padding: 14,
-    gap: 6,
+    overflow: 'hidden',
+    marginBottom: 6,
+  } as ViewStyle,
+  statusAccent: {
+    width: 4,
+    backgroundColor: colors.teal,
+  } as ViewStyle,
+  statusContent: {
+    flex: 1,
+    padding: 16,
+    gap: 10,
   } as ViewStyle,
   statusRow: {
     flexDirection: 'row',
@@ -108,12 +156,44 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   } as ViewStyle,
   statusLabel: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
     color: colors.textPrimary,
   } as TextStyle,
+  progressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  } as ViewStyle,
+  progressTrack: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.borderLight,
+    overflow: 'hidden',
+  } as ViewStyle,
+  progressFill: {
+    height: '100%',
+    borderRadius: 3,
+    backgroundColor: colors.teal,
+  } as ViewStyle,
+  progressLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textMuted,
+    minWidth: 28,
+    textAlign: 'right',
+  } as TextStyle,
   statusHint: {
-    fontSize: 11,
+    fontSize: 13,
     color: colors.noticeText,
+  } as TextStyle,
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginTop: 4,
   } as TextStyle,
 });

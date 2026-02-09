@@ -8,15 +8,19 @@ import {
   ScrollView,
   Alert,
   TouchableOpacity,
+  Image,
+  ImageStyle,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { launchImageLibrary, Asset } from 'react-native-image-picker';
+import { pick, types as docTypes } from '@react-native-documents/picker';
 import { colors } from '../../theme';
 import { Button, Pill } from '../../components';
 import { useAuth } from '../../hooks';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { selectApplicationError, selectApplicationLoading, selectApplications } from '../../store/selectors';
 import { DOCUMENT_TYPES, DOCUMENT_STATUS_LABELS } from '../../constants';
-import { DocumentStatus, RootStackNavigationProp } from '../../types';
+import { DocumentStatus, RootStackNavigationProp, RootStackParamList } from '../../types';
 import { uploadDocument } from '../../store/thunks/applicationThunks';
 import { getProgramById } from '../../services/programCatalog';
 
@@ -41,6 +45,7 @@ const statusToVariant = (status: DocumentStatus) => {
 
 export const AdayBelgeScreen: React.FC = () => {
   const navigation = useNavigation<RootStackNavigationProp>();
+  const route = useRoute<RouteProp<RootStackParamList, 'AdayBelge'>>();
   const { user } = useAuth();
   const dispatch = useAppDispatch();
   const applications = useAppSelector(selectApplications);
@@ -53,9 +58,23 @@ export const AdayBelgeScreen: React.FC = () => {
   );
 
   const [selectedDocType, setSelectedDocType] = useState<DocType>('identity');
-  const [qualityScore, setQualityScore] = useState(0); // 0-3
   const [captureFormat, setCaptureFormat] = useState<CaptureFormat>('jpg');
-  const [pages, setPages] = useState<string[]>([]);
+  const [capturedPages, setCapturedPages] = useState<Asset[]>([]);
+  const [pdfFileName, setPdfFileName] = useState<string | null>(null);
+  const [pdfUri, setPdfUri] = useState<string | null>(null);
+
+  // Receive photo from BelgeCameraScreen
+  useEffect(() => {
+    const photoUri = route.params?.capturedPhotoUri;
+    if (photoUri) {
+      setCapturedPages((prev) => [
+        ...prev,
+        { uri: photoUri, fileName: `camera_${Date.now()}.jpg` } as Asset,
+      ]);
+      // Clear the param so it doesn't re-add on re-render
+      navigation.setParams({ capturedPhotoUri: undefined });
+    }
+  }, [route.params?.capturedPhotoUri, navigation]);
 
   const availableDocTypes = useMemo(() => {
     if (!myApplication) return DOC_TYPE_OPTIONS;
@@ -83,25 +102,62 @@ export const AdayBelgeScreen: React.FC = () => {
     );
   }, [myApplication, selectedDocType]);
 
-  const simulateCapture = useCallback(() => {
-    // Simulate camera capture & quality check
-    const score = Math.floor(Math.random() * 3) + 1; // 1, 2, or 3
-    setQualityScore(score);
+  const handleCameraCapture = useCallback(() => {
+    navigation.navigate('BelgeCamera', { docType: selectedDocType });
+  }, [navigation, selectedDocType]);
 
-    const ext = captureFormat === 'pdf' ? 'pdf' : 'jpg';
-    const pageFile = `${selectedDocType}_${Date.now()}_${pages.length + 1}.${ext}`;
-    setPages((prev) => [...prev, pageFile]);
-  }, [captureFormat, pages.length, selectedDocType]);
+  const handleGalleryPick = useCallback(async () => {
+    try {
+      const result = await launchImageLibrary({
+        mediaType: 'photo',
+        quality: 0.9,
+        selectionLimit: 5,
+        maxWidth: 2048,
+        maxHeight: 2048,
+      });
+      if (result.didCancel) return;
+      if (result.errorCode) {
+        Alert.alert('Hata', result.errorMessage || 'Galeri açılamadı.');
+        return;
+      }
+      if (result.assets?.length) {
+        setCapturedPages((prev) => [...prev, ...result.assets!]);
+      }
+    } catch (e) {
+      Alert.alert('Hata', 'Galeri açılırken bir sorun oluştu.');
+    }
+  }, []);
+
+  const handleDocumentPick = useCallback(async () => {
+    try {
+      const [res] = await pick({ type: [docTypes.pdf] });
+      if (res) {
+        setPdfFileName(res.name || 'document.pdf');
+        setPdfUri(res.uri);
+      }
+    } catch (e: any) {
+      // User cancelled or error
+      if (e?.code !== 'DOCUMENT_PICKER_CANCELED') {
+        Alert.alert('Hata', 'Dosya seçilirken bir sorun oluştu.');
+      }
+    }
+  }, []);
 
   const performUpload = useCallback(() => {
     if (!myApplication || !user || !selectedDocument) return;
 
-    // Determine file name / mimeType by selected format (mock upload).
     const ext = captureFormat === 'pdf' ? 'pdf' : 'jpg';
     const mimeType = captureFormat === 'pdf' ? 'application/pdf' : 'image/jpeg';
-    const fileName = `${selectedDocType}_${user.id}_${Date.now()}_${pages.length}p.${ext}`;
+    const pageCount = captureFormat === 'pdf' ? 1 : capturedPages.length;
+    const fileName =
+      captureFormat === 'pdf' && pdfFileName
+        ? pdfFileName
+        : `${selectedDocType}_${user.id}_${Date.now()}_${pageCount}p.${ext}`;
+    const fileUrl =
+      captureFormat === 'pdf' && pdfUri
+        ? pdfUri
+        : capturedPages[0]?.uri || `local://${fileName}`;
 
-    // Mock parse attempt: extra docs may contain QR/Barcode.
     const parseResult =
       selectedDocType === 'extra'
         ? Math.random() > 0.5
@@ -114,56 +170,50 @@ export const AdayBelgeScreen: React.FC = () => {
         applicationId: myApplication.id,
         documentType: selectedDocType,
         fileName,
-        fileUrl: `local://${fileName}`,
-        pageCount: pages.length,
+        fileUrl,
+        pageCount,
         mimeType,
-        qualityScore,
+        qualityScore: 3,
         parseResult,
       }),
     );
 
-    setQualityScore(0);
-    setPages([]);
+    setCapturedPages([]);
+    setPdfFileName(null);
+    setPdfUri(null);
     Alert.alert(
       'Yükleme Başlatıldı',
-      'Belge backend’e gönderiliyor. Durum güncellenince checklist üzerinden takip edebilirsiniz.',
+      'Belge backend\'e gönderiliyor. Durum güncellenince checklist üzerinden takip edebilirsiniz.',
     );
-  }, [myApplication, user, selectedDocument, selectedDocType, captureFormat, pages.length, qualityScore, dispatch]);
+  }, [myApplication, user, selectedDocument, selectedDocType, captureFormat, capturedPages, pdfFileName, pdfUri, dispatch]);
 
   const handleUpload = useCallback(() => {
     if (!myApplication || !user || !selectedDocument) return;
-    if (pages.length === 0) {
-      Alert.alert('Uyarı', 'Önce belgeyi tarayın (en az 1 sayfa).');
-      return;
-    }
-    if (qualityScore < 2) {
+    const hasContent =
+      captureFormat === 'pdf' ? !!pdfUri : capturedPages.length > 0;
+    if (!hasContent) {
       Alert.alert(
-        'Kalite Düşük',
-        'Çekilen görüntü bulanık veya karanlık. Yeniden çekmek ister misiniz?',
-        [
-          {
-            text: 'Yeniden Çek',
-            onPress: () => {
-              setQualityScore(0);
-              setPages([]);
-            },
-          },
-          { text: 'Yine de Yükle', onPress: () => performUpload() },
-        ],
+        'Uyarı',
+        captureFormat === 'pdf'
+          ? 'Önce bir PDF dosyası seçin.'
+          : 'Önce belgeyi tarayın (en az 1 sayfa).',
       );
       return;
     }
     performUpload();
-  }, [myApplication, user, selectedDocument, qualityScore, pages.length, performUpload]);
+  }, [myApplication, user, selectedDocument, captureFormat, capturedPages.length, pdfUri, performUpload]);
 
   if (!myApplication) {
     return (
       <View style={styles.section}>
-        <Text style={styles.h2}>Belge Tarama</Text>
+        <View style={styles.headerCard}>
+          <View style={styles.accentBar} />
+          <View style={styles.headerContent}>
+            <Text style={styles.h2}>Belge Tarama</Text>
+            <Text style={styles.subtitle}>Önce Kayıt Formu ekranından bilgilerinizi kaydedin.</Text>
+          </View>
+        </View>
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyText}>
-            Önce Kayıt Formu ekranından bilgilerinizi kaydedin.
-          </Text>
           <Button
             label="Kayıt Formuna Git"
             onPress={() => navigation.navigate('AdayKayit')}
@@ -175,10 +225,15 @@ export const AdayBelgeScreen: React.FC = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.section}>
-      <Text style={styles.h2}>Belge Tarama</Text>
+      <View style={styles.headerCard}>
+        <View style={styles.accentBar} />
+        <View style={styles.headerContent}>
+          <Text style={styles.h2}>Belge Tarama</Text>
+        </View>
+      </View>
 
       {/* Document type selector */}
-      <Text style={styles.label}>Belge Tipi Seçin</Text>
+      <Text style={styles.sectionLabel}>BELGE TİPİ</Text>
         <View style={styles.typeRow}>
         {availableDocTypes.map((opt) => {
           const doc = myApplication.documents.find((d) => d.type === opt.key);
@@ -192,8 +247,9 @@ export const AdayBelgeScreen: React.FC = () => {
               onPress={() => {
                 setSelectedDocType(opt.key);
                 setCaptureFormat(opt.key === 'form' ? 'pdf' : 'jpg');
-                setQualityScore(0);
-                setPages([]);
+                setCapturedPages([]);
+                setPdfFileName(null);
+                setPdfUri(null);
               }}
             >
               <Text
@@ -216,7 +272,7 @@ export const AdayBelgeScreen: React.FC = () => {
       </View>
 
       {/* Format selector */}
-      <Text style={styles.label}>Beklenen Format</Text>
+      <Text style={styles.sectionLabel}>FORMAT</Text>
       {expectedFormat ? (
         <Text style={styles.formatHint}>{expectedFormat}</Text>
       ) : null}
@@ -230,8 +286,9 @@ export const AdayBelgeScreen: React.FC = () => {
             ]}
             onPress={() => {
               setCaptureFormat(fmt);
-              setQualityScore(0);
-              setPages([]);
+              setCapturedPages([]);
+              setPdfFileName(null);
+              setPdfUri(null);
             }}
           >
             <Text
@@ -247,50 +304,63 @@ export const AdayBelgeScreen: React.FC = () => {
       </View>
 
       {/* Camera/scan area */}
-      <TouchableOpacity style={styles.scanBox} onPress={simulateCapture}>
-        <View style={styles.scanGuide}>
-          <Text style={styles.scanOkText}>
-            {pages.length > 0 ? `${pages.length} sayfa eklendi` : 'Belgeyi Tara'}
-          </Text>
-        </View>
-        <Text style={styles.bodyText}>
-          {pages.length > 0
-            ? 'Yeni sayfa eklemek için dokunun'
-            : 'Kamerayı hizalayıp dokunun'}
-        </Text>
-      </TouchableOpacity>
+      <Text style={styles.sectionLabel}>TARAMA</Text>
+      {captureFormat === 'jpg' ? (
+        <>
+          <View style={styles.scanActions}>
+            <TouchableOpacity style={styles.scanBox} onPress={handleCameraCapture}>
+              <View style={styles.scanGuide}>
+                <Text style={styles.scanOkText}>📷</Text>
+                <Text style={styles.scanHintText}>Kamera ile Çek</Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.scanBoxAlt} onPress={handleGalleryPick}>
+              <View style={styles.scanGuide}>
+                <Text style={styles.scanOkText}>🖼️</Text>
+                <Text style={styles.scanHintText}>Galeriden Seç</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
 
-      {pages.length > 0 && (
-        <View style={styles.rowBetween}>
-          <Text style={styles.bodyText}>Sayfalar</Text>
-          <TouchableOpacity onPress={() => { setPages([]); setQualityScore(0); }}>
-            <Text style={styles.resetText}>Sıfırla</Text>
+          {capturedPages.length > 0 && (
+            <>
+              <View style={styles.rowBetween}>
+                <Text style={styles.bodyText}>{capturedPages.length} sayfa eklendi</Text>
+                <TouchableOpacity onPress={() => setCapturedPages([])}>
+                  <Text style={styles.resetText}>Sıfırla</Text>
+                </TouchableOpacity>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbRow}>
+                {capturedPages.map((asset, idx) => (
+                  <Image
+                    key={`${idx}-${asset.uri}`}
+                    source={{ uri: asset.uri }}
+                    style={styles.thumbnail}
+                  />
+                ))}
+              </ScrollView>
+            </>
+          )}
+        </>
+      ) : (
+        <>
+          <TouchableOpacity style={styles.scanBox} onPress={handleDocumentPick}>
+            <View style={styles.scanGuide}>
+              <Text style={styles.scanOkText}>📄</Text>
+              <Text style={styles.scanHintText}>
+                {pdfFileName || 'PDF Dosyası Seç'}
+              </Text>
+            </View>
           </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Quality indicator */}
-      <View style={styles.rowBetween}>
-        <Text style={styles.bodyText}>Kalite Kontrol</Text>
-        <View style={styles.bars}>
-          {[1, 2, 3].map((level) => (
-            <View
-              key={level}
-              style={[
-                styles.bar,
-                qualityScore >= level ? styles.barActive : styles.barMuted,
-              ]}
-            />
-          ))}
-        </View>
-      </View>
-      {qualityScore > 0 && qualityScore < 2 && (
-        <Text style={styles.qualityWarn}>
-          Görüntü kalitesi düşük. Aydınlık bir ortamda tekrar deneyin.
-        </Text>
-      )}
-      {qualityScore >= 2 && (
-        <Text style={styles.qualityOk}>Görüntü kalitesi yeterli.</Text>
+          {pdfFileName && (
+            <View style={styles.rowBetween}>
+              <Text style={styles.bodyText} numberOfLines={1}>{pdfFileName}</Text>
+              <TouchableOpacity onPress={() => { setPdfFileName(null); setPdfUri(null); }}>
+                <Text style={styles.resetText}>Sıfırla</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </>
       )}
 
       {/* Upload button */}
@@ -301,8 +371,8 @@ export const AdayBelgeScreen: React.FC = () => {
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       {/* Current document statuses */}
+      <Text style={styles.sectionLabel}>BELGE DURUMLARI</Text>
       <View style={styles.statusCard}>
-        <Text style={styles.cardTitle}>Belge Durumları</Text>
         {myApplication.documents.map((doc) => (
           <View key={doc.id} style={styles.statusRow}>
             <Text style={styles.statusLabel}>
@@ -322,24 +392,53 @@ export const AdayBelgeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   section: {
     paddingTop: 16,
-    gap: 12,
+    gap: 16,
     padding: 20,
     paddingBottom: 40,
   } as ViewStyle,
+  headerCard: {
+    backgroundColor: colors.cardBg,
+    borderRadius: 14,
+    padding: 18,
+    flexDirection: 'row',
+    gap: 14,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  } as ViewStyle,
+  accentBar: {
+    width: 4,
+    borderRadius: 2,
+    backgroundColor: colors.teal,
+  } as ViewStyle,
+  headerContent: {
+    flex: 1,
+    gap: 4,
+  } as ViewStyle,
   h2: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '700',
     color: colors.textPrimary,
   } as TextStyle,
-  label: {
+  subtitle: {
+    color: colors.textSecondary,
+    fontSize: 15,
+  } as TextStyle,
+  sectionLabel: {
     fontSize: 12,
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 0.8,
+    marginTop: 4,
+  } as TextStyle,
+  label: {
+    fontSize: 14,
     fontWeight: '600',
     color: colors.textSecondary,
     marginLeft: 4,
   } as TextStyle,
   bodyText: {
     color: colors.textPrimary,
-    fontSize: 13,
+    fontSize: 15,
   } as TextStyle,
   typeRow: {
     gap: 8,
@@ -348,8 +447,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.borderLight,
@@ -360,7 +459,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.tealBg,
   } as ViewStyle,
   typeChipText: {
-    fontSize: 13,
+    fontSize: 15,
     color: colors.textPrimary,
   } as TextStyle,
   typeChipTextActive: {
@@ -368,32 +467,54 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   } as TextStyle,
   scanBox: {
+    flex: 1,
     borderRadius: 18,
     borderWidth: 2,
     borderColor: colors.tealBorder,
     padding: 16,
     backgroundColor: colors.tealBg,
-    gap: 8,
     alignItems: 'center',
   } as ViewStyle,
+  scanBoxAlt: {
+    flex: 1,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: colors.borderMedium,
+    padding: 16,
+    backgroundColor: colors.cardBg,
+    alignItems: 'center',
+  } as ViewStyle,
+  scanActions: {
+    flexDirection: 'row',
+    gap: 10,
+  } as ViewStyle,
   scanGuide: {
-    height: 120,
+    minHeight: 80,
     borderRadius: 12,
-    backgroundColor: colors.tealSoft,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 6,
   } as ViewStyle,
   scanHintText: {
-    color: colors.teal,
-    fontSize: 16,
+    color: colors.textSecondary,
+    fontSize: 14,
     fontWeight: '600',
+    textAlign: 'center',
   } as TextStyle,
   scanOkText: {
-    color: colors.teal,
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 28,
   } as TextStyle,
+  thumbRow: {
+    flexGrow: 0,
+  } as ViewStyle,
+  thumbnail: {
+    width: 64,
+    height: 80,
+    borderRadius: 8,
+    marginRight: 8,
+    backgroundColor: colors.borderLight,
+  } as ImageStyle,
   rowBetween: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -414,24 +535,16 @@ const styles = StyleSheet.create({
   barMuted: {
     backgroundColor: colors.muted,
   } as ViewStyle,
-  qualityWarn: {
-    fontSize: 11,
-    color: '#DC2626',
-  } as TextStyle,
-  qualityOk: {
-    fontSize: 11,
-    color: colors.teal,
-  } as TextStyle,
   statusCard: {
     backgroundColor: colors.cardBg,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.borderLight,
-    padding: 14,
-    gap: 8,
+    padding: 16,
+    gap: 10,
   } as ViewStyle,
   cardTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '700',
     color: colors.textPrimary,
   } as TextStyle,
@@ -441,22 +554,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   } as ViewStyle,
   statusLabel: {
-    fontSize: 13,
+    fontSize: 15,
     color: colors.textPrimary,
   } as TextStyle,
   emptyCard: {
     backgroundColor: colors.noticeBg,
     borderRadius: 12,
-    padding: 20,
-    gap: 16,
+    padding: 24,
+    gap: 18,
     alignItems: 'center',
     marginTop: 16,
   } as ViewStyle,
   emptyText: {
-    fontSize: 13,
+    fontSize: 15,
     color: colors.noticeText,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 22,
   } as TextStyle,
   formatRow: {
     flexDirection: 'row',
@@ -475,7 +588,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.tealBg,
   } as ViewStyle,
   formatChipText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '700',
     color: colors.textSecondary,
   } as TextStyle,
@@ -483,19 +596,19 @@ const styles = StyleSheet.create({
     color: colors.teal,
   } as TextStyle,
   resetText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '700',
     color: colors.primaryDark,
     textDecorationLine: 'underline',
   } as TextStyle,
   formatHint: {
-    fontSize: 12,
+    fontSize: 14,
     color: colors.textSecondary,
     marginLeft: 4,
     marginTop: -6,
   } as TextStyle,
   errorText: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#DC2626',
     textAlign: 'center',
   } as TextStyle,

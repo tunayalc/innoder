@@ -110,7 +110,13 @@ export const AdayKisiselScreen: React.FC = () => {
   if (!myApplication) {
     return (
       <View style={styles.section}>
-        <Text style={styles.h2}>Kişisel Bilgi</Text>
+        <View style={styles.headerCard}>
+          <View style={styles.accentBar} />
+          <View style={styles.headerContent}>
+            <Text style={styles.h2}>Kişisel Bilgi</Text>
+            <Text style={styles.subtitle}>Önce Kayıt Formu ekranından bilgilerinizi kaydedin.</Text>
+          </View>
+        </View>
         <View style={styles.emptyCard}>
           <Text style={styles.emptyText}>
             Önce Kayıt Formu ekranından bilgilerinizi kaydedin.
@@ -133,37 +139,41 @@ export const AdayKisiselScreen: React.FC = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.section}>
-        <View style={styles.headerRow}>
-          <Text style={styles.h2}>Kişisel Bilgi</Text>
-          <Pill
-            label={APPLICATION_STATUS_LABELS[myApplication.status] || myApplication.status}
-            variant={
-              myApplication.status === 'approved'
-                ? 'ok'
-                : myApplication.status === 'needs_fix'
-                  ? 'warn'
-                  : myApplication.status === 'rejected'
-                    ? 'err'
-                    : 'info'
-            }
-          />
-        </View>
-
-        <View style={styles.programRow}>
-          <Text style={styles.label}>Program Seçimi</Text>
-          <View style={styles.programChips}>
-            {PROGRAM_CATALOG.map((prog) => (
-              <Button
-                key={prog.id}
-                label={prog.name}
-                variant={programSelection === prog.id ? 'solid' : 'ghost'}
-                onPress={() => setProgramSelection(prog.id)}
-                style={styles.chip}
+        <View style={styles.headerCard}>
+          <View style={styles.accentBar} />
+          <View style={styles.headerContent}>
+            <View style={styles.headerRow}>
+              <Text style={styles.h2}>Kişisel Bilgi</Text>
+              <Pill
+                label={APPLICATION_STATUS_LABELS[myApplication.status] || myApplication.status}
+                variant={
+                  myApplication.status === 'approved'
+                    ? 'ok'
+                    : myApplication.status === 'needs_fix'
+                      ? 'warn'
+                      : myApplication.status === 'rejected'
+                        ? 'err'
+                        : 'info'
+                }
               />
-            ))}
+            </View>
           </View>
         </View>
 
+        <Text style={styles.sectionLabel}>PROGRAM SEÇİMİ</Text>
+        <View style={styles.programChips}>
+          {PROGRAM_CATALOG.map((prog) => (
+            <Button
+              key={prog.id}
+              label={prog.name}
+              variant={programSelection === prog.id ? 'solid' : 'ghost'}
+              onPress={() => setProgramSelection(prog.id)}
+              style={styles.chip}
+            />
+          ))}
+        </View>
+
+        <Text style={styles.sectionLabel}>KİMLİK BİLGİLERİ</Text>
         <InputField
           label="Doğum Tarihi *"
           value={birthDate}
@@ -196,7 +206,7 @@ export const AdayKisiselScreen: React.FC = () => {
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         {!isSubmitted && (
-          <>
+          <View style={styles.buttonGroup}>
             <Button
               label={isLoading ? 'Kaydediliyor...' : 'Taslak Kaydet'}
               variant="ghost"
@@ -206,14 +216,16 @@ export const AdayKisiselScreen: React.FC = () => {
               label={isLoading ? 'Gönderiliyor...' : 'Başvuru Gönder'}
               onPress={handleSubmit}
             />
-          </>
+          </View>
         )}
 
         {myApplication.status === 'needs_fix' && (
-          <Button
-            label={isLoading ? 'Gönderiliyor...' : 'Düzelterek Yeniden Gönder'}
-            onPress={handleSubmit}
-          />
+          <View style={styles.buttonGroup}>
+            <Button
+              label={isLoading ? 'Gönderiliyor...' : 'Düzelterek Yeniden Gönder'}
+              onPress={handleSubmit}
+            />
+          </View>
         )}
       </ScrollView>
     </KeyboardAvoidingView>
@@ -226,63 +238,88 @@ const styles = StyleSheet.create({
   } as ViewStyle,
   section: {
     paddingTop: 16,
-    gap: 12,
+    gap: 16,
     padding: 20,
     paddingBottom: 40,
   } as ViewStyle,
+  headerCard: {
+    backgroundColor: colors.cardBg,
+    borderRadius: 14,
+    padding: 18,
+    flexDirection: 'row',
+    gap: 14,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  } as ViewStyle,
+  accentBar: {
+    width: 4,
+    borderRadius: 2,
+    backgroundColor: colors.teal,
+  } as ViewStyle,
+  headerContent: {
+    flex: 1,
+    gap: 4,
+  } as ViewStyle,
   h2: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '700',
     color: colors.textPrimary,
+  } as TextStyle,
+  subtitle: {
+    color: colors.textSecondary,
+    fontSize: 15,
+  } as TextStyle,
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 0.8,
+    marginTop: 4,
   } as TextStyle,
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   } as ViewStyle,
-  label: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    marginLeft: 4,
-  } as TextStyle,
-  programRow: {
-    gap: 8,
-  } as ViewStyle,
   programChips: {
     flexDirection: 'row',
-    gap: 8,
+    flexWrap: 'wrap',
+    gap: 10,
   } as ViewStyle,
   chip: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  } as ViewStyle,
+  buttonGroup: {
+    gap: 12,
+    marginTop: 4,
   } as ViewStyle,
   notice: {
     backgroundColor: colors.noticeBg,
-    padding: 12,
+    padding: 14,
     borderRadius: 12,
   } as ViewStyle,
   noticeText: {
     color: colors.noticeText,
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 20,
   } as TextStyle,
   emptyCard: {
     backgroundColor: colors.noticeBg,
     borderRadius: 12,
-    padding: 20,
-    gap: 16,
+    padding: 24,
+    gap: 18,
     alignItems: 'center',
     marginTop: 16,
   } as ViewStyle,
   emptyText: {
-    fontSize: 13,
+    fontSize: 15,
     color: colors.noticeText,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 22,
   } as TextStyle,
   errorText: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#DC2626',
     textAlign: 'center',
   } as TextStyle,

@@ -12,6 +12,7 @@ import {
   ScrollView,
   Switch,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../../theme';
 import { Button, InputField, Card } from '../../components';
@@ -22,6 +23,7 @@ import { isValidEmail, isValidPhoneNumber } from '../../utils/validation';
 
 export const RegisterScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const { registerCandidate } = useAuth();
   const isLoading = useAppSelector(selectUserLoading);
   const error = useAppSelector(selectUserError);
@@ -77,22 +79,24 @@ export const RegisterScreen: React.FC = () => {
     });
   };
 
-  const handleAdminLogin = () => {
-    navigation.navigate('AdminLogin');
-  };
-
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 24 },
+        ]}
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
+          <View style={styles.accentBar} />
           <Text style={styles.title}>Kayıt Ol</Text>
-          <Text style={styles.subtitle}>Yeni hesap oluşturun</Text>
+          <Text style={styles.subtitle}>
+            Başvurunuzu takip edebilmek için bir hesap oluşturun
+          </Text>
         </View>
 
         <View style={styles.form}>
@@ -104,6 +108,8 @@ export const RegisterScreen: React.FC = () => {
             autoCapitalize="words"
           />
 
+          <View style={{ height: 20 }} />
+
           <InputField
             label="Email *"
             value={email}
@@ -114,6 +120,8 @@ export const RegisterScreen: React.FC = () => {
             autoCorrect={false}
           />
 
+          <View style={{ height: 20 }} />
+
           <InputField
             label="Telefon"
             value={phone}
@@ -121,6 +129,8 @@ export const RegisterScreen: React.FC = () => {
             placeholder="+90 5xx xxx xx xx"
             keyboardType="phone-pad"
           />
+
+          <View style={{ height: 20 }} />
 
           <View style={styles.row2}>
             <View style={styles.flex1}>
@@ -140,62 +150,62 @@ export const RegisterScreen: React.FC = () => {
               />
             </View>
           </View>
+        </View>
 
+        <View style={[styles.form, { marginTop: 20 }]}>
           <InputField
             label="Şifre *"
             value={password}
             onChangeText={setPassword}
-            placeholder="••••••••"
+            placeholder="En az 6 karakter"
             secureTextEntry
           />
+
+          <View style={{ height: 20 }} />
 
           <InputField
             label="Şifre Tekrar *"
             value={confirmPassword}
             onChangeText={setConfirmPassword}
-            placeholder="••••••••"
+            placeholder="Şifrenizi tekrar girin"
             secureTextEntry
           />
+        </View>
 
-          <Card style={styles.kvkkCard}>
-            <View style={styles.kvkkRow}>
-              <View style={styles.kvkkTextWrap}>
-                <Text style={styles.kvkkTitle}>KVKK Aydınlatma & Açık Rıza *</Text>
-                <Text style={styles.kvkkHint}>
-                  Kişisel verilerimin amaçla sınırlı şekilde işlenmesini kabul ediyorum.
-                </Text>
-              </View>
-              <Switch
-                value={kvkkAccepted}
-                onValueChange={setKvkkAccepted}
-                trackColor={{ false: colors.muted, true: colors.teal }}
-                thumbColor={colors.white}
-              />
+        <View style={styles.kvkkWrap}>
+          <View style={styles.kvkkRow}>
+            <View style={styles.kvkkTextWrap}>
+              <Text style={styles.kvkkTitle}>KVKK Aydınlatma & Açık Rıza</Text>
+              <Text style={styles.kvkkHint}>
+                Kişisel verilerimin amaçla sınırlı şekilde işlenmesini kabul ediyorum.
+              </Text>
             </View>
-          </Card>
+            <Switch
+              value={kvkkAccepted}
+              onValueChange={setKvkkAccepted}
+              trackColor={{ false: colors.muted, true: colors.teal }}
+              thumbColor={colors.white}
+            />
+          </View>
+        </View>
 
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
+        <View style={{ paddingHorizontal: 4, marginTop: 16 }}>
           <Button
             label={isLoading ? 'Kayıt yapılıyor...' : 'Kayıt Ol'}
             onPress={handleRegister}
           />
-
-          <TouchableOpacity
-            style={styles.loginLink}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.loginText}>
-              Zaten hesabınız var mı? <Text style={styles.loginTextBold}>Giriş Yapın</Text>
-            </Text>
-          </TouchableOpacity>
         </View>
 
         <TouchableOpacity
-          style={styles.adminLink}
-          onPress={handleAdminLogin}
+          style={styles.loginLink}
+          onPress={() => navigation.goBack()}
         >
-          <Text style={styles.adminText}>Admin misiniz?</Text>
+          <Text style={styles.loginText}>
+            Zaten hesabınız var mı?{' '}
+            <Text style={styles.loginTextBold}>Giriş Yapın</Text>
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -209,25 +219,32 @@ const styles = StyleSheet.create({
   } as ViewStyle,
   scrollContent: {
     flexGrow: 1,
-    padding: 20,
-    justifyContent: 'center',
+    paddingHorizontal: 24,
   } as ViewStyle,
   header: {
-    marginBottom: 32,
-    alignItems: 'center',
+    marginBottom: 36,
+  } as ViewStyle,
+  accentBar: {
+    width: 28,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: colors.primary,
+    marginBottom: 16,
   } as ViewStyle,
   title: {
-    fontSize: 28,
+    fontSize: 34,
     fontWeight: '700',
     color: colors.textPrimary,
-    marginBottom: 8,
+    letterSpacing: -0.5,
+    marginBottom: 10,
   } as TextStyle,
   subtitle: {
-    fontSize: 14,
+    fontSize: 16,
     color: colors.textSecondary,
+    lineHeight: 23,
   } as TextStyle,
   form: {
-    gap: 16,
+    paddingHorizontal: 0,
   } as ViewStyle,
   row2: {
     flexDirection: 'row',
@@ -236,8 +253,8 @@ const styles = StyleSheet.create({
   flex1: {
     flex: 1,
   } as ViewStyle,
-  kvkkCard: {
-    padding: 14,
+  kvkkWrap: {
+    marginTop: 20,
   } as ViewStyle,
   kvkkRow: {
     flexDirection: 'row',
@@ -249,41 +266,33 @@ const styles = StyleSheet.create({
     flex: 1,
   } as ViewStyle,
   kvkkTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     color: colors.textPrimary,
   } as TextStyle,
   kvkkHint: {
-    fontSize: 11,
+    fontSize: 13,
     color: colors.textSecondary,
-    marginTop: 3,
-    lineHeight: 16,
+    marginTop: 4,
+    lineHeight: 19,
   } as TextStyle,
   errorText: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#DC2626',
-    textAlign: 'center',
+    marginTop: 12,
+    paddingHorizontal: 4,
   } as TextStyle,
   loginLink: {
-    alignItems: 'center',
-    marginTop: 16,
+    alignSelf: 'center',
+    marginTop: 28,
+    marginBottom: 16,
   } as ViewStyle,
   loginText: {
-    fontSize: 14,
+    fontSize: 15,
     color: colors.textSecondary,
   } as TextStyle,
   loginTextBold: {
     color: colors.primary,
     fontWeight: '600',
-  } as TextStyle,
-  adminLink: {
-    alignItems: 'center',
-    marginTop: 40,
-    paddingVertical: 12,
-  } as ViewStyle,
-  adminText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    textDecorationLine: 'underline',
   } as TextStyle,
 });

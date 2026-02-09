@@ -56,34 +56,44 @@ export const AdayEgitimScreen: React.FC = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.section}>
-      <Text style={styles.h2}>Eğitim Bilgilendirme</Text>
-      <Text style={styles.subtitle}>
-        {myApplication
-          ? `${myApplication.programName} / ${program?.year ?? 2026}`
-          : 'Henüz başvuru yok'}
-      </Text>
+      <View style={styles.headerCard}>
+        <View style={styles.accentBar} />
+        <View style={styles.headerContent}>
+          <Text style={styles.h2}>Eğitim Bilgilendirme</Text>
+          <Text style={styles.subtitle}>
+            {myApplication
+              ? `${myApplication.programName} / ${program?.year ?? 2026}`
+              : 'Henüz başvuru yok'}
+          </Text>
+        </View>
+      </View>
 
       {myApplication ? (
         <>
-          <View style={styles.progressBar}>
-            <View
-              style={[
-                styles.progressFill,
-                {
-                  width:
-                    totalCount > 0
-                      ? `${(completedCount / totalCount) * 100}%`
-                      : '0%',
-                },
-              ]}
-            />
+          <View style={styles.progressCard}>
+            <View style={styles.progressHeader}>
+              <Text style={styles.progressLabel}>Belge İlerlemesi</Text>
+              <Text style={styles.progressCount}>
+                {completedCount}/{totalCount}
+              </Text>
+            </View>
+            <View style={styles.progressBar}>
+              <View
+                style={[
+                  styles.progressFill,
+                  {
+                    width:
+                      totalCount > 0
+                        ? `${(completedCount / totalCount) * 100}%`
+                        : '0%',
+                  },
+                ]}
+              />
+            </View>
           </View>
-          <Text style={styles.progressText}>
-            {completedCount}/{totalCount} belge tamamlandı
-          </Text>
 
+          <Text style={styles.sectionLabel}>KATILIM ADIMLARI</Text>
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Katılım Adımları</Text>
             <Text style={styles.cardHint}>
               Program bazlı bilgilendirme ve checklist, yanlış anlamaları en başta azaltmak için tasarlanır.
             </Text>
@@ -100,8 +110,9 @@ export const AdayEgitimScreen: React.FC = () => {
           ) : null}
 
           {program?.deadlines?.length ? (
+            <>
+            <Text style={styles.sectionLabel}>TESLİM TARİHLERİ</Text>
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>Teslim Tarihleri</Text>
               {program.deadlines.map((d) => (
                 <View key={d.label} style={styles.deadlineRow}>
                   <Text style={styles.deadlineLabel}>{d.label}</Text>
@@ -111,10 +122,11 @@ export const AdayEgitimScreen: React.FC = () => {
                 </View>
               ))}
             </View>
+            </>
           ) : null}
 
+          <Text style={styles.sectionLabel}>GEREKLİ BELGELER</Text>
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Gerekli Belgeler</Text>
             <Text style={styles.cardHint}>
               Belge durumları server tarafı parse/doğrulama çıktısı olarak düşünülür:
               OK / EKSİK / YANLIŞ FORMAT / OKUNMADI.
@@ -135,8 +147,8 @@ export const AdayEgitimScreen: React.FC = () => {
             );
           })}
 
+          <Text style={styles.sectionLabel}>DİKKAT EDİLMESİ GEREKENLER</Text>
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Sık Yapılan Hatalar</Text>
             <Text style={styles.cardHint}>
               {(program?.commonMistakes?.length
                 ? program.commonMistakes
@@ -185,18 +197,66 @@ export const AdayEgitimScreen: React.FC = () => {
 const styles = StyleSheet.create({
   section: {
     paddingTop: 16,
-    gap: 12,
+    gap: 16,
     padding: 20,
     paddingBottom: 40,
   } as ViewStyle,
+  headerCard: {
+    backgroundColor: colors.cardBg,
+    borderRadius: 14,
+    padding: 18,
+    flexDirection: 'row',
+    gap: 14,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  } as ViewStyle,
+  accentBar: {
+    width: 4,
+    borderRadius: 2,
+    backgroundColor: colors.teal,
+  } as ViewStyle,
+  headerContent: {
+    flex: 1,
+    gap: 4,
+  } as ViewStyle,
   h2: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '700',
     color: colors.textPrimary,
   } as TextStyle,
   subtitle: {
     color: colors.textSecondary,
+    fontSize: 15,
+  } as TextStyle,
+  sectionLabel: {
     fontSize: 12,
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 0.8,
+    marginTop: 4,
+  } as TextStyle,
+  progressCard: {
+    backgroundColor: colors.cardBg,
+    borderRadius: 14,
+    padding: 16,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  } as ViewStyle,
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  } as ViewStyle,
+  progressLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  } as TextStyle,
+  progressCount: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.teal,
   } as TextStyle,
   progressBar: {
     height: 8,
@@ -209,33 +269,28 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: colors.teal,
   } as ViewStyle,
-  progressText: {
-    fontSize: 11,
-    color: colors.textMuted,
-    textAlign: 'right',
-  } as TextStyle,
   card: {
     backgroundColor: colors.cardBg,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.borderLight,
-    padding: 14,
-    gap: 6,
+    padding: 16,
+    gap: 8,
   } as ViewStyle,
   cardTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '700',
     color: colors.textPrimary,
   } as TextStyle,
   cardHint: {
-    fontSize: 12,
+    fontSize: 14,
     color: colors.textSecondary,
-    lineHeight: 18,
+    lineHeight: 20,
   } as TextStyle,
   stepText: {
-    fontSize: 12,
+    fontSize: 14,
     color: colors.textPrimary,
-    lineHeight: 18,
+    lineHeight: 20,
   } as TextStyle,
   deadlineRow: {
     flexDirection: 'row',
@@ -243,26 +298,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   } as ViewStyle,
   deadlineLabel: {
-    fontSize: 12,
+    fontSize: 14,
     color: colors.textSecondary,
     fontWeight: '600',
   } as TextStyle,
   deadlineValue: {
-    fontSize: 12,
+    fontSize: 14,
     color: colors.textPrimary,
     fontWeight: '700',
   } as TextStyle,
   emptyCard: {
     backgroundColor: colors.noticeBg,
     borderRadius: 12,
-    padding: 20,
-    gap: 16,
+    padding: 24,
+    gap: 18,
     alignItems: 'center',
   } as ViewStyle,
   emptyText: {
-    fontSize: 13,
+    fontSize: 15,
     color: colors.noticeText,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 22,
   } as TextStyle,
 });

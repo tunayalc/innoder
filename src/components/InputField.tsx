@@ -28,30 +28,30 @@ export const InputField: React.FC<InputFieldProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    gap: 4,
+    gap: 7,
   } as ViewStyle,
   label: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '600',
     color: colors.textSecondary,
-    marginLeft: 4,
+    marginLeft: 2,
   } as TextStyle,
   input: {
-    backgroundColor: colors.inputBg,
-    borderRadius: 12,
+    backgroundColor: colors.rowBg,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: colors.borderLight,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 14,
+    borderColor: colors.borderMedium,
+    paddingHorizontal: 16,
+    paddingVertical: 15,
+    fontSize: 16,
     color: colors.textPrimary,
   } as TextStyle,
   inputError: {
     borderColor: '#DC2626',
   } as ViewStyle,
   errorText: {
-    fontSize: 11,
+    fontSize: 13,
     color: '#DC2626',
-    marginLeft: 4,
+    marginLeft: 2,
   } as TextStyle,
 });

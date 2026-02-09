@@ -16,7 +16,8 @@ import {
   AdayEgitimScreen, 
   AdayKisiselScreen, 
   AdayBelgeScreen, 
-  AdayMesajScreen 
+  AdayMesajScreen,
+  BelgeCameraScreen,
 } from '../screens/aday';
 import { 
   AdminListeScreen, 
@@ -153,6 +154,11 @@ export const RootNavigator: React.FC = () => {
             name="AdayBelge" 
             component={AdayBelgeScreen}
             options={{ title: 'Belge Tarama', headerRight: () => <LogoutButton /> }}
+          />
+          <Stack.Screen 
+            name="BelgeCamera" 
+            component={BelgeCameraScreen}
+            options={{ headerShown: false }}
           />
           <Stack.Screen 
             name="AdayMesaj" 

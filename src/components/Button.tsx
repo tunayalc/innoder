@@ -32,20 +32,21 @@ export const Button: React.FC<ButtonProps> = ({
 
 const styles = StyleSheet.create({
   button: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 999,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
     backgroundColor: colors.primary,
     alignItems: 'center',
   } as ViewStyle,
   buttonGhost: {
     backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: 'rgba(240, 103, 43, 0.4)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(240, 103, 43, 0.35)',
   } as ViewStyle,
   buttonText: {
     color: colors.white,
     fontWeight: '700',
+    fontSize: 16,
   } as TextStyle,
   buttonTextGhost: {
     color: colors.primaryDark,

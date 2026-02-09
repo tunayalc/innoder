@@ -14,7 +14,8 @@ export type RootStackParamList = {
   AdayKayit: undefined;
   AdayEgitim: undefined;
   AdayKisisel: undefined;
-  AdayBelge: undefined;
+  AdayBelge: { capturedPhotoUri?: string } | undefined;
+  BelgeCamera: { docType?: string };
   AdayMesaj: { applicationId?: string };
   AdminListe: undefined;
   AdminDetay: { applicationId: string };
