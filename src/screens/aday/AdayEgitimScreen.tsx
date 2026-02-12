@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../../theme';
-import { Button, ChecklistRow } from '../../components';
+import { Button, ChecklistRow, Pill } from '../../components';
 import { useAuth } from '../../hooks';
 import { useAppSelector } from '../../store/hooks';
 import { selectApplications } from '../../store/selectors';
@@ -17,6 +17,7 @@ import { DOCUMENT_STATUS_LABELS, DOCUMENT_TYPES } from '../../constants';
 import { DocumentStatus, RootStackNavigationProp } from '../../types';
 import { getProgramById } from '../../services/programCatalog';
 import { formatDateShort } from '../../utils/date';
+import { isEuropassCvComplete, isMotivationLetterComplete } from '../../utils/europass';
 
 const statusToVariant = (status: DocumentStatus) => {
   switch (status) {
@@ -54,16 +55,21 @@ export const AdayEgitimScreen: React.FC = () => {
   );
   const totalCount = myApplication?.documents.length ?? 0;
 
+  const cvReady = isEuropassCvComplete(myApplication?.personalInfo.europassCv);
+  const motivationReady = isMotivationLetterComplete(
+    myApplication?.personalInfo.motivationLetter,
+  );
+
   return (
     <ScrollView contentContainerStyle={styles.section}>
       <View style={styles.headerCard}>
         <View style={styles.accentBar} />
         <View style={styles.headerContent}>
-          <Text style={styles.h2}>Eğitim Bilgilendirme</Text>
+          <Text style={styles.h2}>Egitim Bilgilendirme</Text>
           <Text style={styles.subtitle}>
             {myApplication
               ? `${myApplication.programName} / ${program?.year ?? 2026}`
-              : 'Henüz başvuru yok'}
+              : 'Henuz basvuru yok'}
           </Text>
         </View>
       </View>
@@ -72,7 +78,7 @@ export const AdayEgitimScreen: React.FC = () => {
         <>
           <View style={styles.progressCard}>
             <View style={styles.progressHeader}>
-              <Text style={styles.progressLabel}>Belge İlerlemesi</Text>
+              <Text style={styles.progressLabel}>Belge Ilerlemesi</Text>
               <Text style={styles.progressCount}>
                 {completedCount}/{totalCount}
               </Text>
@@ -92,10 +98,35 @@ export const AdayEgitimScreen: React.FC = () => {
             </View>
           </View>
 
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Program Basvuru Dosyasi</Text>
+            <View style={styles.statusRow}>
+              <Text style={styles.statusLabel}>Europass CV</Text>
+              <Pill label={cvReady ? 'Tamam' : 'Eksik'} variant={cvReady ? 'ok' : 'warn'} />
+            </View>
+            <Button
+              label="CV Ekranina Git"
+              variant="ghost"
+              onPress={() => navigation.navigate('AdayCvBuilder')}
+            />
+            <View style={styles.statusRow}>
+              <Text style={styles.statusLabel}>Motivasyon Mektubu</Text>
+              <Pill
+                label={motivationReady ? 'Tamam' : 'Eksik'}
+                variant={motivationReady ? 'ok' : 'warn'}
+              />
+            </View>
+            <Button
+              label="Mektup Ekranina Git"
+              variant="ghost"
+              onPress={() => navigation.navigate('AdayMotivation')}
+            />
+          </View>
+
           <Text style={styles.sectionLabel}>KATILIM ADIMLARI</Text>
           <View style={styles.card}>
             <Text style={styles.cardHint}>
-              Program bazlı bilgilendirme ve checklist, yanlış anlamaları en başta azaltmak için tasarlanır.
+              Program bazli bilgilendirme ve checklist, surecteki yanlis anlamalari azaltmak icin tasarlanmistir.
             </Text>
           </View>
 
@@ -111,25 +142,23 @@ export const AdayEgitimScreen: React.FC = () => {
 
           {program?.deadlines?.length ? (
             <>
-            <Text style={styles.sectionLabel}>TESLİM TARİHLERİ</Text>
-            <View style={styles.card}>
-              {program.deadlines.map((d) => (
-                <View key={d.label} style={styles.deadlineRow}>
-                  <Text style={styles.deadlineLabel}>{d.label}</Text>
-                  <Text style={styles.deadlineValue}>
-                    {formatDateShort(d.dateISO)}
-                  </Text>
-                </View>
-              ))}
-            </View>
+              <Text style={styles.sectionLabel}>TESLIM TARIHLERI</Text>
+              <View style={styles.card}>
+                {program.deadlines.map((d) => (
+                  <View key={d.label} style={styles.deadlineRow}>
+                    <Text style={styles.deadlineLabel}>{d.label}</Text>
+                    <Text style={styles.deadlineValue}>{formatDateShort(d.dateISO)}</Text>
+                  </View>
+                ))}
+              </View>
             </>
           ) : null}
 
-          <Text style={styles.sectionLabel}>GEREKLİ BELGELER</Text>
+          <Text style={styles.sectionLabel}>GEREKLI BELGELER</Text>
           <View style={styles.card}>
             <Text style={styles.cardHint}>
-              Belge durumları server tarafı parse/doğrulama çıktısı olarak düşünülür:
-              OK / EKSİK / YANLIŞ FORMAT / OKUNMADI.
+              Belge durumlari server parse/dogrulama mantigiyla takip edilir:
+              OK / EKSIK / YANLIS FORMAT / OKUNMADI.
             </Text>
           </View>
 
@@ -147,47 +176,36 @@ export const AdayEgitimScreen: React.FC = () => {
             );
           })}
 
-          <Text style={styles.sectionLabel}>DİKKAT EDİLMESİ GEREKENLER</Text>
+          <Text style={styles.sectionLabel}>DIKKAT EDILMESI GEREKENLER</Text>
           <View style={styles.card}>
             <Text style={styles.cardHint}>
               {(program?.commonMistakes?.length
                 ? program.commonMistakes
                 : [
-                    'Bulanık/karanlık fotoğraf → OKUNMADI',
-                    'PDF yerine fotoğraf → YANLIŞ FORMAT',
-                    'Eksik sayfa → EKSİK',
-                    'Yanlış belge türü seçimi',
+                    'Bulanik veya karanlik fotograf -> OKUNMADI',
+                    'PDF yerine fotograf -> YANLIS FORMAT',
+                    'Eksik sayfa -> EKSIK',
+                    'Yanlis belge turu secimi',
                   ]
               )
-                .map((m) => `• ${m}`)
-                .join('\\n')}
+                .map((m) => `� ${m}`)
+                .join('\n')}
             </Text>
           </View>
 
+          <Button label="Belge Yukle" onPress={() => navigation.navigate('AdayBelge')} />
           <Button
-            label="Belge Yükle"
-            onPress={() => navigation.navigate('AdayBelge')}
-          />
-          <Button
-            label="Mesajları Görüntüle"
+            label="Mesajlari Goruntule"
             variant="ghost"
-            onPress={() =>
-              navigation.navigate('AdayMesaj', {
-                applicationId: myApplication.id,
-              })
-            }
+            onPress={() => navigation.navigate('AdayMesaj', { applicationId: myApplication.id })}
           />
         </>
       ) : (
         <View style={styles.emptyCard}>
           <Text style={styles.emptyText}>
-            Henüz bir başvurunuz bulunmuyor. Önce Kayıt Formu ekranından
-            bilgilerinizi kaydedin.
+            Henuz bir basvurunuz bulunmuyor. Once Kayit Formu ekranindan bilgilerinizi kaydedin.
           </Text>
-          <Button
-            label="Kayıt Formuna Git"
-            onPress={() => navigation.navigate('AdayKayit')}
-          />
+          <Button label="Kayit Formuna Git" onPress={() => navigation.navigate('AdayKayit')} />
         </View>
       )}
     </ScrollView>
@@ -286,6 +304,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     lineHeight: 20,
+  } as TextStyle,
+  statusRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  } as ViewStyle,
+  statusLabel: {
+    fontSize: 14,
+    color: colors.textPrimary,
+    fontWeight: '600',
   } as TextStyle,
   stepText: {
     fontSize: 14,

@@ -124,10 +124,53 @@ export const createMockBackend = (): InnoBackend => {
   const writePasswords = async (pw: Record<string, string>) =>
     writeJson(MOCK_STORAGE_KEYS.passwords, pw);
 
+  const ensureCandidateAuthSeed = async (): Promise<void> => {
+    const demoEmail = 'aday@inno.com';
+    const demoPassword = '123123';
+
+    const users = await listUsers();
+    const passwords = await readPasswords();
+    const existing = users.find(
+      (u) => u.email.toLowerCase() === demoEmail && u.role === 'candidate',
+    );
+
+    if (existing) {
+      if (!passwords[existing.id]) {
+        passwords[existing.id] = demoPassword;
+        await writePasswords(passwords);
+      }
+      return;
+    }
+
+    const ts = nowISO();
+    const demoUser: User = {
+      id: 'candidate-demo-001',
+      email: demoEmail,
+      name: 'Demo Aday',
+      phone: '+905551112233',
+      country: 'Turkiye',
+      city: 'Istanbul',
+      role: 'candidate',
+      kvkkAccepted: true,
+      consentVersion: 'v1',
+      consentedAt: ts,
+      status: 'verified',
+      createdAt: ts,
+      updatedAt: ts,
+    };
+
+    users.push(demoUser);
+    await writeUsers(users);
+
+    passwords[demoUser.id] = demoPassword;
+    await writePasswords(passwords);
+  };
+
   return {
     auth: {
       loginCandidate: (params) =>
         withMockDelay(async () => {
+          await ensureCandidateAuthSeed();
           const users = await listUsers();
           const user = users.find(
             (u) => u.email.toLowerCase() === params.email.toLowerCase().trim(),

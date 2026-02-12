@@ -7,6 +7,51 @@ export type ApplicationStatus =
   | 'rejected';
 
 export type DocumentStatus = 'ok' | 'missing' | 'wrong_format' | 'unread';
+export type CefrLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+
+export interface EuropassWorkExperience {
+  role: string;
+  organization: string;
+  startDate: string;
+  endDate?: string;
+  responsibilities?: string;
+}
+
+export interface EuropassEducationEntry {
+  qualification: string;
+  institution: string;
+  startDate: string;
+  endDate?: string;
+  description?: string;
+}
+
+export interface EuropassLanguageSkill {
+  language: string;
+  listening: CefrLevel;
+  reading: CefrLevel;
+  spokenInteraction: CefrLevel;
+  spokenProduction: CefrLevel;
+  writing: CefrLevel;
+}
+
+export interface EuropassCvProfile {
+  profileTitle: string;
+  summary: string;
+  keySkills: string;
+  digitalSkills?: string;
+  workExperiences: EuropassWorkExperience[];
+  educationEntries: EuropassEducationEntry[];
+  languageSkills: EuropassLanguageSkill[];
+}
+
+export interface MotivationLetterDraft {
+  addressee: string;
+  subject: string;
+  openingParagraph: string;
+  motivationParagraph: string;
+  contributionParagraph: string;
+  closingParagraph: string;
+}
 
 export interface Document {
   id: string;
@@ -42,6 +87,8 @@ export interface PersonalInfo {
   birthDate?: string;
   identityNumber?: string;
   programSelection?: string;
+  europassCv?: EuropassCvProfile;
+  motivationLetter?: MotivationLetterDraft;
 }
 
 export interface ApplicationState {

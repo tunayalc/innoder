@@ -8,21 +8,23 @@ import { useAppDispatch } from '../store/hooks';
 import { hydrateSession } from '../store/thunks/sessionThunks';
 
 // Screens
-import { LoginScreen, RegisterScreen, AdminLoginScreen } from '../screens/auth';
+import { OnboardingIntroScreen, LoginScreen, AdminLoginScreen } from '../screens/auth';
 import { HomeScreen } from '../screens/home';
-import { 
-  AdayMenuScreen, 
+import {
+  AdayMenuScreen,
   AdayKayitScreen,
-  AdayEgitimScreen, 
-  AdayKisiselScreen, 
-  AdayBelgeScreen, 
+  AdayEgitimScreen,
+  AdayKisiselScreen,
+  AdayCvBuilderScreen,
+  AdayMotivationScreen,
+  AdayBelgeScreen,
   AdayMesajScreen,
   BelgeCameraScreen,
 } from '../screens/aday';
-import { 
-  AdminListeScreen, 
-  AdminDetayScreen, 
-  AdminDogrulamaScreen, 
+import {
+  AdminListeScreen,
+  AdminDetayScreen,
+  AdminDogrulamaScreen,
   AdminAuditScreen,
   DocumentViewerScreen,
 } from '../screens/admin';
@@ -43,8 +45,8 @@ const screenOptions = {
     color: colors.textPrimary,
   },
   headerBackTitleVisible: false,
-  headerLeft: (props: { canGoBack?: boolean }) => 
-    props.canGoBack ? <BackButton /> : null,
+  headerLeft: (props: { canGoBack?: boolean }) =>
+    (props.canGoBack ? <BackButton /> : null),
   cardStyle: {
     backgroundColor: colors.background,
   },
@@ -65,118 +67,125 @@ export const RootNavigator: React.FC = () => {
   return (
     <Stack.Navigator screenOptions={screenOptions}>
       {!isAuthenticated ? (
-        // Auth screens
         <>
-          <Stack.Screen 
-            name="Login" 
+          <Stack.Screen
+            name="OnboardingIntro"
+            component={OnboardingIntroScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="Login"
             component={LoginScreen}
             options={{ headerShown: false }}
           />
-          <Stack.Screen 
-            name="Register" 
-            component={RegisterScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen 
-            name="AdminLogin" 
+          <Stack.Screen
+            name="AdminLogin"
             component={AdminLoginScreen}
             options={{ headerShown: false }}
           />
         </>
       ) : isAdmin ? (
-        // Admin screens - show admin list first
         <>
-          <Stack.Screen 
-            name="AdminListe" 
+          <Stack.Screen
+            name="AdminListe"
             component={AdminListeScreen}
-            options={{ title: 'Başvuru Listesi', headerRight: () => <LogoutButton /> }}
+            options={{ title: 'Basvuru Listesi', headerRight: () => <LogoutButton /> }}
           />
-          <Stack.Screen 
-            name="AdminDetay" 
+          <Stack.Screen
+            name="AdminDetay"
             component={AdminDetayScreen}
-            options={{ title: 'Başvuru Detayı', headerRight: () => <LogoutButton /> }}
+            options={{ title: 'Basvuru Detayi', headerRight: () => <LogoutButton /> }}
           />
-          <Stack.Screen 
-            name="AdminDogrulama" 
+          <Stack.Screen
+            name="AdminDogrulama"
             component={AdminDogrulamaScreen}
-            options={{ title: 'Doğrulama Kararı', headerRight: () => <LogoutButton /> }}
+            options={{ title: 'Dogrulama Karari', headerRight: () => <LogoutButton /> }}
           />
-          <Stack.Screen 
-            name="AdminAudit" 
+          <Stack.Screen
+            name="AdminAudit"
             component={AdminAuditScreen}
             options={{ title: 'Audit Log', headerRight: () => <LogoutButton /> }}
           />
           <Stack.Screen
             name="DocumentViewer"
             component={DocumentViewerScreen}
-            options={{ title: 'Belge Görüntüleme', headerRight: () => <LogoutButton /> }}
+            options={{ title: 'Belge Goruntuleme', headerRight: () => <LogoutButton /> }}
           />
-          <Stack.Screen 
-            name="AdayMesaj" 
+          <Stack.Screen
+            name="AdayMesaj"
             component={AdayMesajScreen}
-            options={{ title: 'Mesajlaşma', headerRight: () => <LogoutButton /> }}
+            options={{ title: 'Mesajlasma', headerRight: () => <LogoutButton /> }}
           />
-          <Stack.Screen 
-            name="Main" 
+          <Stack.Screen
+            name="Main"
             component={HomeScreen}
             options={{ title: 'Inno Prototype', headerRight: () => <LogoutButton /> }}
           />
-          <Stack.Screen 
-            name="DataModel" 
+          <Stack.Screen
+            name="DataModel"
             component={DataModelScreen}
             options={{ title: 'Veri Modeli', headerRight: () => <LogoutButton /> }}
           />
         </>
       ) : (
-        // Candidate (Aday) screens - show aday menu first
         <>
-          <Stack.Screen 
-            name="AdayMenu" 
+          <Stack.Screen
+            name="AdayMenu"
             component={AdayMenuScreen}
-            options={{ title: 'Aday Ekranları', headerRight: () => <LogoutButton /> }}
+            options={{ title: 'Aday Ekranlari', headerRight: () => <LogoutButton /> }}
           />
-          <Stack.Screen 
-            name="AdayKayit" 
+          <Stack.Screen
+            name="AdayKayit"
             component={AdayKayitScreen}
-            options={{ title: 'Kayıt Formu', headerRight: () => <LogoutButton /> }}
+            options={{ title: 'Kayit Formu', headerRight: () => <LogoutButton /> }}
           />
-          <Stack.Screen 
-            name="AdayEgitim" 
+          <Stack.Screen
+            name="AdayEgitim"
             component={AdayEgitimScreen}
-            options={{ title: 'Eğitim Bilgilendirme', headerRight: () => <LogoutButton /> }}
+            options={{ title: 'Egitim Bilgilendirme', headerRight: () => <LogoutButton /> }}
           />
-          <Stack.Screen 
-            name="AdayKisisel" 
+          <Stack.Screen
+            name="AdayKisisel"
             component={AdayKisiselScreen}
-            options={{ title: 'Kişisel Bilgi', headerRight: () => <LogoutButton /> }}
+            options={{ title: 'Kisisel Bilgi', headerRight: () => <LogoutButton /> }}
           />
-          <Stack.Screen 
-            name="AdayBelge" 
+          <Stack.Screen
+            name="AdayCvBuilder"
+            component={AdayCvBuilderScreen}
+            options={{ title: 'Europass CV', headerRight: () => <LogoutButton /> }}
+          />
+          <Stack.Screen
+            name="AdayMotivation"
+            component={AdayMotivationScreen}
+            options={{ title: 'Motivasyon Mektubu', headerRight: () => <LogoutButton /> }}
+          />
+          <Stack.Screen
+            name="AdayBelge"
             component={AdayBelgeScreen}
             options={{ title: 'Belge Tarama', headerRight: () => <LogoutButton /> }}
           />
-          <Stack.Screen 
-            name="BelgeCamera" 
+          <Stack.Screen
+            name="BelgeCamera"
             component={BelgeCameraScreen}
             options={{ headerShown: false }}
           />
-          <Stack.Screen 
-            name="AdayMesaj" 
+          <Stack.Screen
+            name="AdayMesaj"
             component={AdayMesajScreen}
-            options={{ title: 'Mesajlaşma', headerRight: () => <LogoutButton /> }}
+            options={{ title: 'Mesajlasma', headerRight: () => <LogoutButton /> }}
           />
           <Stack.Screen
             name="DocumentViewer"
             component={DocumentViewerScreen}
-            options={{ title: 'Belge Görüntüleme', headerRight: () => <LogoutButton /> }}
+            options={{ title: 'Belge Goruntuleme', headerRight: () => <LogoutButton /> }}
           />
-          <Stack.Screen 
-            name="Main" 
+          <Stack.Screen
+            name="Main"
             component={HomeScreen}
             options={{ title: 'Inno Prototype', headerRight: () => <LogoutButton /> }}
           />
-          <Stack.Screen 
-            name="DataModel" 
+          <Stack.Screen
+            name="DataModel"
             component={DataModelScreen}
             options={{ title: 'Veri Modeli', headerRight: () => <LogoutButton /> }}
           />

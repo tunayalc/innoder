@@ -15,12 +15,20 @@ import { colors } from '../../theme';
 import { Button, InputField, Pill } from '../../components';
 import { useAuth } from '../../hooks';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { selectApplicationError, selectApplicationLoading, selectApplications } from '../../store/selectors';
+import {
+  selectApplicationError,
+  selectApplicationLoading,
+  selectApplications,
+} from '../../store/selectors';
 import { APPLICATION_STATUS_LABELS } from '../../constants';
 import { RootStackNavigationProp } from '../../types';
 import { PROGRAM_CATALOG } from '../../services/programCatalog';
 import { isValidTCKN } from '../../utils/validation';
-import { submitApplication, updatePersonalInfoDraft } from '../../store/thunks/applicationThunks';
+import {
+  submitApplication,
+  updatePersonalInfoDraft,
+} from '../../store/thunks/applicationThunks';
+import { isEuropassCvComplete, isMotivationLetterComplete } from '../../utils/europass';
 
 export const AdayKisiselScreen: React.FC = () => {
   const navigation = useNavigation<RootStackNavigationProp>();
@@ -36,25 +44,30 @@ export const AdayKisiselScreen: React.FC = () => {
   );
 
   const [programSelection, setProgramSelection] = useState(
-    myApplication?.programId || myApplication?.personalInfo.programSelection || PROGRAM_CATALOG[0].id,
+    myApplication?.programId ||
+      myApplication?.personalInfo.programSelection ||
+      PROGRAM_CATALOG[0].id,
   );
-  const [birthDate, setBirthDate] = useState(
-    myApplication?.personalInfo.birthDate || '',
-  );
+  const [birthDate, setBirthDate] = useState(myApplication?.personalInfo.birthDate || '');
   const [identityNumber, setIdentityNumber] = useState(
     myApplication?.personalInfo.identityNumber || '',
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const cvReady = isEuropassCvComplete(myApplication?.personalInfo.europassCv);
+  const motivationReady = isMotivationLetterComplete(
+    myApplication?.personalInfo.motivationLetter,
+  );
+
   const validate = useCallback(() => {
     const newErrors: Record<string, string> = {};
     if (!birthDate.trim()) {
-      newErrors.birthDate = 'Doğum tarihi zorunludur';
+      newErrors.birthDate = 'Dogum tarihi zorunludur';
     }
     if (!identityNumber.trim()) {
-      newErrors.identityNumber = 'Kimlik numarası zorunludur';
+      newErrors.identityNumber = 'Kimlik numarasi zorunludur';
     } else if (!isValidTCKN(identityNumber)) {
-      newErrors.identityNumber = 'Geçerli bir TC Kimlik No giriniz';
+      newErrors.identityNumber = 'Gecerli bir TC Kimlik No giriniz';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -69,12 +82,33 @@ export const AdayKisiselScreen: React.FC = () => {
         programId: programSelection,
       }),
     );
-    Alert.alert('Taslak Kaydedildi', 'Bilgileriniz taslak olarak saklandı.');
+    Alert.alert('Taslak Kaydedildi', 'Bilgileriniz taslak olarak saklandi.');
   }, [myApplication, user, dispatch, programSelection, birthDate, identityNumber]);
 
   const handleSubmit = useCallback(async () => {
     if (!validate()) return;
     if (!myApplication || !user) return;
+
+    if (!cvReady || !motivationReady) {
+      Alert.alert(
+        'Eksik Basvuru Icerigi',
+        'Basvuru gondermeden once Europass CV ve motivasyon mektubu bolumlerini tamamlamalisiniz.',
+        [
+          {
+            text: 'CV Ekranina Git',
+            onPress: () => {
+              if (!cvReady) {
+                navigation.navigate('AdayCvBuilder');
+                return;
+              }
+              navigation.navigate('AdayMotivation');
+            },
+          },
+          { text: 'Tamam', style: 'cancel' },
+        ],
+      );
+      return;
+    }
 
     await dispatch(
       updatePersonalInfoDraft({
@@ -92,8 +126,8 @@ export const AdayKisiselScreen: React.FC = () => {
     await dispatch(submitApplication({ applicationId: myApplication.id }));
 
     Alert.alert(
-      'Başvuru Gönderildi',
-      'Başvurunuz başarıyla gönderildi. Admin incelemesini bekleyin.',
+      'Basvuru Gonderildi',
+      'Basvurunuz basariyla gonderildi. Admin incelemesini bekleyin.',
       [{ text: 'Tamam', onPress: () => navigation.goBack() }],
     );
   }, [
@@ -104,6 +138,8 @@ export const AdayKisiselScreen: React.FC = () => {
     programSelection,
     birthDate,
     identityNumber,
+    cvReady,
+    motivationReady,
     navigation,
   ]);
 
@@ -113,18 +149,15 @@ export const AdayKisiselScreen: React.FC = () => {
         <View style={styles.headerCard}>
           <View style={styles.accentBar} />
           <View style={styles.headerContent}>
-            <Text style={styles.h2}>Kişisel Bilgi</Text>
-            <Text style={styles.subtitle}>Önce Kayıt Formu ekranından bilgilerinizi kaydedin.</Text>
+            <Text style={styles.h2}>Kisisel Bilgi</Text>
+            <Text style={styles.subtitle}>Once Kayit Formu ekranindan bilgilerinizi kaydedin.</Text>
           </View>
         </View>
         <View style={styles.emptyCard}>
           <Text style={styles.emptyText}>
-            Önce Kayıt Formu ekranından bilgilerinizi kaydedin.
+            Once Kayit Formu ekranindan bilgilerinizi kaydedin.
           </Text>
-          <Button
-            label="Kayıt Formuna Git"
-            onPress={() => navigation.navigate('AdayKayit')}
-          />
+          <Button label="Kayit Formuna Git" onPress={() => navigation.navigate('AdayKayit')} />
         </View>
       </View>
     );
@@ -143,7 +176,7 @@ export const AdayKisiselScreen: React.FC = () => {
           <View style={styles.accentBar} />
           <View style={styles.headerContent}>
             <View style={styles.headerRow}>
-              <Text style={styles.h2}>Kişisel Bilgi</Text>
+              <Text style={styles.h2}>Kisisel Bilgi</Text>
               <Pill
                 label={APPLICATION_STATUS_LABELS[myApplication.status] || myApplication.status}
                 variant={
@@ -160,7 +193,7 @@ export const AdayKisiselScreen: React.FC = () => {
           </View>
         </View>
 
-        <Text style={styles.sectionLabel}>PROGRAM SEÇİMİ</Text>
+        <Text style={styles.sectionLabel}>PROGRAM SECIMI</Text>
         <View style={styles.programChips}>
           {PROGRAM_CATALOG.map((prog) => (
             <Button
@@ -173,9 +206,9 @@ export const AdayKisiselScreen: React.FC = () => {
           ))}
         </View>
 
-        <Text style={styles.sectionLabel}>KİMLİK BİLGİLERİ</Text>
+        <Text style={styles.sectionLabel}>KIMLIK BILGILERI</Text>
         <InputField
-          label="Doğum Tarihi *"
+          label="Dogum Tarihi *"
           value={birthDate}
           onChangeText={setBirthDate}
           placeholder="YYYY-MM-DD"
@@ -184,7 +217,7 @@ export const AdayKisiselScreen: React.FC = () => {
         />
 
         <InputField
-          label="TC Kimlik Numarası *"
+          label="TC Kimlik Numarasi *"
           value={identityNumber}
           onChangeText={setIdentityNumber}
           placeholder="xxxxxxxxxxx"
@@ -195,11 +228,30 @@ export const AdayKisiselScreen: React.FC = () => {
           secureTextEntry
         />
 
+        <Text style={styles.sectionLabel}>PROGRAM BASVURU DOSYASI</Text>
+        <View style={styles.requirementCard}>
+          <View style={styles.requirementRow}>
+            <Text style={styles.requirementLabel}>Europass CV</Text>
+            <Pill label={cvReady ? 'Tamam' : 'Eksik'} variant={cvReady ? 'ok' : 'warn'} />
+          </View>
+          <Button label="CV'yi Duzenle" variant="ghost" onPress={() => navigation.navigate('AdayCvBuilder')} />
+
+          <View style={styles.requirementRow}>
+            <Text style={styles.requirementLabel}>Motivasyon Mektubu</Text>
+            <Pill label={motivationReady ? 'Tamam' : 'Eksik'} variant={motivationReady ? 'ok' : 'warn'} />
+          </View>
+          <Button
+            label="Mektubu Duzenle"
+            variant="ghost"
+            onPress={() => navigation.navigate('AdayMotivation')}
+          />
+        </View>
+
         <View style={styles.notice}>
           <Text style={styles.noticeText}>
             {isSubmitted
-              ? 'Başvurunuz gönderildi. Belge durumlarınızı Eğitim Bilgilendirme ekranından takip edebilirsiniz.'
-              : 'Form taslak olarak saklanır. "Başvuru Gönder" butonuna basana kadar değişiklik yapabilirsiniz.'}
+              ? 'Basvurunuz gonderildi. Belge ve dogrulama durumlarini Egitim Bilgilendirme ekranindan takip edin.'
+              : 'Basvuru gonderimi icin Europass CV ve motivasyon mektubu zorunludur.'}
           </Text>
         </View>
 
@@ -213,7 +265,7 @@ export const AdayKisiselScreen: React.FC = () => {
               onPress={handleSaveDraft}
             />
             <Button
-              label={isLoading ? 'Gönderiliyor...' : 'Başvuru Gönder'}
+              label={isLoading ? 'Gonderiliyor...' : 'Basvuru Gonder'}
               onPress={handleSubmit}
             />
           </View>
@@ -222,7 +274,7 @@ export const AdayKisiselScreen: React.FC = () => {
         {myApplication.status === 'needs_fix' && (
           <View style={styles.buttonGroup}>
             <Button
-              label={isLoading ? 'Gönderiliyor...' : 'Düzelterek Yeniden Gönder'}
+              label={isLoading ? 'Gonderiliyor...' : 'Duzelterek Yeniden Gonder'}
               onPress={handleSubmit}
             />
           </View>
@@ -290,6 +342,24 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
   } as ViewStyle,
+  requirementCard: {
+    backgroundColor: colors.cardBg,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    padding: 14,
+    gap: 10,
+  } as ViewStyle,
+  requirementRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  } as ViewStyle,
+  requirementLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  } as TextStyle,
   buttonGroup: {
     gap: 12,
     marginTop: 4,

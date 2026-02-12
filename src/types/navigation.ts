@@ -4,8 +4,8 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 
 // Root Stack Parameters
 export type RootStackParamList = {
+  OnboardingIntro: undefined;
   Login: undefined;
-  Register: undefined;
   AdminLogin: undefined;
   Splash: undefined;
   Auth: undefined;
@@ -14,6 +14,8 @@ export type RootStackParamList = {
   AdayKayit: undefined;
   AdayEgitim: undefined;
   AdayKisisel: undefined;
+  AdayCvBuilder: undefined;
+  AdayMotivation: undefined;
   AdayBelge: { capturedPhotoUri?: string } | undefined;
   BelgeCamera: { docType?: string };
   AdayMesaj: { applicationId?: string };

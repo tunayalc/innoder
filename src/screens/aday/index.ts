@@ -4,4 +4,6 @@ export { AdayEgitimScreen } from './AdayEgitimScreen';
 export { AdayKisiselScreen } from './AdayKisiselScreen';
 export { AdayBelgeScreen } from './AdayBelgeScreen';
 export { AdayMesajScreen } from './AdayMesajScreen';
+export { AdayCvBuilderScreen } from './AdayCvBuilderScreen';
+export { AdayMotivationScreen } from './AdayMotivationScreen';
 export { BelgeCameraScreen } from './BelgeCameraScreen';

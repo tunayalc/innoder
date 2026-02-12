@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ViewStyle, TextStyle, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { RootStackNavigationProp } from '../../types';
 import { colors } from '../../theme';
 import { MenuItem, Pill } from '../../components';
@@ -9,6 +8,7 @@ import { useAuth } from '../../hooks';
 import { useAppSelector } from '../../store/hooks';
 import { selectApplications } from '../../store/selectors';
 import { APPLICATION_STATUS_LABELS } from '../../constants';
+import { isEuropassCvComplete, isMotivationLetterComplete } from '../../utils/europass';
 
 export const AdayMenuScreen: React.FC = () => {
   const navigation = useNavigation<RootStackNavigationProp>();
@@ -28,6 +28,12 @@ export const AdayMenuScreen: React.FC = () => {
   const totalDocs = myApplication?.documents.length ?? 0;
   const completedDocs = totalDocs - missingDocs;
 
+  const cvReady = isEuropassCvComplete(myApplication?.personalInfo.europassCv);
+  const motivationReady = isMotivationLetterComplete(
+    myApplication?.personalInfo.motivationLetter,
+  );
+  const dossierCompleted = Number(cvReady) + Number(motivationReady);
+
   return (
     <ScrollView contentContainerStyle={styles.section}>
       <Text style={styles.greeting}>Merhaba, {user?.name || 'Aday'}</Text>
@@ -37,7 +43,7 @@ export const AdayMenuScreen: React.FC = () => {
           <View style={styles.statusAccent} />
           <View style={styles.statusContent}>
             <View style={styles.statusRow}>
-              <Text style={styles.statusLabel}>Başvuru</Text>
+              <Text style={styles.statusLabel}>Basvuru</Text>
               <Pill
                 label={APPLICATION_STATUS_LABELS[myApplication.status] || myApplication.status}
                 variant={
@@ -64,52 +70,74 @@ export const AdayMenuScreen: React.FC = () => {
                 {completedDocs}/{totalDocs}
               </Text>
             </View>
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>CV + Mektup:</Text>
+              <Text style={styles.metaValue}>{dossierCompleted}/2</Text>
+            </View>
             {missingDocs > 0 && (
-              <Text style={styles.statusHint}>
-                {missingDocs} belge eksik veya hatalı
-              </Text>
+              <Text style={styles.statusHint}>{missingDocs} belge eksik veya hatali</Text>
             )}
           </View>
         </View>
       )}
 
-      <Text style={styles.sectionLabel}>Başvuru Adımları</Text>
+      <Text style={styles.sectionLabel}>BASVURU ADIMLARI</Text>
 
       <MenuItem
-        label="Kayıt Formu"
-        subtitle="Kişisel bilgilerinizi girin"
+        label="Kayit Formu"
+        subtitle="Hesap ve iletisim bilgileri"
         iconName="account-edit-outline"
         iconColor={colors.primary}
         iconBg={colors.warning}
         onPress={() => navigation.navigate('AdayKayit')}
       />
       <MenuItem
-        label="Eğitim Bilgilendirme"
-        subtitle="Program detayları ve checklist"
+        label="Egitim Bilgilendirme"
+        subtitle="Program detaylari ve checklist"
         iconName="school-outline"
         iconColor={colors.teal}
         iconBg={colors.success}
         onPress={() => navigation.navigate('AdayEgitim')}
       />
       <MenuItem
-        label="Kişisel Bilgi Formu"
-        subtitle="TC, doğum tarihi ve program seçimi"
+        label="Kisisel Bilgi Formu"
+        subtitle="TC, dogum tarihi ve program secimi"
         iconName="card-account-details-outline"
         iconColor="#6366F1"
         iconBg={colors.info}
         onPress={() => navigation.navigate('AdayKisisel')}
       />
       <MenuItem
-        label="Belge Tarama / Yükleme"
-        subtitle="Belgelerinizi tarayıp yükleyin"
+        label="Europass CV Olustur"
+        subtitle={cvReady ? 'CV formati tamamlandi' : 'CV formatini uygulama icinde doldurun'}
+        iconName="file-account-outline"
+        iconColor={colors.teal}
+        iconBg={colors.success}
+        onPress={() => navigation.navigate('AdayCvBuilder')}
+      />
+      <MenuItem
+        label="Motivasyon Mektubu"
+        subtitle={
+          motivationReady
+            ? 'Mektup taslagi tamamlandi'
+            : 'Program icin mektubunuzu olusturun'
+        }
+        iconName="file-document-edit-outline"
+        iconColor={colors.primary}
+        iconBg={colors.warning}
+        onPress={() => navigation.navigate('AdayMotivation')}
+      />
+      <MenuItem
+        label="Belge Tarama / Yukleme"
+        subtitle="Belgelerinizi tarayip yukleyin"
         iconName="file-document-outline"
         iconColor={colors.primary}
         iconBg={colors.warning}
         onPress={() => navigation.navigate('AdayBelge')}
       />
       <MenuItem
-        label="Mesajlaşma"
-        subtitle="Admin ile iletişim"
+        label="Mesajlasma"
+        subtitle="Admin ile iletisim"
         iconName="message-text-outline"
         iconColor={colors.teal}
         iconBg={colors.success}
@@ -183,6 +211,21 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     minWidth: 28,
     textAlign: 'right',
+  } as TextStyle,
+  metaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 2,
+  } as ViewStyle,
+  metaLabel: {
+    fontSize: 13,
+    color: colors.textSecondary,
+  } as TextStyle,
+  metaValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textPrimary,
   } as TextStyle,
   statusHint: {
     fontSize: 13,

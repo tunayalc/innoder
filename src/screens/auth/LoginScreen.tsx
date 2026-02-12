@@ -30,7 +30,7 @@ export const LoginScreen: React.FC = () => {
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Hata', 'Lütfen email ve şifrenizi girin.');
+      Alert.alert('Hata', 'Lutfen email ve sifrenizi girin.');
       return;
     }
 
@@ -51,9 +51,9 @@ export const LoginScreen: React.FC = () => {
       >
         <View style={styles.header}>
           <View style={styles.accentBar} />
-          <Text style={styles.title}>Giriş Yap</Text>
+          <Text style={styles.title}>Giris Yap</Text>
           <Text style={styles.subtitle}>
-            Devam etmek için hesap bilgilerinizi girin
+            Devam etmek icin hesap bilgilerinizle giris yapin.
           </Text>
         </View>
 
@@ -71,10 +71,10 @@ export const LoginScreen: React.FC = () => {
           <View style={{ height: 20 }} />
 
           <InputField
-            label="Şifre"
+            label="Sifre"
             value={password}
             onChangeText={setPassword}
-            placeholder="Şifrenizi girin"
+            placeholder="Sifrenizi girin"
             secureTextEntry
           />
 
@@ -83,27 +83,17 @@ export const LoginScreen: React.FC = () => {
           <View style={{ height: 16 }} />
 
           <Button
-            label={isLoading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
+            label={isLoading ? 'Giris yapiliyor...' : 'Giris Yap'}
             onPress={handleLogin}
           />
         </View>
-
-        <TouchableOpacity
-          style={styles.registerLink}
-          onPress={() => navigation.navigate('Register')}
-        >
-          <Text style={styles.registerText}>
-            Hesabınız yok mu?{' '}
-            <Text style={styles.registerTextBold}>Kayıt Olun</Text>
-          </Text>
-        </TouchableOpacity>
 
         <View style={styles.footer}>
           <TouchableOpacity
             onPress={() => navigation.navigate('AdminLogin')}
             hitSlop={{ top: 12, bottom: 12, left: 20, right: 20 }}
           >
-            <Text style={styles.adminText}>Yönetici girişi</Text>
+            <Text style={styles.adminText}>Yonetici girisi</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -150,18 +140,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#DC2626',
     marginTop: 10,
-  } as TextStyle,
-  registerLink: {
-    marginTop: 28,
-    alignSelf: 'center',
-  } as ViewStyle,
-  registerText: {
-    fontSize: 15,
-    color: colors.textSecondary,
-  } as TextStyle,
-  registerTextBold: {
-    color: colors.primary,
-    fontWeight: '600',
   } as TextStyle,
   footer: {
     marginTop: 'auto' as any,
