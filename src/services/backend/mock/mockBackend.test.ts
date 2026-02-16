@@ -42,6 +42,7 @@ describe('mock backend', () => {
     });
     expect(draft.status).toBe('draft');
     expect(draft.documents.length).toBeGreaterThan(0);
+    expect(draft.documents.some((d) => d.type === 'boarding_pass')).toBe(true);
 
     const uploadRes = await backend.applications.uploadDocument({
       applicationId: draft.id,
@@ -73,4 +74,3 @@ describe('mock backend', () => {
     expect(logs.length).toBeGreaterThan(0);
   });
 });
-

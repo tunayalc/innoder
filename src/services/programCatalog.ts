@@ -35,6 +35,12 @@ export const PROGRAM_CATALOG: ProgramInfo[] = [
         exampleHint: 'Tek PDF içinde tüm sayfalar.',
       },
       {
+        documentType: 'boarding_pass',
+        expectedFormat: 'PDF/JPG (QR/Barcode net görünür)',
+        description: 'Ulaşım belgesi / boarding pass.',
+        exampleHint: 'PNR ve QR/Barcode alanı kadrajda olmalı.',
+      },
+      {
         documentType: 'extra',
         expectedFormat: 'JPG/PDF (varsa QR/Barcode)',
         description: 'Ek belge (davetiye, sertifika, bilet vb.).',
@@ -45,6 +51,7 @@ export const PROGRAM_CATALOG: ProgramInfo[] = [
       'Bulanık/karanlık fotoğraf (OKUNMADI)',
       'PDF yerine fotoğraf (YANLIŞ FORMAT)',
       'Eksik sayfa (EKSİK)',
+      'QR/Barcode alanının kadraj dışında kalması',
       'Yanlış belge türü seçimi',
     ],
   },
@@ -119,4 +126,3 @@ export const getProgramById = (programId: string): ProgramInfo => {
   }
   return p;
 };
-

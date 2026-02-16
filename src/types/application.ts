@@ -56,7 +56,7 @@ export interface MotivationLetterDraft {
 export interface Document {
   id: string;
   applicationId: string;
-  type: 'identity' | 'form' | 'extra';
+  type: 'identity' | 'form' | 'boarding_pass' | 'extra';
   fileName: string;
   fileUrl?: string;
   pageCount?: number;

@@ -20,6 +20,7 @@ export const DOCUMENT_STATUS_LABELS: Record<string, string> = {
 export const DOCUMENT_TYPES = {
   identity: 'Kimlik Belgesi',
   form: 'Başvuru Formu',
+  boarding_pass: 'Boarding Pass',
   extra: 'Ek Belge',
 } as const;
 

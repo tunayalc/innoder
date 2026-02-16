@@ -24,12 +24,13 @@ import { DocumentStatus, RootStackNavigationProp, RootStackParamList } from '../
 import { uploadDocument } from '../../store/thunks/applicationThunks';
 import { getProgramById } from '../../services/programCatalog';
 
-type DocType = 'identity' | 'form' | 'extra';
+type DocType = 'identity' | 'form' | 'boarding_pass' | 'extra';
 type CaptureFormat = 'jpg' | 'pdf';
 
 const DOC_TYPE_OPTIONS: { key: DocType; label: string }[] = [
   { key: 'identity', label: 'Kimlik Belgesi' },
   { key: 'form', label: 'Başvuru Formu' },
+  { key: 'boarding_pass', label: 'Boarding Pass' },
   { key: 'extra', label: 'Ek Belge' },
 ];
 
@@ -159,7 +160,7 @@ export const AdayBelgeScreen: React.FC = () => {
         : capturedPages[0]?.uri || `local://${fileName}`;
 
     const parseResult =
-      selectedDocType === 'extra'
+      selectedDocType === 'extra' || selectedDocType === 'boarding_pass'
         ? Math.random() > 0.5
           ? `QR_OK:${Math.floor(Math.random() * 999999)}`
           : 'QR_NOT_FOUND'
@@ -246,7 +247,9 @@ export const AdayBelgeScreen: React.FC = () => {
               ]}
               onPress={() => {
                 setSelectedDocType(opt.key);
-                setCaptureFormat(opt.key === 'form' ? 'pdf' : 'jpg');
+                setCaptureFormat(
+                  opt.key === 'form' || opt.key === 'boarding_pass' ? 'pdf' : 'jpg',
+                );
                 setCapturedPages([]);
                 setPdfFileName(null);
                 setPdfUri(null);

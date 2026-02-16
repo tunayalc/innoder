@@ -80,6 +80,32 @@ const createDraftApplication = (params: {
   };
 };
 
+const addMissingRequiredDocuments = (app: Application): Application => {
+  const requiredDocTypes = getRequiredDocTypesForProgram(app.programId);
+  const existingTypes = new Set(app.documents.map((d) => d.type));
+  const missingTypes = requiredDocTypes.filter((type) => !existingTypes.has(type));
+
+  if (missingTypes.length === 0) return app;
+
+  const ts = nowISO();
+  return {
+    ...app,
+    documents: [
+      ...app.documents,
+      ...missingTypes.map((type) => ({
+        id: generateId('doc'),
+        applicationId: app.id,
+        type,
+        fileName: '',
+        status: 'missing' as const,
+        uploadedAt: ts,
+        pageCount: 0,
+      })),
+    ],
+    updatedAt: ts,
+  };
+};
+
 const sortByCreatedAtDesc = <T extends { createdAt: string }>(items: T[]): T[] =>
   [...items].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
@@ -100,8 +126,17 @@ export const createMockBackend = (): InnoBackend => {
     await writeJson(MOCK_STORAGE_KEYS.auditLogs, logs);
   };
 
-  const listApplications = async (): Promise<Application[]> =>
-    readJson<Application[]>(MOCK_STORAGE_KEYS.applications, []);
+  const listApplications = async (): Promise<Application[]> => {
+    const apps = await readJson<Application[]>(MOCK_STORAGE_KEYS.applications, []);
+    const normalized = apps.map(addMissingRequiredDocuments);
+    const changed = normalized.some((app, idx) => app !== apps[idx]);
+
+    if (changed) {
+      await writeJson(MOCK_STORAGE_KEYS.applications, normalized);
+    }
+
+    return normalized;
+  };
 
   const writeApplications = async (apps: Application[]) =>
     writeJson(MOCK_STORAGE_KEYS.applications, apps);
