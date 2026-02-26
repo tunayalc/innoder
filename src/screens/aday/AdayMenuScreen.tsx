@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+﻿import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ViewStyle, TextStyle, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { RootStackNavigationProp } from '../../types';
@@ -8,140 +8,108 @@ import { useAuth } from '../../hooks';
 import { useAppSelector } from '../../store/hooks';
 import { selectApplications } from '../../store/selectors';
 import { APPLICATION_STATUS_LABELS } from '../../constants';
-import { isEuropassCvComplete, isMotivationLetterComplete } from '../../utils/europass';
+import { isEuropassCvComplete } from '../../utils/europass';
 
 export const AdayMenuScreen: React.FC = () => {
   const navigation = useNavigation<RootStackNavigationProp>();
   const { user } = useAuth();
   const applications = useAppSelector(selectApplications);
 
-  const myApplication = useMemo(
-    () => applications.find((app) => app.userId === user?.id),
+  const myPrograms = useMemo(
+    () => applications.filter((app) => app.userId === user?.id),
     [applications, user?.id],
   );
 
+  const latestProgram = myPrograms[0];
   const missingDocs = useMemo(() => {
-    if (!myApplication) return 0;
-    return myApplication.documents.filter((d) => d.status !== 'ok').length;
-  }, [myApplication]);
+    if (!latestProgram) return 0;
+    return latestProgram.documents.filter((d) => d.status !== 'ok').length;
+  }, [latestProgram]);
 
-  const totalDocs = myApplication?.documents.length ?? 0;
+  const totalDocs = latestProgram?.documents.length ?? 0;
   const completedDocs = totalDocs - missingDocs;
 
-  const cvReady = isEuropassCvComplete(myApplication?.personalInfo.europassCv);
-  const motivationReady = isMotivationLetterComplete(
-    myApplication?.personalInfo.motivationLetter,
-  );
-  const dossierCompleted = Number(cvReady) + Number(motivationReady);
+  const cvReady = isEuropassCvComplete(user?.europassCv);
 
   return (
     <ScrollView contentContainerStyle={styles.section}>
       <Text style={styles.greeting}>Merhaba, {user?.name || 'Aday'}</Text>
 
-      {myApplication && (
-        <View style={styles.statusCard}>
-          <View style={styles.statusAccent} />
-          <View style={styles.statusContent}>
-            <View style={styles.statusRow}>
-              <Text style={styles.statusLabel}>Basvuru</Text>
-              <Pill
-                label={APPLICATION_STATUS_LABELS[myApplication.status] || myApplication.status}
-                variant={
-                  myApplication.status === 'approved'
-                    ? 'ok'
-                    : myApplication.status === 'needs_fix'
-                      ? 'warn'
-                      : myApplication.status === 'rejected'
-                        ? 'err'
-                        : 'info'
-                }
-              />
-            </View>
-            <View style={styles.progressRow}>
-              <View style={styles.progressTrack}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    { width: totalDocs > 0 ? `${(completedDocs / totalDocs) * 100}%` : '0%' },
-                  ]}
-                />
-              </View>
-              <Text style={styles.progressLabel}>
-                {completedDocs}/{totalDocs}
-              </Text>
-            </View>
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>CV + Mektup:</Text>
-              <Text style={styles.metaValue}>{dossierCompleted}/2</Text>
-            </View>
-            {missingDocs > 0 && (
-              <Text style={styles.statusHint}>{missingDocs} belge eksik veya hatali</Text>
-            )}
+      <View style={styles.statusCard}>
+        <View style={styles.statusAccent} />
+        <View style={styles.statusContent}>
+          <View style={styles.statusRow}>
+            <Text style={styles.statusLabel}>Profil Ozeti</Text>
+            <Pill
+              label={cvReady ? 'CV Hazir' : 'CV Eksik'}
+              variant={cvReady ? 'ok' : 'warn'}
+            />
           </View>
+          <View style={styles.metaRow}>
+            <Text style={styles.metaLabel}>Program Atamasi:</Text>
+            <Text style={styles.metaValue}>{myPrograms.length}</Text>
+          </View>
+          {latestProgram ? (
+            <>
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Son Program:</Text>
+                <Text style={styles.metaValue}>{latestProgram.programName}</Text>
+              </View>
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Durum:</Text>
+                <Text style={styles.metaValue}>
+                  {APPLICATION_STATUS_LABELS[latestProgram.status] || latestProgram.status}
+                </Text>
+              </View>
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Belge Ilerlemesi:</Text>
+                <Text style={styles.metaValue}>
+                  {completedDocs}/{totalDocs}
+                </Text>
+              </View>
+            </>
+          ) : (
+            <Text style={styles.statusHint}>Admin program atamasi bekleniyor.</Text>
+          )}
         </View>
-      )}
+      </View>
 
-      <Text style={styles.sectionLabel}>BASVURU ADIMLARI</Text>
+      <Text style={styles.sectionLabel}>ANA BLOK</Text>
 
       <MenuItem
-        label="Kayit Formu"
-        subtitle="Hesap ve iletisim bilgileri"
+        label="Kisisel Bilgiler"
+        subtitle="TC Kimlik, pasaport ve profil bilgileri"
         iconName="account-edit-outline"
         iconColor={colors.primary}
         iconBg={colors.warning}
-        onPress={() => navigation.navigate('AdayKayit')}
+        onPress={() => navigation.navigate('AdayKisisel')}
       />
+
       <MenuItem
-        label="Egitim Bilgilendirme"
-        subtitle="Program detaylari ve checklist"
-        iconName="school-outline"
+        label="Programlarim"
+        subtitle="Admin tarafindan atanan programlar"
+        iconName="view-list-outline"
         iconColor={colors.teal}
         iconBg={colors.success}
         onPress={() => navigation.navigate('AdayEgitim')}
       />
+
       <MenuItem
-        label="Kisisel Bilgi Formu"
-        subtitle="TC, dogum tarihi ve program secimi"
-        iconName="card-account-details-outline"
-        iconColor="#6366F1"
-        iconBg={colors.info}
-        onPress={() => navigation.navigate('AdayKisisel')}
+        label="Mesajlar"
+        subtitle="Programdan bagimsiz mesajlasma alani"
+        iconName="message-text-outline"
+        iconColor={colors.teal}
+        iconBg={colors.success}
+        onPress={() => navigation.navigate('AdayMesaj')}
       />
+
       <MenuItem
-        label="Europass CV Olustur"
-        subtitle={cvReady ? 'CV formati tamamlandi' : 'CV formatini uygulama icinde doldurun'}
+        label="Europass CV"
+        subtitle={cvReady ? 'CV formati tamamlandi' : 'CV profilinizi tamamlayin'}
         iconName="file-account-outline"
         iconColor={colors.teal}
         iconBg={colors.success}
         onPress={() => navigation.navigate('AdayCvBuilder')}
-      />
-      <MenuItem
-        label="Motivasyon Mektubu"
-        subtitle={
-          motivationReady
-            ? 'Mektup taslagi tamamlandi'
-            : 'Program icin mektubunuzu olusturun'
-        }
-        iconName="file-document-edit-outline"
-        iconColor={colors.primary}
-        iconBg={colors.warning}
-        onPress={() => navigation.navigate('AdayMotivation')}
-      />
-      <MenuItem
-        label="Belge Tarama / Yukleme"
-        subtitle="Belgelerinizi tarayip yukleyin"
-        iconName="file-document-outline"
-        iconColor={colors.primary}
-        iconBg={colors.warning}
-        onPress={() => navigation.navigate('AdayBelge')}
-      />
-      <MenuItem
-        label="Mesajlasma"
-        subtitle="Admin ile iletisim"
-        iconName="message-text-outline"
-        iconColor={colors.teal}
-        iconBg={colors.success}
-        onPress={() => navigation.navigate('AdayMesaj', { applicationId: myApplication?.id })}
       />
     </ScrollView>
   );
@@ -187,30 +155,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: colors.textPrimary,
-  } as TextStyle,
-  progressRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  } as ViewStyle,
-  progressTrack: {
-    flex: 1,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.borderLight,
-    overflow: 'hidden',
-  } as ViewStyle,
-  progressFill: {
-    height: '100%',
-    borderRadius: 3,
-    backgroundColor: colors.teal,
-  } as ViewStyle,
-  progressLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.textMuted,
-    minWidth: 28,
-    textAlign: 'right',
   } as TextStyle,
   metaRow: {
     flexDirection: 'row',

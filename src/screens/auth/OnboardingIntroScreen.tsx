@@ -18,6 +18,7 @@ import { colors } from '../../theme';
 import { Card } from '../../components';
 import { RootStackNavigationProp } from '../../types';
 import { appConfig } from '../../config/appConfig';
+import { useAuth } from '../../hooks';
 
 const APP_LAUNCHER_IMAGE = require('../../assets/images/app-launcher.jpg');
 const ESC_INTRO_VIDEO = require('../../assets/videos/esc-intro.mp4');
@@ -53,6 +54,7 @@ const createInitialWatchState = (): Record<string, boolean> =>
 export const OnboardingIntroScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<RootStackNavigationProp>();
+  const { loginDemoCandidate } = useAuth();
   const [watched, setWatched] = useState<Record<string, boolean>>(
     createInitialWatchState(),
   );
@@ -67,6 +69,7 @@ export const OnboardingIntroScreen: React.FC = () => {
 
   const allVideosWatched = watchedCount === REQUIRED_VIDEOS.length;
   const canContinue = allVideosWatched || alreadyInformed;
+  const canRegister = allVideosWatched;
 
   const toggleWatched = (videoId: string) => {
     setWatched((prev) => ({
@@ -95,8 +98,8 @@ export const OnboardingIntroScreen: React.FC = () => {
           <View style={styles.accentBar} />
           <Text style={styles.title}>Bilgilendirme Alani</Text>
           <Text style={styles.subtitle}>
-            Uygulamaya girmeden once bilgilendirme videolarini tamamlayin veya
-            onay beyanini isaretleyin.
+            Kayit icin tum videolari tamamlamak zorunludur. Giris icin ise
+            videolari tamamlayabilir veya beyan secenegini kullanabilirsiniz.
           </Text>
         </View>
 
@@ -110,6 +113,9 @@ export const OnboardingIntroScreen: React.FC = () => {
             <Text style={styles.mockInfoTitle}>Demo Giris Bilgisi</Text>
             <Text style={styles.mockInfoText}>Email: aday@inno.com</Text>
             <Text style={styles.mockInfoText}>Sifre: 123123</Text>
+            <Pressable style={styles.mockLoginButton} onPress={loginDemoCandidate}>
+              <Text style={styles.mockLoginButtonText}>Bilgi Girmeden Demo Giris</Text>
+            </Pressable>
           </Card>
         ) : null}
 
@@ -235,9 +241,24 @@ export const OnboardingIntroScreen: React.FC = () => {
           </Text>
         </Pressable>
 
-        {!canContinue ? (
+        <Pressable
+          style={[styles.registerButton, !canRegister && styles.registerButtonDisabled]}
+          disabled={!canRegister}
+          onPress={() => navigation.navigate('Register', { videosCompleted: true })}
+        >
+          <Text
+            style={[
+              styles.registerButtonText,
+              !canRegister && styles.registerButtonTextDisabled,
+            ]}
+          >
+            Kayit Ol
+          </Text>
+        </Pressable>
+
+        {!canContinue || !canRegister ? (
           <Text style={styles.helperText}>
-            Giris icin tum videolari tamamlayin veya beyan onayini acin.
+            Giris icin tum videolari tamamlayin veya beyani acin. Kayit icin tum videolar zorunlu.
           </Text>
         ) : null}
       </ScrollView>
@@ -306,6 +327,21 @@ const styles = StyleSheet.create({
   mockInfoText: {
     fontSize: 13,
     color: colors.textPrimary,
+  } as TextStyle,
+  mockLoginButton: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.tealBorder,
+    backgroundColor: colors.white,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+  } as ViewStyle,
+  mockLoginButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.teal,
   } as TextStyle,
   progressTitle: {
     fontSize: 15,
@@ -457,6 +493,26 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   } as TextStyle,
   loginButtonTextDisabled: {
+    color: colors.textMuted,
+  } as TextStyle,
+  registerButton: {
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.white,
+    paddingVertical: 14,
+    alignItems: 'center',
+  } as ViewStyle,
+  registerButtonText: {
+    color: colors.primary,
+    fontSize: 16,
+    fontWeight: '700',
+  } as TextStyle,
+  registerButtonDisabled: {
+    borderColor: colors.placeholder,
+    backgroundColor: colors.placeholder,
+  } as ViewStyle,
+  registerButtonTextDisabled: {
     color: colors.textMuted,
   } as TextStyle,
   helperText: {

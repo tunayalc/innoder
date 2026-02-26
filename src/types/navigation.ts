@@ -6,6 +6,7 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 export type RootStackParamList = {
   OnboardingIntro: undefined;
   Login: undefined;
+  Register: { videosCompleted?: boolean } | undefined;
   AdminLogin: undefined;
   Splash: undefined;
   Auth: undefined;
@@ -13,12 +14,13 @@ export type RootStackParamList = {
   AdayMenu: undefined;
   AdayKayit: undefined;
   AdayEgitim: undefined;
+  AdayProgramDetay: { applicationId: string };
   AdayKisisel: undefined;
   AdayCvBuilder: undefined;
-  AdayMotivation: undefined;
-  AdayBelge: { capturedPhotoUri?: string } | undefined;
-  BelgeCamera: { docType?: string };
-  AdayMesaj: { applicationId?: string };
+  AdayMotivation: { applicationId?: string } | undefined;
+  AdayBelge: { applicationId?: string; capturedPhotoUri?: string } | undefined;
+  BelgeCamera: { docType?: string; applicationId?: string };
+  AdayMesaj: { applicationId?: string } | undefined;
   AdminListe: undefined;
   AdminDetay: { applicationId: string };
   AdminDogrulama: { applicationId: string; documentId?: string };

@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback, useEffect } from 'react';
+﻿import React, { useRef, useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -51,8 +51,8 @@ export const BelgeCameraScreen: React.FC = () => {
         flash: flashMode,
       });
       setCapturedPhoto(`file://${photo.path}`);
-    } catch (error) {
-      Alert.alert('Hata', 'Fotoğraf çekilemedi. Tekrar deneyin.');
+    } catch {
+      Alert.alert('Hata', 'Fotograf cekilemedi. Tekrar deneyin.');
     } finally {
       setIsTakingPhoto(false);
     }
@@ -64,79 +64,70 @@ export const BelgeCameraScreen: React.FC = () => {
 
   const confirmPhoto = useCallback(() => {
     if (!capturedPhoto) return;
-    // Navigate back and pass the photo URI via route params
-    navigation.navigate('AdayBelge', { capturedPhotoUri: capturedPhoto });
-  }, [capturedPhoto, navigation]);
+    navigation.navigate('AdayBelge', {
+      applicationId: route.params?.applicationId,
+      capturedPhotoUri: capturedPhoto,
+    });
+  }, [capturedPhoto, navigation, route.params?.applicationId]);
 
   const toggleFlash = useCallback(() => {
     setFlashMode((prev) => (prev === 'off' ? 'on' : 'off'));
   }, []);
 
-  // Permission not granted
   if (!hasPermission) {
     return (
       <View style={[styles.center, { paddingTop: insets.top }]}>
         <Text style={styles.permissionText}>
-          Kamera izni gerekli. Lütfen ayarlardan kamera erişimini açın.
+          Kamera izni gerekli. Lutfen ayarlardan kamera erisimini acin.
         </Text>
-        <TouchableOpacity
-          style={styles.permissionButton}
-          onPress={requestPermission}
-        >
-          <Text style={styles.permissionButtonText}>İzin Ver</Text>
+        <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
+          <Text style={styles.permissionButtonText}>Izin Ver</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  // No camera device
   if (!device) {
     return (
       <View style={[styles.center, { paddingTop: insets.top }]}>
         <Text style={styles.permissionText}>
-          Kamera bulunamadı. Bu cihazda kamera mevcut değil.
+          Kamera bulunamadi. Bu cihazda kamera mevcut degil.
         </Text>
-        <TouchableOpacity
-          style={styles.permissionButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.permissionButtonText}>Geri Dön</Text>
+        <TouchableOpacity style={styles.permissionButton} onPress={() => navigation.goBack()}>
+          <Text style={styles.permissionButtonText}>Geri Don</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  // Preview captured photo
   if (capturedPhoto) {
     return (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" />
         <Image source={{ uri: capturedPhoto }} style={styles.preview} />
+
         <View style={[styles.previewControls, { paddingBottom: insets.bottom + 20 }]}>
           <TouchableOpacity style={styles.previewBtn} onPress={retakePhoto}>
-            <Text style={styles.previewBtnText}>Tekrar Çek</Text>
+            <Text style={styles.previewBtnText}>Tekrar Cek</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.previewBtn, styles.previewBtnConfirm]}
             onPress={confirmPhoto}
           >
-            <Text style={[styles.previewBtnText, styles.previewBtnConfirmText]}>
-              Kullan
-            </Text>
+            <Text style={[styles.previewBtnText, styles.previewBtnConfirmText]}>Kullan</Text>
           </TouchableOpacity>
         </View>
-        {/* Back button */}
+
         <TouchableOpacity
           style={[styles.backBtn, { top: insets.top + 10 }]}
           onPress={() => navigation.goBack()}
         >
-          <Text style={styles.backBtnText}>✕</Text>
+          <Text style={styles.backBtnText}>X</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  // Live camera
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
@@ -150,28 +141,19 @@ export const BelgeCameraScreen: React.FC = () => {
         torch={flashMode}
       />
 
-      {/* Top bar */}
       <View style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
-        <TouchableOpacity
-          style={styles.topBtn}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.topBtnText}>✕</Text>
+        <TouchableOpacity style={styles.topBtn} onPress={() => navigation.goBack()}>
+          <Text style={styles.topBtnText}>X</Text>
         </TouchableOpacity>
 
         <Text style={styles.topTitle}>Belge Tara</Text>
 
         <TouchableOpacity style={styles.topBtn} onPress={toggleFlash}>
-          <Text style={styles.topBtnText}>
-            {flashMode === 'on' ? '⚡' : '⚡'}
-          </Text>
-          <Text style={styles.flashLabel}>
-            {flashMode === 'on' ? 'Açık' : 'Kapalı'}
-          </Text>
+          <Text style={styles.topBtnText}>Flash</Text>
+          <Text style={styles.flashLabel}>{flashMode === 'on' ? 'Acik' : 'Kapali'}</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Guide overlay */}
       <View style={styles.guideOverlay}>
         <View style={styles.guideBox}>
           <View style={[styles.corner, styles.cornerTL]} />
@@ -179,12 +161,9 @@ export const BelgeCameraScreen: React.FC = () => {
           <View style={[styles.corner, styles.cornerBL]} />
           <View style={[styles.corner, styles.cornerBR]} />
         </View>
-        <Text style={styles.guideText}>
-          Belgeyi çerçeveye hizalayın
-        </Text>
+        <Text style={styles.guideText}>Belgeyi cerceveye hizalayin</Text>
       </View>
 
-      {/* Bottom controls */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 20 }]}>
         <View style={styles.controlsRow}>
           <View style={styles.sideBtn} />
@@ -241,8 +220,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   } as TextStyle,
-
-  // Top bar
   topBar: {
     position: 'absolute',
     top: 0,
@@ -256,12 +233,13 @@ const styles = StyleSheet.create({
     zIndex: 10,
   } as ViewStyle,
   topBtn: {
-    width: 44,
+    minWidth: 56,
     alignItems: 'center',
   } as ViewStyle,
   topBtnText: {
-    fontSize: 22,
+    fontSize: 16,
     color: '#fff',
+    fontWeight: '700',
   } as TextStyle,
   topTitle: {
     fontSize: 17,
@@ -273,8 +251,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginTop: 2,
   } as TextStyle,
-
-  // Guide overlay
   guideOverlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
@@ -329,8 +305,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 14,
   } as TextStyle,
-
-  // Bottom bar
   bottomBar: {
     position: 'absolute',
     bottom: 0,
@@ -365,8 +339,6 @@ const styles = StyleSheet.create({
   captureBtnDisabled: {
     opacity: 0.4,
   } as ViewStyle,
-
-  // Preview
   preview: {
     flex: 1,
   } as ImageStyle,
@@ -415,7 +387,7 @@ const styles = StyleSheet.create({
   } as ViewStyle,
   backBtnText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
   } as TextStyle,
 });

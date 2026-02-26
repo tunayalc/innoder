@@ -13,70 +13,72 @@ import {
   Switch,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { colors } from '../../theme';
-import { Button, InputField, Card } from '../../components';
+import { Button, InputField } from '../../components';
 import { useAuth } from '../../hooks';
 import { useAppSelector } from '../../store/hooks';
 import { selectUserError, selectUserLoading } from '../../store/selectors';
-import { isValidEmail, isValidPhoneNumber } from '../../utils/validation';
+import { isValidEmail } from '../../utils/validation';
+import { RootStackParamList } from '../../types';
 
 export const RegisterScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const route = useRoute<RouteProp<RootStackParamList, 'Register'>>();
   const insets = useSafeAreaInsets();
   const { registerCandidate } = useAuth();
   const isLoading = useAppSelector(selectUserLoading);
   const error = useAppSelector(selectUserError);
+  const videosCompleted = Boolean(route.params?.videosCompleted);
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [country, setCountry] = useState('Türkiye');
-  const [city, setCity] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [kvkkAccepted, setKvkkAccepted] = useState(false);
 
   const handleRegister = async () => {
-    if (!fullName.trim() || !email.trim() || !password.trim()) {
-      Alert.alert('Hata', 'Lütfen tüm alanları doldurun.');
+    if (!videosCompleted) {
+      Alert.alert(
+        'Video Zorunlulugu',
+        'Kayit olmadan once bilgilendirme videolarinin tamamini izlemelisiniz.',
+        [{ text: 'Videolara Don', onPress: () => navigation.navigate('OnboardingIntro') }],
+      );
+      return;
+    }
+
+    if (!fullName.trim() || !email.trim()) {
+      Alert.alert('Hata', 'Lutfen ad soyad ve e-posta alanlarini doldurun.');
       return;
     }
 
     if (!isValidEmail(email)) {
-      Alert.alert('Hata', 'Geçerli bir e-posta giriniz.');
-      return;
-    }
-
-    if (phone.trim() && !isValidPhoneNumber(phone)) {
-      Alert.alert('Hata', 'Geçerli bir telefon numarası giriniz.');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      Alert.alert('Hata', 'Şifreler eşleşmiyor.');
-      return;
-    }
-
-    if (password.length < 6) {
-      Alert.alert('Hata', 'Şifre en az 6 karakter olmalıdır.');
+      Alert.alert('Hata', 'Gecerli bir e-posta giriniz.');
       return;
     }
 
     if (!kvkkAccepted) {
-      Alert.alert('Hata', 'KVKK onayı zorunludur.');
+      Alert.alert('Hata', 'KVKK onayi zorunludur.');
       return;
     }
 
-    registerCandidate({
+    const result = await registerCandidate({
       fullName,
       email,
-      phone: phone.trim() || undefined,
-      country: country.trim() || undefined,
-      city: city.trim() || undefined,
-      password,
       kvkkAccepted,
     });
+
+    if (result?.ok) {
+      Alert.alert(
+        'Kayit alindi',
+        result.message ||
+          'Basvurunuz alindi. Tarafimizca paylasilan giris bilgileriyle daha sonra uygulamaya giris yapabilirsiniz.',
+        [
+          {
+            text: 'Tamam',
+            onPress: () => navigation.navigate('Login'),
+          },
+        ],
+      );
+    }
   };
 
   return (
@@ -91,12 +93,26 @@ export const RegisterScreen: React.FC = () => {
         ]}
         keyboardShouldPersistTaps="handled"
       >
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Text style={styles.backBtnText}>Geri</Text>
+        </TouchableOpacity>
+
         <View style={styles.header}>
           <View style={styles.accentBar} />
-          <Text style={styles.title}>Kayıt Ol</Text>
+          <Text style={styles.title}>Kayit Ol</Text>
           <Text style={styles.subtitle}>
-            Başvurunuzu takip edebilmek için bir hesap oluşturun
+            Kayit olabilirsiniz. Uygulamaya sadece tarafimizca paylasilan giris
+            bilgileri ile giris yapilabilir.
           </Text>
+          {!videosCompleted ? (
+            <Text style={styles.warningText}>
+              Kayit icin once bilgilendirme videolarini tamamlayin.
+            </Text>
+          ) : null}
         </View>
 
         <View style={styles.form}>
@@ -104,14 +120,14 @@ export const RegisterScreen: React.FC = () => {
             label="Ad Soyad *"
             value={fullName}
             onChangeText={setFullName}
-            placeholder="Adınız Soyadınız"
+            placeholder="Adiniz Soyadiniz"
             autoCapitalize="words"
           />
 
           <View style={{ height: 20 }} />
 
           <InputField
-            label="Email *"
+            label="E-posta *"
             value={email}
             onChangeText={setEmail}
             placeholder="ornek@email.com"
@@ -119,65 +135,15 @@ export const RegisterScreen: React.FC = () => {
             autoCapitalize="none"
             autoCorrect={false}
           />
-
-          <View style={{ height: 20 }} />
-
-          <InputField
-            label="Telefon"
-            value={phone}
-            onChangeText={setPhone}
-            placeholder="+90 5xx xxx xx xx"
-            keyboardType="phone-pad"
-          />
-
-          <View style={{ height: 20 }} />
-
-          <View style={styles.row2}>
-            <View style={styles.flex1}>
-              <InputField
-                label="Ülke"
-                value={country}
-                onChangeText={setCountry}
-                placeholder="Türkiye"
-              />
-            </View>
-            <View style={styles.flex1}>
-              <InputField
-                label="Şehir"
-                value={city}
-                onChangeText={setCity}
-                placeholder="İstanbul"
-              />
-            </View>
-          </View>
-        </View>
-
-        <View style={[styles.form, { marginTop: 20 }]}>
-          <InputField
-            label="Şifre *"
-            value={password}
-            onChangeText={setPassword}
-            placeholder="En az 6 karakter"
-            secureTextEntry
-          />
-
-          <View style={{ height: 20 }} />
-
-          <InputField
-            label="Şifre Tekrar *"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            placeholder="Şifrenizi tekrar girin"
-            secureTextEntry
-          />
         </View>
 
         <View style={styles.kvkkWrap}>
           <View style={styles.kvkkRow}>
             <View style={styles.kvkkTextWrap}>
-              <Text style={styles.kvkkTitle}>KVKK Aydınlatma & Açık Rıza</Text>
+              <Text style={styles.kvkkTitle}>KVKK Acik Riza Onayi</Text>
               <Text style={styles.kvkkHint}>
-                Kişisel verilerimin amaçla sınırlı şekilde işlenmesini kabul ediyorum.
+                Kisisel verilerimin basvuru surecinin yonetimi, iletisim ve
+                dogrulama amaciyla islenmesini kabul ediyorum.
               </Text>
             </View>
             <Switch
@@ -193,18 +159,17 @@ export const RegisterScreen: React.FC = () => {
 
         <View style={{ paddingHorizontal: 4, marginTop: 16 }}>
           <Button
-            label={isLoading ? 'Kayıt yapılıyor...' : 'Kayıt Ol'}
-            onPress={handleRegister}
+            label={isLoading ? 'Kayit yapiliyor...' : 'Kayit Ol'}
+            onPress={videosCompleted ? handleRegister : undefined}
           />
         </View>
 
         <TouchableOpacity
           style={styles.loginLink}
-          onPress={() => navigation.goBack()}
+          onPress={() => navigation.navigate('Login')}
         >
           <Text style={styles.loginText}>
-            Zaten hesabınız var mı?{' '}
-            <Text style={styles.loginTextBold}>Giriş Yapın</Text>
+            Giris ekranina don: <Text style={styles.loginTextBold}>Giris Yap</Text>
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -221,8 +186,17 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 24,
   } as ViewStyle,
+  backBtn: {
+    alignSelf: 'flex-start',
+    marginBottom: 24,
+  } as ViewStyle,
+  backBtnText: {
+    fontSize: 16,
+    color: colors.primary,
+    fontWeight: '600',
+  } as TextStyle,
   header: {
-    marginBottom: 36,
+    marginBottom: 30,
   } as ViewStyle,
   accentBar: {
     width: 28,
@@ -239,19 +213,12 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   } as TextStyle,
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     color: colors.textSecondary,
-    lineHeight: 23,
+    lineHeight: 22,
   } as TextStyle,
   form: {
     paddingHorizontal: 0,
-  } as ViewStyle,
-  row2: {
-    flexDirection: 'row',
-    gap: 10,
-  } as ViewStyle,
-  flex1: {
-    flex: 1,
   } as ViewStyle,
   kvkkWrap: {
     marginTop: 20,
@@ -281,6 +248,12 @@ const styles = StyleSheet.create({
     color: '#DC2626',
     marginTop: 12,
     paddingHorizontal: 4,
+  } as TextStyle,
+  warningText: {
+    marginTop: 8,
+    fontSize: 13,
+    color: colors.noticeText,
+    lineHeight: 19,
   } as TextStyle,
   loginLink: {
     alignSelf: 'center',

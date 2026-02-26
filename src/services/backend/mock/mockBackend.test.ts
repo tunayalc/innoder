@@ -14,33 +14,38 @@ describe('mock backend', () => {
     await AsyncStorage.clear();
   });
 
-  it('registers and logs in a candidate, creates a draft and uploads/verifies a document', async () => {
+  it('registers candidate and blocks login until credentials are provisioned', async () => {
     const backend = createMockBackend();
 
     const user = await backend.auth.registerCandidate({
       fullName: 'Test User',
       email: 'test@example.com',
-      phone: '+905551112233',
-      country: 'Türkiye',
-      city: 'İstanbul',
-      password: '123456',
       kvkkAccepted: true,
     });
 
+    expect(user.status).toBe('verified');
+
+    await expect(
+      backend.auth.loginCandidate({
+        email: 'test@example.com',
+        password: '123456',
+      }),
+    ).rejects.toThrow();
+
+    // Demo candidate is seeded as verified with credentials.
     const loggedIn = await backend.auth.loginCandidate({
-      email: 'test@example.com',
-      password: '123456',
+      email: 'aday@inno.com',
+      password: '123123',
     });
 
-    expect(loggedIn.id).toBe(user.id);
     expect(loggedIn.role).toBe('candidate');
 
     const draft = await backend.applications.ensureDraft({
-      userId: user.id,
+      userId: loggedIn.id,
       programId: 'prog-a',
-      fullName: user.name,
+      fullName: loggedIn.name,
     });
-    expect(draft.status).toBe('draft');
+    expect(['draft', 'under_review']).toContain(draft.status);
     expect(draft.documents.length).toBeGreaterThan(0);
     expect(draft.documents.some((d) => d.type === 'boarding_pass')).toBe(true);
 
@@ -64,7 +69,7 @@ describe('mock backend', () => {
       documentId: uploadRes.document.id,
       status: 'wrong_format',
       verifiedByUserId: admin.id,
-      note: 'Form PDF olmalı',
+      note: 'Form PDF olmali',
     });
 
     expect(verifyRes.document.verifiedAt).toBeTruthy();

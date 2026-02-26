@@ -22,7 +22,7 @@ import { selectUserError, selectUserLoading } from '../../store/selectors';
 export const LoginScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
-  const { loginCandidate } = useAuth();
+  const { loginCandidate, loginDemoCandidate } = useAuth();
   const isLoading = useAppSelector(selectUserLoading);
   const error = useAppSelector(selectUserError);
   const [email, setEmail] = useState('');
@@ -30,7 +30,7 @@ export const LoginScreen: React.FC = () => {
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Hata', 'Lutfen email ve sifrenizi girin.');
+      Alert.alert('Hata', 'Lutfen e-posta ve sifrenizi girin.');
       return;
     }
 
@@ -84,8 +84,30 @@ export const LoginScreen: React.FC = () => {
 
           <Button
             label={isLoading ? 'Giris yapiliyor...' : 'Giris Yap'}
-            onPress={handleLogin}
+            onPress={isLoading ? undefined : handleLogin}
           />
+
+          <View style={{ height: 10 }} />
+
+          <Button
+            label={isLoading ? 'Demo giris yapiliyor...' : 'Demo Giris (Bilgi Girmeden)'}
+            variant="ghost"
+            onPress={isLoading ? undefined : loginDemoCandidate}
+          />
+
+          <Text style={styles.helperText}>
+            Sadece tarafimizca giris bilgisi tanimlanan hesaplar giris yapabilir.
+          </Text>
+
+          <TouchableOpacity
+            style={styles.registerLink}
+            onPress={() => navigation.navigate('OnboardingIntro')}
+          >
+            <Text style={styles.registerText}>
+              Hesabiniz yok mu?{' '}
+              <Text style={styles.registerTextBold}>Once Videolari Izle</Text>
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.footer}>
@@ -140,6 +162,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#DC2626',
     marginTop: 10,
+  } as TextStyle,
+  helperText: {
+    marginTop: 14,
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.textSecondary,
+  } as TextStyle,
+  registerLink: {
+    marginTop: 14,
+    alignSelf: 'flex-start',
+  } as ViewStyle,
+  registerText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  } as TextStyle,
+  registerTextBold: {
+    color: colors.primary,
+    fontWeight: '600',
   } as TextStyle,
   footer: {
     marginTop: 'auto' as any,

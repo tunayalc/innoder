@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+﻿import React, { useMemo, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { colors } from '../../theme';
 import { Button, Card, InputField, Pill } from '../../components';
 import { useAuth } from '../../hooks';
@@ -20,7 +20,7 @@ import {
   selectApplicationLoading,
   selectApplications,
 } from '../../store/selectors';
-import { RootStackNavigationProp, MotivationLetterDraft } from '../../types';
+import { RootStackNavigationProp, RootStackParamList, MotivationLetterDraft } from '../../types';
 import { updatePersonalInfoDraft } from '../../store/thunks/applicationThunks';
 import {
   createEmptyMotivationLetter,
@@ -30,20 +30,30 @@ import {
 
 export const AdayMotivationScreen: React.FC = () => {
   const navigation = useNavigation<RootStackNavigationProp>();
+  const route = useRoute<RouteProp<RootStackParamList, 'AdayMotivation'>>();
   const { user } = useAuth();
   const dispatch = useAppDispatch();
   const applications = useAppSelector(selectApplications);
   const isLoading = useAppSelector(selectApplicationLoading);
   const error = useAppSelector(selectApplicationError);
 
-  const myApplication = useMemo(
-    () => applications.find((app) => app.userId === user?.id),
-    [applications, user?.id],
-  );
+  const myApplication = useMemo(() => {
+    const byRoute = route.params?.applicationId
+      ? applications.find((app) => app.id === route.params?.applicationId)
+      : null;
+    if (byRoute) return byRoute;
+    return applications.find((app) => app.userId === user?.id);
+  }, [applications, route.params?.applicationId, user?.id]);
 
   const [letter, setLetter] = useState<MotivationLetterDraft>(
     myApplication?.personalInfo.motivationLetter ?? createEmptyMotivationLetter(),
   );
+
+  useEffect(() => {
+    setLetter(
+      myApplication?.personalInfo.motivationLetter ?? createEmptyMotivationLetter(),
+    );
+  }, [myApplication?.id, myApplication?.personalInfo.motivationLetter]);
 
   const completion = useMemo(() => isMotivationLetterComplete(letter), [letter]);
 
@@ -76,9 +86,9 @@ export const AdayMotivationScreen: React.FC = () => {
         </View>
         <Card>
           <Text style={styles.emptyText}>
-            Bu adima gecmeden once Kayit Formu ekranindan taslak basvuru olusturun.
+            Bu adima gecmeden once admin tarafindan bir programa atanmaniz gerekir.
           </Text>
-          <Button label="Kayit Formuna Git" onPress={() => navigation.navigate('AdayKayit')} />
+          <Button label="Programlarima Git" onPress={() => navigation.navigate('AdayEgitim')} />
         </Card>
       </View>
     );
@@ -104,11 +114,11 @@ export const AdayMotivationScreen: React.FC = () => {
         </View>
 
         <Card title="European Youth Portal Tarzi Mektup Yapisi">
-          <Text style={styles.hintRow}>• Addressee and subject</Text>
-          <Text style={styles.hintRow}>• Opening (who you are + why writing)</Text>
-          <Text style={styles.hintRow}>• Motivation (why this programme)</Text>
-          <Text style={styles.hintRow}>• Contribution (what you will bring)</Text>
-          <Text style={styles.hintRow}>• Closing (availability and thanks)</Text>
+          <Text style={styles.hintRow}>- Addressee and subject</Text>
+          <Text style={styles.hintRow}>- Opening (who you are + why writing)</Text>
+          <Text style={styles.hintRow}>- Motivation (why this programme)</Text>
+          <Text style={styles.hintRow}>- Contribution (what you will bring)</Text>
+          <Text style={styles.hintRow}>- Closing (availability and thanks)</Text>
         </Card>
 
         <Text style={styles.sectionLabel}>HEADER</Text>
@@ -263,4 +273,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   } as TextStyle,
 });
+
 

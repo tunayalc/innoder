@@ -1,4 +1,6 @@
-export type UserStatus = 'pending_verification' | 'verified';
+import type { EuropassCvProfile } from './application';
+
+export type UserStatus = 'verified';
 
 export interface User {
   id: string;
@@ -7,6 +9,10 @@ export interface User {
   phone?: string;
   country?: string;
   city?: string;
+  birthDate?: string;
+  identityNumber?: string;
+  passportNumber?: string;
+  europassCv?: EuropassCvProfile;
   role: 'candidate' | 'admin';
   kvkkAccepted: boolean;
   consentVersion?: string;

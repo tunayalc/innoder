@@ -10,7 +10,6 @@ import { clearMessages } from '../slices/messageSlice';
 import { clearLogs } from '../slices/auditSlice';
 import { getErrorMessage } from './errors';
 import { hydrateSession } from './sessionThunks';
-import { ensureDraftApplication } from './applicationThunks';
 
 export type AppThunk<ReturnType = void> = ThunkAction<
   ReturnType,
@@ -18,6 +17,16 @@ export type AppThunk<ReturnType = void> = ThunkAction<
   unknown,
   AnyAction
 >;
+
+export interface RegisterCandidateResult {
+  ok: boolean;
+  message?: string;
+}
+
+const DEMO_CANDIDATE_CREDENTIALS = {
+  email: 'aday@inno.com',
+  password: '123123',
+} as const;
 
 export const loginCandidate =
   (params: { email: string; password: string }): AppThunk =>
@@ -32,7 +41,7 @@ export const loginCandidate =
       dispatch(setUser(user));
       dispatch(hydrateSession(user));
     } catch (err) {
-      dispatch(setError(getErrorMessage(err, 'Giriş yapılamadı.')));
+      dispatch(setError(getErrorMessage(err, 'Giris yapilamadi.')));
     } finally {
       dispatch(setLoading(false));
     }
@@ -42,12 +51,8 @@ export const registerCandidate =
   (params: {
     fullName: string;
     email: string;
-    phone?: string;
-    country?: string;
-    city?: string;
-    password: string;
     kvkkAccepted: boolean;
-  }): AppThunk =>
+  }): AppThunk<Promise<RegisterCandidateResult>> =>
   async (dispatch) => {
     const backend = getBackend();
 
@@ -55,17 +60,23 @@ export const registerCandidate =
     dispatch(setError(null));
 
     try {
-      const user = await backend.auth.registerCandidate(params);
-      dispatch(setUser(user));
-      // Create a draft application so the checklist & document flow is immediately usable.
-      dispatch(ensureDraftApplication({ programId: 'prog-a' }));
-      dispatch(hydrateSession(user));
+      await backend.auth.registerCandidate(params);
+      return {
+        ok: true,
+        message:
+          'Kaydiniz alindi. Sadece tarafimizca paylasilan giris bilgileriyle uygulamaya giris yapabilirsiniz.',
+      };
     } catch (err) {
-      dispatch(setError(getErrorMessage(err, 'Kayıt oluşturulamadı.')));
+      dispatch(setError(getErrorMessage(err, 'Kayit olusturulamadi.')));
+      return { ok: false };
     } finally {
       dispatch(setLoading(false));
     }
   };
+
+export const loginDemoCandidate = (): AppThunk => async (dispatch) => {
+  dispatch(loginCandidate(DEMO_CANDIDATE_CREDENTIALS));
+};
 
 export const loginAdmin =
   (params: { username: string; password: string }): AppThunk =>
@@ -80,7 +91,7 @@ export const loginAdmin =
       dispatch(setUser(user));
       dispatch(hydrateSession(user));
     } catch (err) {
-      dispatch(setError(getErrorMessage(err, 'Admin girişi yapılamadı.')));
+      dispatch(setError(getErrorMessage(err, 'Admin girisi yapilamadi.')));
     } finally {
       dispatch(setLoading(false));
     }
@@ -124,7 +135,7 @@ export const updateProfile =
       });
       dispatch(setUser(updated));
     } catch (err) {
-      dispatch(setError(getErrorMessage(err, 'Profil güncellenemedi.')));
+      dispatch(setError(getErrorMessage(err, 'Profil guncellenemedi.')));
     } finally {
       dispatch(setLoading(false));
     }

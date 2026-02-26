@@ -8,12 +8,18 @@ import { useAppDispatch } from '../store/hooks';
 import { hydrateSession } from '../store/thunks/sessionThunks';
 
 // Screens
-import { OnboardingIntroScreen, LoginScreen, AdminLoginScreen } from '../screens/auth';
+import {
+  OnboardingIntroScreen,
+  LoginScreen,
+  RegisterScreen,
+  AdminLoginScreen,
+} from '../screens/auth';
 import { HomeScreen } from '../screens/home';
 import {
   AdayMenuScreen,
   AdayKayitScreen,
   AdayEgitimScreen,
+  AdayProgramDetayScreen,
   AdayKisiselScreen,
   AdayCvBuilderScreen,
   AdayMotivationScreen,
@@ -76,6 +82,11 @@ export const RootNavigator: React.FC = () => {
           <Stack.Screen
             name="Login"
             component={LoginScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="Register"
+            component={RegisterScreen}
             options={{ headerShown: false }}
           />
           <Stack.Screen
@@ -142,7 +153,12 @@ export const RootNavigator: React.FC = () => {
           <Stack.Screen
             name="AdayEgitim"
             component={AdayEgitimScreen}
-            options={{ title: 'Egitim Bilgilendirme', headerRight: () => <LogoutButton /> }}
+            options={{ title: 'Programlarim', headerRight: () => <LogoutButton /> }}
+          />
+          <Stack.Screen
+            name="AdayProgramDetay"
+            component={AdayProgramDetayScreen}
+            options={{ title: 'Program Detayi', headerRight: () => <LogoutButton /> }}
           />
           <Stack.Screen
             name="AdayKisisel"

@@ -44,15 +44,12 @@ export interface AuthBackend {
   registerCandidate(params: {
     fullName: string;
     email: string;
-    phone?: string;
-    country?: string;
-    city?: string;
-    password: string;
     kvkkAccepted: boolean;
   }): Promise<User>;
   loginAdmin(params: { username: string; password: string }): Promise<User>;
   logout(): Promise<void>;
   updateProfile(params: { userId: string; patch: Partial<User> }): Promise<User>;
+  listCandidates(): Promise<User[]>;
 }
 
 export interface ProgramBackend {
@@ -68,8 +65,10 @@ export interface ApplicationBackend {
     createdAfterISO?: string;
     query?: string;
   }): Promise<Application[]>;
+  listForCandidate(params: { userId: string }): Promise<Application[]>;
   getForCandidate(params: { userId: string }): Promise<Application | null>;
   ensureDraft(params: { userId: string; programId: string; fullName: string }): Promise<Application>;
+  assignProgram(params: { userId: string; programId: string; fullName: string }): Promise<Application>;
   updatePersonalInfo(params: {
     applicationId: string;
     patch: Partial<PersonalInfo>;

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+﻿import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,63 +10,91 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
+  ScrollView,
 } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import { colors } from '../../theme';
 import { useAuth } from '../../hooks';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { selectApplications } from '../../store/selectors';
-import { selectMessagesByApplicationId } from '../../store/selectors/messageSelectors';
-import { selectMessageLoading } from '../../store/selectors/messageSelectors';
-import { loadMessageThread, markThreadRead, sendMessageThunk } from '../../store/thunks/messageThunks';
+import {
+  selectMessagesByApplicationId,
+  selectMessageLoading,
+} from '../../store/selectors/messageSelectors';
+import {
+  loadMessageThread,
+  markThreadRead,
+  sendMessageThunk,
+} from '../../store/thunks/messageThunks';
 import { getRelativeTime } from '../../utils/date';
 import { Message, AdayMesajRouteProp } from '../../types';
 
 export const AdayMesajScreen: React.FC = () => {
   const route = useRoute<AdayMesajRouteProp>();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const dispatch = useAppDispatch();
   const applications = useAppSelector(selectApplications);
   const flatListRef = useRef<FlatList>(null);
 
-  // Find the application - either from route params or the user's application
-  const applicationId = useMemo(() => {
-    if (route.params?.applicationId) return route.params.applicationId;
-    const myApp = applications.find((app) => app.userId === user?.id);
-    return myApp?.id || '';
-  }, [route.params?.applicationId, applications, user?.id]);
+  const userApplications = useMemo(
+    () => applications.filter((app) => app.userId === user?.id),
+    [applications, user?.id],
+  );
 
-  const messages = useAppSelector(selectMessagesByApplicationId(applicationId));
+  const hasRouteApplication = Boolean(route.params?.applicationId);
+  const [selectedApplicationId, setSelectedApplicationId] = useState<string>(
+    route.params?.applicationId || '',
+  );
+
+  useEffect(() => {
+    if (route.params?.applicationId) {
+      setSelectedApplicationId(route.params.applicationId);
+      return;
+    }
+
+    const validSelection = userApplications.some(
+      (app) => app.id === selectedApplicationId,
+    );
+
+    if (!validSelection) {
+      setSelectedApplicationId(userApplications[0]?.id || '');
+    }
+  }, [route.params?.applicationId, selectedApplicationId, userApplications]);
+
+  const activeApplicationId = route.params?.applicationId || selectedApplicationId;
+
+  const messages = useAppSelector(
+    selectMessagesByApplicationId(activeApplicationId || ''),
+  );
   const isLoading = useAppSelector(selectMessageLoading);
   const error = useAppSelector((s) => s.message.error);
   const [newMessage, setNewMessage] = useState('');
 
   const application = useMemo(
-    () => applications.find((app) => app.id === applicationId),
-    [applications, applicationId],
+    () => applications.find((app) => app.id === activeApplicationId),
+    [applications, activeApplicationId],
   );
 
   useEffect(() => {
-    if (!applicationId) return;
-    dispatch(loadMessageThread({ applicationId }));
-    dispatch(markThreadRead({ applicationId }));
-  }, [dispatch, applicationId]);
+    if (!activeApplicationId) return;
+    dispatch(loadMessageThread({ applicationId: activeApplicationId }));
+    dispatch(markThreadRead({ applicationId: activeApplicationId }));
+  }, [dispatch, activeApplicationId]);
 
   useEffect(() => {
-    // Scroll to bottom when messages change
-    if (messages.length > 0) {
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
-    }
+    if (messages.length === 0) return;
+    const timer = setTimeout(() => {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+    return () => clearTimeout(timer);
   }, [messages.length]);
 
   const handleSend = useCallback(() => {
-    if (!newMessage.trim() || !user || !applicationId) return;
+    if (!newMessage.trim() || !user || !activeApplicationId) return;
 
-    dispatch(sendMessageThunk({ applicationId, content: newMessage.trim() }));
+    dispatch(sendMessageThunk({ applicationId: activeApplicationId, content: newMessage.trim() }));
     setNewMessage('');
-  }, [newMessage, user, applicationId, dispatch]);
+  }, [newMessage, user, activeApplicationId, dispatch]);
 
   const renderMessage = useCallback(
     ({ item }: { item: Message }) => {
@@ -93,6 +121,8 @@ export const AdayMesajScreen: React.FC = () => {
     [user?.id],
   );
 
+  const showThreadSelector = !hasRouteApplication && !isAdmin && userApplications.length > 1;
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -103,26 +133,56 @@ export const AdayMesajScreen: React.FC = () => {
         <View style={styles.headerCard}>
           <View style={styles.accentBar} />
           <View style={styles.headerContent}>
-            <Text style={styles.h2}>Mesajlaşma</Text>
-            {application && (
-              <Text style={styles.subtitle}>
-                {application.personalInfo.fullName} - {application.programName}
-              </Text>
+            <Text style={styles.h2}>Mesajlar</Text>
+            {application ? (
+              <Text style={styles.subtitle}>{application.programName}</Text>
+            ) : (
+              <Text style={styles.subtitle}>Program atamasi bulunamadi.</Text>
             )}
           </View>
         </View>
       </View>
 
-      {messages.length === 0 ? (
+      {showThreadSelector ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.threadRow}
+        >
+          {userApplications.map((app) => {
+            const isActive = app.id === activeApplicationId;
+            return (
+              <TouchableOpacity
+                key={app.id}
+                style={[styles.threadChip, isActive && styles.threadChipActive]}
+                onPress={() => setSelectedApplicationId(app.id)}
+              >
+                <Text
+                  style={[styles.threadChipText, isActive && styles.threadChipTextActive]}
+                >
+                  {app.programName}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      ) : null}
+
+      {!activeApplicationId ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>
+            Henuz atanmis bir program yok. Program atamasi sonrasinda buradan mesajlasabilirsiniz.
+          </Text>
+        </View>
+      ) : messages.length === 0 ? (
         <View style={styles.emptyContainer}>
           {isLoading ? (
-            <Text style={styles.emptyText}>Mesajlar yükleniyor...</Text>
+            <Text style={styles.emptyText}>Mesajlar yukleniyor...</Text>
           ) : error ? (
             <Text style={styles.emptyText}>{error}</Text>
           ) : (
             <Text style={styles.emptyText}>
-              Henüz mesaj yok. Eksik veya hatalı belgeler hakkında admin ile
-              iletişime geçebilirsiniz.
+              Henuz mesaj yok. Gerekirse buradan admin ile iletisime gecebilirsiniz.
             </Text>
           )}
         </View>
@@ -142,20 +202,21 @@ export const AdayMesajScreen: React.FC = () => {
           style={styles.input}
           value={newMessage}
           onChangeText={setNewMessage}
-          placeholder="Mesajınızı yazın..."
+          placeholder="Mesajinizi yazin..."
           placeholderTextColor={colors.textMuted}
           multiline
           maxLength={500}
+          editable={Boolean(activeApplicationId)}
         />
         <TouchableOpacity
           style={[
             styles.sendButton,
-            !newMessage.trim() && styles.sendButtonDisabled,
+            (!newMessage.trim() || !activeApplicationId) && styles.sendButtonDisabled,
           ]}
           onPress={handleSend}
-          disabled={!newMessage.trim()}
+          disabled={!newMessage.trim() || !activeApplicationId}
         >
-          <Text style={styles.sendButtonText}>Gönder</Text>
+          <Text style={styles.sendButtonText}>Gonder</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -198,6 +259,31 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 14,
     marginTop: 4,
+  } as TextStyle,
+  threadRow: {
+    paddingHorizontal: 20,
+    paddingBottom: 8,
+    gap: 8,
+  } as ViewStyle,
+  threadChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    backgroundColor: colors.cardBg,
+  } as ViewStyle,
+  threadChipActive: {
+    borderColor: colors.teal,
+    backgroundColor: colors.tealBg,
+  } as ViewStyle,
+  threadChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textSecondary,
+  } as TextStyle,
+  threadChipTextActive: {
+    color: colors.teal,
   } as TextStyle,
   messageList: {
     padding: 20,

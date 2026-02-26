@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+ï»¿import React, { useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,207 +6,99 @@ import {
   ViewStyle,
   TextStyle,
   ScrollView,
+  TouchableOpacity,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../../theme';
-import { Button, ChecklistRow, Pill } from '../../components';
+import { Button, Pill } from '../../components';
 import { useAuth } from '../../hooks';
-import { useAppSelector } from '../../store/hooks';
-import { selectApplications } from '../../store/selectors';
-import { DOCUMENT_STATUS_LABELS, DOCUMENT_TYPES } from '../../constants';
-import { DocumentStatus, RootStackNavigationProp } from '../../types';
-import { getProgramById } from '../../services/programCatalog';
-import { formatDateShort } from '../../utils/date';
-import { isEuropassCvComplete, isMotivationLetterComplete } from '../../utils/europass';
-
-const statusToVariant = (status: DocumentStatus) => {
-  switch (status) {
-    case 'ok':
-      return 'ok';
-    case 'missing':
-      return 'warn';
-    case 'wrong_format':
-      return 'err';
-    case 'unread':
-      return 'info';
-    default:
-      return 'info';
-  }
-};
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { selectApplicationLoading, selectApplications } from '../../store/selectors';
+import { APPLICATION_STATUS_LABELS } from '../../constants';
+import { RootStackNavigationProp } from '../../types';
+import { hydrateSession } from '../../store/thunks/sessionThunks';
 
 export const AdayEgitimScreen: React.FC = () => {
   const navigation = useNavigation<RootStackNavigationProp>();
   const { user } = useAuth();
+  const dispatch = useAppDispatch();
   const applications = useAppSelector(selectApplications);
+  const isLoading = useAppSelector(selectApplicationLoading);
 
-  const myApplication = useMemo(
-    () => applications.find((app) => app.userId === user?.id),
+  const myPrograms = useMemo(
+    () => applications.filter((app) => app.userId === user?.id),
     [applications, user?.id],
   );
 
-  const program = useMemo(
-    () => (myApplication ? getProgramById(myApplication.programId) : null),
-    [myApplication],
-  );
-
-  const completedCount = useMemo(
-    () => myApplication?.documents.filter((d) => d.status === 'ok').length ?? 0,
-    [myApplication],
-  );
-  const totalCount = myApplication?.documents.length ?? 0;
-
-  const cvReady = isEuropassCvComplete(myApplication?.personalInfo.europassCv);
-  const motivationReady = isMotivationLetterComplete(
-    myApplication?.personalInfo.motivationLetter,
-  );
+  useEffect(() => {
+    if (!user) return;
+    if (myPrograms.length > 0) return;
+    dispatch(hydrateSession(user));
+  }, [dispatch, user, myPrograms.length]);
 
   return (
     <ScrollView contentContainerStyle={styles.section}>
       <View style={styles.headerCard}>
         <View style={styles.accentBar} />
         <View style={styles.headerContent}>
-          <Text style={styles.h2}>Egitim Bilgilendirme</Text>
+          <Text style={styles.h2}>Programlarim</Text>
           <Text style={styles.subtitle}>
-            {myApplication
-              ? `${myApplication.programName} / ${program?.year ?? 2026}`
-              : 'Henuz basvuru yok'}
+            Admin tarafindan atanmis tum programlarinizi bu alandan yonetebilirsiniz.
           </Text>
         </View>
       </View>
 
-      {myApplication ? (
-        <>
-          <View style={styles.progressCard}>
-            <View style={styles.progressHeader}>
-              <Text style={styles.progressLabel}>Belge Ilerlemesi</Text>
-              <Text style={styles.progressCount}>
-                {completedCount}/{totalCount}
-              </Text>
-            </View>
-            <View style={styles.progressBar}>
-              <View
-                style={[
-                  styles.progressFill,
-                  {
-                    width:
-                      totalCount > 0
-                        ? `${(completedCount / totalCount) * 100}%`
-                        : '0%',
-                  },
-                ]}
-              />
-            </View>
-          </View>
+      <Button
+        label={isLoading ? 'Yukleniyor...' : 'Programlari Yenile'}
+        variant="ghost"
+        onPress={() => user && dispatch(hydrateSession(user))}
+      />
 
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Program Basvuru Dosyasi</Text>
-            <View style={styles.statusRow}>
-              <Text style={styles.statusLabel}>Europass CV</Text>
-              <Pill label={cvReady ? 'Tamam' : 'Eksik'} variant={cvReady ? 'ok' : 'warn'} />
-            </View>
-            <Button
-              label="CV Ekranina Git"
-              variant="ghost"
-              onPress={() => navigation.navigate('AdayCvBuilder')}
-            />
-            <View style={styles.statusRow}>
-              <Text style={styles.statusLabel}>Motivasyon Mektubu</Text>
-              <Pill
-                label={motivationReady ? 'Tamam' : 'Eksik'}
-                variant={motivationReady ? 'ok' : 'warn'}
-              />
-            </View>
-            <Button
-              label="Mektup Ekranina Git"
-              variant="ghost"
-              onPress={() => navigation.navigate('AdayMotivation')}
-            />
-          </View>
-
-          <Text style={styles.sectionLabel}>KATILIM ADIMLARI</Text>
-          <View style={styles.card}>
-            <Text style={styles.cardHint}>
-              Program bazli bilgilendirme ve checklist, surecteki yanlis anlamalari azaltmak icin tasarlanmistir.
-            </Text>
-          </View>
-
-          {program?.steps?.length ? (
-            <View style={styles.card}>
-              {program.steps.map((s, idx) => (
-                <Text key={`${idx}-${s}`} style={styles.stepText}>
-                  {idx + 1}) {s}
-                </Text>
-              ))}
-            </View>
-          ) : null}
-
-          {program?.deadlines?.length ? (
-            <>
-              <Text style={styles.sectionLabel}>TESLIM TARIHLERI</Text>
-              <View style={styles.card}>
-                {program.deadlines.map((d) => (
-                  <View key={d.label} style={styles.deadlineRow}>
-                    <Text style={styles.deadlineLabel}>{d.label}</Text>
-                    <Text style={styles.deadlineValue}>{formatDateShort(d.dateISO)}</Text>
-                  </View>
-                ))}
-              </View>
-            </>
-          ) : null}
-
-          <Text style={styles.sectionLabel}>GEREKLI BELGELER</Text>
-          <View style={styles.card}>
-            <Text style={styles.cardHint}>
-              Belge durumlari server parse/dogrulama mantigiyla takip edilir:
-              OK / EKSIK / YANLIS FORMAT / OKUNMADI.
-            </Text>
-          </View>
-
-          {(program?.checklist || []).map((item) => {
-            const doc = myApplication.documents.find((d) => d.type === item.documentType);
-            const status = doc?.status || 'missing';
-            return (
-              <ChecklistRow
-                key={item.documentType}
-                label={DOCUMENT_TYPES[item.documentType] || item.documentType}
-                hint={item.expectedFormat}
-                status={DOCUMENT_STATUS_LABELS[status] || status}
-                variant={statusToVariant(status as DocumentStatus)}
-              />
-            );
-          })}
-
-          <Text style={styles.sectionLabel}>DIKKAT EDILMESI GEREKENLER</Text>
-          <View style={styles.card}>
-            <Text style={styles.cardHint}>
-              {(program?.commonMistakes?.length
-                ? program.commonMistakes
-                : [
-                    'Bulanik veya karanlik fotograf -> OKUNMADI',
-                    'PDF yerine fotograf -> YANLIS FORMAT',
-                    'Eksik sayfa -> EKSIK',
-                    'Yanlis belge turu secimi',
-                  ]
-              )
-                .map((m) => `• ${m}`)
-                .join('\n')}
-            </Text>
-          </View>
-
-          <Button label="Belge Yukle" onPress={() => navigation.navigate('AdayBelge')} />
-          <Button
-            label="Mesajlari Goruntule"
-            variant="ghost"
-            onPress={() => navigation.navigate('AdayMesaj', { applicationId: myApplication.id })}
-          />
-        </>
-      ) : (
+      {myPrograms.length === 0 ? (
         <View style={styles.emptyCard}>
           <Text style={styles.emptyText}>
-            Henuz bir basvurunuz bulunmuyor. Once Kayit Formu ekranindan bilgilerinizi kaydedin.
+            Henuz size atanmis bir program yok. Lutfen admin atamasini bekleyin.
           </Text>
-          <Button label="Kayit Formuna Git" onPress={() => navigation.navigate('AdayKayit')} />
         </View>
+      ) : (
+        myPrograms.map((app) => {
+          const totalDocs = app.documents.length;
+          const completedDocs = app.documents.filter((d) => d.status === 'ok').length;
+
+          return (
+            <TouchableOpacity
+              key={app.id}
+              activeOpacity={0.8}
+              style={styles.programCard}
+              onPress={() => navigation.navigate('AdayProgramDetay', { applicationId: app.id })}
+            >
+              <View style={styles.programTopRow}>
+                <Text style={styles.programTitle}>{app.programName}</Text>
+                <Pill
+                  label={APPLICATION_STATUS_LABELS[app.status] || app.status}
+                  variant={
+                    app.status === 'approved'
+                      ? 'ok'
+                      : app.status === 'needs_fix'
+                        ? 'warn'
+                        : app.status === 'rejected'
+                          ? 'err'
+                          : 'info'
+                  }
+                />
+              </View>
+
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Belge Ilerlemesi</Text>
+                <Text style={styles.metaValue}>
+                  {completedDocs}/{totalDocs}
+                </Text>
+              </View>
+
+              <Text style={styles.cardHint}>Program detayina girerek motivasyon, belge ve checklist adimlarini yonetin.</Text>
+            </TouchableOpacity>
+          );
+        })
       )}
     </ScrollView>
   );
@@ -215,7 +107,7 @@ export const AdayEgitimScreen: React.FC = () => {
 const styles = StyleSheet.create({
   section: {
     paddingTop: 16,
-    gap: 16,
+    gap: 14,
     padding: 20,
     paddingBottom: 40,
   } as ViewStyle,
@@ -235,7 +127,7 @@ const styles = StyleSheet.create({
   } as ViewStyle,
   headerContent: {
     flex: 1,
-    gap: 4,
+    gap: 6,
   } as ViewStyle,
   h2: {
     fontSize: 24,
@@ -244,50 +136,10 @@ const styles = StyleSheet.create({
   } as TextStyle,
   subtitle: {
     color: colors.textSecondary,
-    fontSize: 15,
-  } as TextStyle,
-  sectionLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textMuted,
-    letterSpacing: 0.8,
-    marginTop: 4,
-  } as TextStyle,
-  progressCard: {
-    backgroundColor: colors.cardBg,
-    borderRadius: 14,
-    padding: 16,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  } as ViewStyle,
-  progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  } as ViewStyle,
-  progressLabel: {
     fontSize: 14,
-    fontWeight: '600',
-    color: colors.textSecondary,
+    lineHeight: 20,
   } as TextStyle,
-  progressCount: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.teal,
-  } as TextStyle,
-  progressBar: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.borderLight,
-    overflow: 'hidden',
-  } as ViewStyle,
-  progressFill: {
-    height: '100%',
-    borderRadius: 4,
-    backgroundColor: colors.teal,
-  } as ViewStyle,
-  card: {
+  programCard: {
     backgroundColor: colors.cardBg,
     borderRadius: 12,
     borderWidth: 1,
@@ -295,51 +147,42 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 8,
   } as ViewStyle,
-  cardTitle: {
+  programTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 10,
+  } as ViewStyle,
+  programTitle: {
+    flex: 1,
     fontSize: 16,
     fontWeight: '700',
     color: colors.textPrimary,
   } as TextStyle,
-  cardHint: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
-  } as TextStyle,
-  statusRow: {
+  metaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   } as ViewStyle,
-  statusLabel: {
-    fontSize: 14,
-    color: colors.textPrimary,
-    fontWeight: '600',
-  } as TextStyle,
-  stepText: {
-    fontSize: 14,
-    color: colors.textPrimary,
-    lineHeight: 20,
-  } as TextStyle,
-  deadlineRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  } as ViewStyle,
-  deadlineLabel: {
-    fontSize: 14,
+  metaLabel: {
+    fontSize: 13,
     color: colors.textSecondary,
-    fontWeight: '600',
   } as TextStyle,
-  deadlineValue: {
-    fontSize: 14,
-    color: colors.textPrimary,
+  metaValue: {
+    fontSize: 13,
     fontWeight: '700',
+    color: colors.textPrimary,
+  } as TextStyle,
+  cardHint: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 19,
   } as TextStyle,
   emptyCard: {
     backgroundColor: colors.noticeBg,
     borderRadius: 12,
     padding: 24,
-    gap: 18,
+    gap: 10,
     alignItems: 'center',
   } as ViewStyle,
   emptyText: {

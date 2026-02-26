@@ -4,6 +4,7 @@ import { selectUser, selectIsAuthenticated, selectUserRole } from '../store/sele
 import { User } from '../types';
 import {
   loginCandidate as loginCandidateThunk,
+  loginDemoCandidate as loginDemoCandidateThunk,
   loginAdmin as loginAdminThunk,
   registerCandidate as registerCandidateThunk,
   logout as logoutThunk,
@@ -27,16 +28,16 @@ export const useAuth = () => {
     (params: {
       fullName: string;
       email: string;
-      phone?: string;
-      country?: string;
-      city?: string;
-      password: string;
       kvkkAccepted: boolean;
     }) => {
-      dispatch(registerCandidateThunk(params));
+      return dispatch(registerCandidateThunk(params));
     },
     [dispatch],
   );
+
+  const loginDemoCandidate = useCallback(() => {
+    dispatch(loginDemoCandidateThunk());
+  }, [dispatch]);
 
   const loginAdmin = useCallback(
     (params: { username: string; password: string }) => {
@@ -63,6 +64,7 @@ export const useAuth = () => {
     isAdmin: role === 'admin',
     isCandidate: role === 'candidate',
     loginCandidate,
+    loginDemoCandidate,
     registerCandidate,
     loginAdmin,
     logout,

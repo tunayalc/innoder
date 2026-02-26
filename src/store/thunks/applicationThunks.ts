@@ -36,11 +36,39 @@ export const ensureDraftApplication =
         programId: params.programId,
         fullName: user.name,
       });
-      // Candidate session keeps only their application list.
-      dispatch(setApplications([app]));
+      const existingApps = getState().application.applications;
+      const hasExisting = existingApps.some((x) => x.id === app.id);
+      if (hasExisting) {
+        dispatch(updateApplication(app));
+      } else {
+        dispatch(setApplications([app, ...existingApps]));
+      }
       dispatch(setCurrentApplication(app));
     } catch (err) {
       dispatch(setApplicationError(getErrorMessage(err, 'Başvuru oluşturulamadı.')));
+    } finally {
+      dispatch(setApplicationLoading(false));
+    }
+  };
+
+export const assignProgramToCandidate =
+  (params: { userId: string; fullName: string; programId: string }): AppThunk =>
+  async (dispatch, getState) => {
+    const backend = getBackend();
+    dispatch(setApplicationLoading(true));
+    dispatch(setApplicationError(null));
+    try {
+      const app = await backend.applications.assignProgram(params);
+      const existingApps = getState().application.applications;
+      const hasExisting = existingApps.some((x) => x.id === app.id);
+      if (hasExisting) {
+        dispatch(updateApplication(app));
+      } else {
+        dispatch(setApplications([app, ...existingApps]));
+      }
+      dispatch(reloadAuditLogs());
+    } catch (err) {
+      dispatch(setApplicationError(getErrorMessage(err, 'Program atamasi yapilamadi.')));
     } finally {
       dispatch(setApplicationLoading(false));
     }

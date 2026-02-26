@@ -60,14 +60,14 @@ export const hydrateSession = (user: User): AppThunk => async (dispatch) => {
       const logs = await backend.audit.list();
       dispatch(setLogs(logs));
     } else {
-      const app = await backend.applications.getForCandidate({ userId: user.id });
-      dispatch(setApplications(app ? [app] : []));
-      dispatch(setCurrentApplication(app));
+      const apps = await backend.applications.listForCandidate({ userId: user.id });
+      dispatch(setApplications(apps));
+      dispatch(setCurrentApplication(apps[0] || null));
 
-      const messages = app
-        ? await backend.messages.listByApplicationId({ applicationId: app.id })
-        : [];
-      dispatch(setMessages(messages));
+      const threads = await Promise.all(
+        apps.map((a) => backend.messages.listByApplicationId({ applicationId: a.id })),
+      );
+      dispatch(setMessages(threads.flat()));
 
       const logs = await backend.audit.list();
       dispatch(setLogs(logs));
@@ -87,4 +87,3 @@ export const hydrateSession = (user: User): AppThunk => async (dispatch) => {
     dispatch(setAuditLoading(false));
   }
 };
-

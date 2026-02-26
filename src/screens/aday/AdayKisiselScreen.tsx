@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+﻿import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,162 +9,101 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Switch,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { colors } from '../../theme';
-import { Button, InputField, Pill } from '../../components';
+import { Button, InputField } from '../../components';
 import { useAuth } from '../../hooks';
-import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import {
-  selectApplicationError,
-  selectApplicationLoading,
-  selectApplications,
-} from '../../store/selectors';
-import { APPLICATION_STATUS_LABELS } from '../../constants';
-import { RootStackNavigationProp } from '../../types';
-import { PROGRAM_CATALOG } from '../../services/programCatalog';
-import { isValidTCKN } from '../../utils/validation';
-import {
-  submitApplication,
-  updatePersonalInfoDraft,
-} from '../../store/thunks/applicationThunks';
-import { isEuropassCvComplete, isMotivationLetterComplete } from '../../utils/europass';
+import { useAppSelector } from '../../store/hooks';
+import { selectUserError, selectUserLoading } from '../../store/selectors';
+import { isValidEmail, isValidPhoneNumber, isValidTCKN } from '../../utils/validation';
 
 export const AdayKisiselScreen: React.FC = () => {
-  const navigation = useNavigation<RootStackNavigationProp>();
-  const { user } = useAuth();
-  const dispatch = useAppDispatch();
-  const applications = useAppSelector(selectApplications);
-  const isLoading = useAppSelector(selectApplicationLoading);
-  const error = useAppSelector(selectApplicationError);
+  const { user, update } = useAuth();
+  const isLoading = useAppSelector(selectUserLoading);
+  const error = useAppSelector(selectUserError);
 
-  const myApplication = useMemo(
-    () => applications.find((app) => app.userId === user?.id),
-    [applications, user?.id],
-  );
-
-  const [programSelection, setProgramSelection] = useState(
-    myApplication?.programId ||
-      myApplication?.personalInfo.programSelection ||
-      PROGRAM_CATALOG[0].id,
-  );
-  const [birthDate, setBirthDate] = useState(myApplication?.personalInfo.birthDate || '');
-  const [identityNumber, setIdentityNumber] = useState(
-    myApplication?.personalInfo.identityNumber || '',
-  );
+  const [fullName, setFullName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [phone, setPhone] = useState(user?.phone || '');
+  const [country, setCountry] = useState(user?.country || 'Turkiye');
+  const [city, setCity] = useState(user?.city || '');
+  const [birthDate, setBirthDate] = useState(user?.birthDate || '');
+  const [identityNumber, setIdentityNumber] = useState(user?.identityNumber || '');
+  const [passportNumber, setPassportNumber] = useState(user?.passportNumber || '');
+  const [kvkkAccepted, setKvkkAccepted] = useState(Boolean(user?.kvkkAccepted));
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const cvReady = isEuropassCvComplete(myApplication?.personalInfo.europassCv);
-  const motivationReady = isMotivationLetterComplete(
-    myApplication?.personalInfo.motivationLetter,
-  );
-
   const validate = useCallback(() => {
-    const newErrors: Record<string, string> = {};
+    const nextErrors: Record<string, string> = {};
+
+    if (!fullName.trim()) {
+      nextErrors.fullName = 'Ad soyad zorunludur';
+    }
+    if (!email.trim()) {
+      nextErrors.email = 'E-posta zorunludur';
+    } else if (!isValidEmail(email)) {
+      nextErrors.email = 'Gecerli bir e-posta giriniz';
+    }
+    if (phone.trim() && !isValidPhoneNumber(phone)) {
+      nextErrors.phone = 'Gecerli bir telefon numarasi giriniz';
+    }
     if (!birthDate.trim()) {
-      newErrors.birthDate = 'Dogum tarihi zorunludur';
+      nextErrors.birthDate = 'Dogum tarihi zorunludur';
     }
     if (!identityNumber.trim()) {
-      newErrors.identityNumber = 'Kimlik numarasi zorunludur';
+      nextErrors.identityNumber = 'TC kimlik numarasi zorunludur';
     } else if (!isValidTCKN(identityNumber)) {
-      newErrors.identityNumber = 'Gecerli bir TC Kimlik No giriniz';
+      nextErrors.identityNumber = 'Gecerli bir TC kimlik numarasi giriniz';
     }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  }, [birthDate, identityNumber]);
-
-  const handleSaveDraft = useCallback(async () => {
-    if (!myApplication || !user) return;
-    await dispatch(
-      updatePersonalInfoDraft({
-        applicationId: myApplication.id,
-        patch: { programSelection, birthDate, identityNumber },
-        programId: programSelection,
-      }),
-    );
-    Alert.alert('Taslak Kaydedildi', 'Bilgileriniz taslak olarak saklandi.');
-  }, [myApplication, user, dispatch, programSelection, birthDate, identityNumber]);
-
-  const handleSubmit = useCallback(async () => {
-    if (!validate()) return;
-    if (!myApplication || !user) return;
-
-    if (!cvReady || !motivationReady) {
-      Alert.alert(
-        'Eksik Basvuru Icerigi',
-        'Basvuru gondermeden once Europass CV ve motivasyon mektubu bolumlerini tamamlamalisiniz.',
-        [
-          {
-            text: 'CV Ekranina Git',
-            onPress: () => {
-              if (!cvReady) {
-                navigation.navigate('AdayCvBuilder');
-                return;
-              }
-              navigation.navigate('AdayMotivation');
-            },
-          },
-          { text: 'Tamam', style: 'cancel' },
-        ],
-      );
-      return;
+    if (!passportNumber.trim()) {
+      nextErrors.passportNumber = 'Pasaport numarasi zorunludur';
+    }
+    if (!kvkkAccepted) {
+      nextErrors.kvkkAccepted = 'KVKK onayi zorunludur';
     }
 
-    await dispatch(
-      updatePersonalInfoDraft({
-        applicationId: myApplication.id,
-        patch: {
-          fullName: user.name,
-          programSelection,
-          birthDate,
-          identityNumber,
-        },
-        programId: programSelection,
-      }),
-    );
-
-    await dispatch(submitApplication({ applicationId: myApplication.id }));
-
-    Alert.alert(
-      'Basvuru Gonderildi',
-      'Basvurunuz basariyla gonderildi. Admin incelemesini bekleyin.',
-      [{ text: 'Tamam', onPress: () => navigation.goBack() }],
-    );
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   }, [
-    validate,
-    myApplication,
-    user,
-    dispatch,
-    programSelection,
+    fullName,
+    email,
+    phone,
     birthDate,
     identityNumber,
-    cvReady,
-    motivationReady,
-    navigation,
+    passportNumber,
+    kvkkAccepted,
   ]);
 
-  if (!myApplication) {
-    return (
-      <View style={styles.section}>
-        <View style={styles.headerCard}>
-          <View style={styles.accentBar} />
-          <View style={styles.headerContent}>
-            <Text style={styles.h2}>Kisisel Bilgi</Text>
-            <Text style={styles.subtitle}>Once Kayit Formu ekranindan bilgilerinizi kaydedin.</Text>
-          </View>
-        </View>
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyText}>
-            Once Kayit Formu ekranindan bilgilerinizi kaydedin.
-          </Text>
-          <Button label="Kayit Formuna Git" onPress={() => navigation.navigate('AdayKayit')} />
-        </View>
-      </View>
-    );
-  }
+  const onSave = useCallback(() => {
+    if (!validate()) return;
 
-  const isSubmitted =
-    myApplication.status !== 'draft' && myApplication.status !== 'needs_fix';
+    update({
+      name: fullName.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone.trim() || undefined,
+      country: country.trim() || undefined,
+      city: city.trim() || undefined,
+      birthDate: birthDate.trim(),
+      identityNumber: identityNumber.trim(),
+      passportNumber: passportNumber.trim(),
+      kvkkAccepted,
+    });
+
+    Alert.alert('Kaydedildi', 'Kisisel bilgileriniz guncellendi.');
+  }, [
+    validate,
+    update,
+    fullName,
+    email,
+    phone,
+    country,
+    city,
+    birthDate,
+    identityNumber,
+    passportNumber,
+    kvkkAccepted,
+  ]);
 
   return (
     <KeyboardAvoidingView
@@ -175,47 +114,34 @@ export const AdayKisiselScreen: React.FC = () => {
         <View style={styles.headerCard}>
           <View style={styles.accentBar} />
           <View style={styles.headerContent}>
-            <View style={styles.headerRow}>
-              <Text style={styles.h2}>Kisisel Bilgi</Text>
-              <Pill
-                label={APPLICATION_STATUS_LABELS[myApplication.status] || myApplication.status}
-                variant={
-                  myApplication.status === 'approved'
-                    ? 'ok'
-                    : myApplication.status === 'needs_fix'
-                      ? 'warn'
-                      : myApplication.status === 'rejected'
-                        ? 'err'
-                        : 'info'
-                }
-              />
-            </View>
+            <Text style={styles.h2}>Kisisel Bilgiler</Text>
+            <Text style={styles.subtitle}>
+              Kayit sonrasi profilinizi buradan tamamlayin.
+            </Text>
           </View>
         </View>
 
-        <Text style={styles.sectionLabel}>PROGRAM SECIMI</Text>
-        <View style={styles.programChips}>
-          {PROGRAM_CATALOG.map((prog) => (
-            <Button
-              key={prog.id}
-              label={prog.name}
-              variant={programSelection === prog.id ? 'solid' : 'ghost'}
-              onPress={() => setProgramSelection(prog.id)}
-              style={styles.chip}
-            />
-          ))}
-        </View>
-
-        <Text style={styles.sectionLabel}>KIMLIK BILGILERI</Text>
+        <Text style={styles.sectionLabel}>HESAP BILGILERI</Text>
         <InputField
-          label="Dogum Tarihi *"
-          value={birthDate}
-          onChangeText={setBirthDate}
-          placeholder="YYYY-MM-DD"
-          error={errors.birthDate}
-          editable={!isSubmitted}
+          label="Ad Soyad *"
+          value={fullName}
+          onChangeText={setFullName}
+          placeholder="Adiniz Soyadiniz"
+          error={errors.fullName}
+          autoCapitalize="words"
         />
 
+        <InputField
+          label="E-posta *"
+          value={email}
+          onChangeText={setEmail}
+          placeholder="ornek@email.com"
+          error={errors.email}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+
+        <Text style={styles.sectionLabel}>KIMLIK VE SEYAHAT</Text>
         <InputField
           label="TC Kimlik Numarasi *"
           value={identityNumber}
@@ -224,61 +150,73 @@ export const AdayKisiselScreen: React.FC = () => {
           error={errors.identityNumber}
           keyboardType="number-pad"
           maxLength={11}
-          editable={!isSubmitted}
           secureTextEntry
         />
 
-        <Text style={styles.sectionLabel}>PROGRAM BASVURU DOSYASI</Text>
-        <View style={styles.requirementCard}>
-          <View style={styles.requirementRow}>
-            <Text style={styles.requirementLabel}>Europass CV</Text>
-            <Pill label={cvReady ? 'Tamam' : 'Eksik'} variant={cvReady ? 'ok' : 'warn'} />
-          </View>
-          <Button label="CV'yi Duzenle" variant="ghost" onPress={() => navigation.navigate('AdayCvBuilder')} />
+        <InputField
+          label="Pasaport Numarasi *"
+          value={passportNumber}
+          onChangeText={setPassportNumber}
+          placeholder="Pasaport numaraniz"
+          error={errors.passportNumber}
+          autoCapitalize="characters"
+        />
 
-          <View style={styles.requirementRow}>
-            <Text style={styles.requirementLabel}>Motivasyon Mektubu</Text>
-            <Pill label={motivationReady ? 'Tamam' : 'Eksik'} variant={motivationReady ? 'ok' : 'warn'} />
+        <InputField
+          label="Dogum Tarihi *"
+          value={birthDate}
+          onChangeText={setBirthDate}
+          placeholder="YYYY-MM-DD"
+          error={errors.birthDate}
+        />
+
+        <Text style={styles.sectionLabel}>ILETISIM</Text>
+        <InputField
+          label="Telefon"
+          value={phone}
+          onChangeText={setPhone}
+          placeholder="+90 5xx xxx xx xx"
+          error={errors.phone}
+          keyboardType="phone-pad"
+        />
+
+        <InputField
+          label="Ulke"
+          value={country}
+          onChangeText={setCountry}
+          placeholder="Turkiye"
+        />
+
+        <InputField
+          label="Sehir"
+          value={city}
+          onChangeText={setCity}
+          placeholder="Istanbul"
+        />
+
+        <Text style={styles.sectionLabel}>GIZLILIK</Text>
+        <View style={styles.switchRow}>
+          <View style={styles.switchLabel}>
+            <Text style={styles.bodyText}>KVKK Acik Riza Onayi *</Text>
+            <Text style={styles.kvkkHint}>
+              Kisisel verilerimin basvuru sureci icin islenmesini kabul ediyorum.
+            </Text>
           </View>
-          <Button
-            label="Mektubu Duzenle"
-            variant="ghost"
-            onPress={() => navigation.navigate('AdayMotivation')}
+          <Switch
+            value={kvkkAccepted}
+            onValueChange={setKvkkAccepted}
+            trackColor={{ false: colors.muted, true: colors.teal }}
+            thumbColor={colors.white}
           />
         </View>
-
-        <View style={styles.notice}>
-          <Text style={styles.noticeText}>
-            {isSubmitted
-              ? 'Basvurunuz gonderildi. Belge ve dogrulama durumlarini Egitim Bilgilendirme ekranindan takip edin.'
-              : 'Basvuru gonderimi icin Europass CV ve motivasyon mektubu zorunludur.'}
-          </Text>
-        </View>
+        {errors.kvkkAccepted ? <Text style={styles.errorText}>{errors.kvkkAccepted}</Text> : null}
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        {!isSubmitted && (
-          <View style={styles.buttonGroup}>
-            <Button
-              label={isLoading ? 'Kaydediliyor...' : 'Taslak Kaydet'}
-              variant="ghost"
-              onPress={handleSaveDraft}
-            />
-            <Button
-              label={isLoading ? 'Gonderiliyor...' : 'Basvuru Gonder'}
-              onPress={handleSubmit}
-            />
-          </View>
-        )}
-
-        {myApplication.status === 'needs_fix' && (
-          <View style={styles.buttonGroup}>
-            <Button
-              label={isLoading ? 'Gonderiliyor...' : 'Duzelterek Yeniden Gonder'}
-              onPress={handleSubmit}
-            />
-          </View>
-        )}
+        <Button
+          label={isLoading ? 'Kaydediliyor...' : 'Bilgileri Kaydet'}
+          onPress={onSave}
+        />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -328,69 +266,33 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     marginTop: 4,
   } as TextStyle,
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  } as ViewStyle,
-  programChips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  } as ViewStyle,
-  chip: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-  } as ViewStyle,
-  requirementCard: {
-    backgroundColor: colors.cardBg,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    padding: 14,
-    gap: 10,
-  } as ViewStyle,
-  requirementRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  } as ViewStyle,
-  requirementLabel: {
-    fontSize: 14,
-    fontWeight: '600',
+  bodyText: {
     color: colors.textPrimary,
-  } as TextStyle,
-  buttonGroup: {
-    gap: 12,
-    marginTop: 4,
-  } as ViewStyle,
-  notice: {
-    backgroundColor: colors.noticeBg,
-    padding: 14,
-    borderRadius: 12,
-  } as ViewStyle,
-  noticeText: {
-    color: colors.noticeText,
-    fontSize: 14,
-    lineHeight: 20,
-  } as TextStyle,
-  emptyCard: {
-    backgroundColor: colors.noticeBg,
-    borderRadius: 12,
-    padding: 24,
-    gap: 18,
-    alignItems: 'center',
-    marginTop: 16,
-  } as ViewStyle,
-  emptyText: {
     fontSize: 15,
-    color: colors.noticeText,
-    textAlign: 'center',
-    lineHeight: 22,
+    fontWeight: '600',
   } as TextStyle,
+  kvkkHint: {
+    color: colors.textMuted,
+    fontSize: 13,
+    marginTop: 3,
+  } as TextStyle,
+  switchRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: colors.switchRowBg,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 14,
+  } as ViewStyle,
+  switchLabel: {
+    flex: 1,
+  } as ViewStyle,
   errorText: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#DC2626',
-    textAlign: 'center',
+    marginLeft: 4,
+    marginTop: -4,
   } as TextStyle,
 });

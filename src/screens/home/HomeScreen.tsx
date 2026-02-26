@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { View, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { RootStackNavigationProp } from '../../types';
@@ -10,37 +10,38 @@ export const HomeScreen: React.FC = () => {
 
   return (
     <View style={styles.section}>
-      <Text style={styles.h1}>Tek kaynaklı başvuru akışı</Text>
+      <Text style={styles.h1}>Aday ve Admin Akisi</Text>
       <Text style={styles.subtitle}>
-        Bu prototip, aday ve admin akışlarını tıklanabilir bir şekilde gösteren
-        basit bir mobil arayüzdür. Sadece görsel sunum amaçlıdır.
+        Bu prototipte aday akisi program atamasi odaklidir: once kisisel bilgiler,
+        sonra Programlarim icinde program bazli belge/motivasyon adimlari.
       </Text>
 
-      <Card title="Hızlı Giriş">
-        <Button 
-          label="Aday Ekranları" 
-          onPress={() => navigation.navigate('AdayKayit')} 
+      <Card title="Hizli Giris">
+        <Button
+          label="Aday Ekranlari"
+          onPress={() => navigation.navigate('AdayMenu')}
         />
-        <Button 
-          label="Admin Ekranları" 
-          onPress={() => navigation.navigate('AdminListe')} 
+        <Button
+          label="Admin Ekranlari"
+          onPress={() => navigation.navigate('AdminListe')}
         />
-        <Button 
-          label="Veri Modeli" 
-          onPress={() => navigation.navigate('DataModel')} 
+        <Button
+          label="Veri Modeli"
+          onPress={() => navigation.navigate('DataModel')}
         />
       </Card>
 
-      <Card title="Özet Akış">
-        <Text style={styles.bodyText}>1) Kayıt ve iletişim doğrulama</Text>
-        <Text style={styles.bodyText}>2) Program bilgilendirme + checklist</Text>
-        <Text style={styles.bodyText}>3) Kişisel bilgi formu</Text>
-        <Text style={styles.bodyText}>4) Belge tarama / yükleme</Text>
-        <Text style={styles.bodyText}>5) Admin doğrulama + mesaj</Text>
+      <Card title="Ozet Akis">
+        <Text style={styles.bodyText}>1) Kayit (ad-soyad, e-posta, KVKK)</Text>
+        <Text style={styles.bodyText}>2) Login (demo veya atanmis bilgiler)</Text>
+        <Text style={styles.bodyText}>3) Kisisel Bilgiler (TC, pasaport, profil)</Text>
+        <Text style={styles.bodyText}>4) Programlarim (admin atar)</Text>
+        <Text style={styles.bodyText}>5) Program ici: motivasyon ve belgeler</Text>
+        <Text style={styles.bodyText}>6) Program disi: CV ve mesajlar</Text>
         <View style={styles.pillRow}>
           <Pill label="OK" variant="ok" />
-          <Pill label="EKSİK" variant="warn" />
-          <Pill label="YANLIŞ FORMAT" variant="err" />
+          <Pill label="EKSIK" variant="warn" />
+          <Pill label="YANLIS FORMAT" variant="err" />
           <Pill label="OKUNMADI" variant="info" />
         </View>
       </Card>

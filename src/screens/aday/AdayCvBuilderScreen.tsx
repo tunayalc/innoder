@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+﻿import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -11,18 +11,12 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { colors } from '../../theme';
 import { Button, Card, InputField, Pill } from '../../components';
 import { useAuth } from '../../hooks';
-import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import {
-  selectApplicationError,
-  selectApplicationLoading,
-  selectApplications,
-} from '../../store/selectors';
-import { RootStackNavigationProp, EuropassCvProfile } from '../../types';
-import { updatePersonalInfoDraft } from '../../store/thunks/applicationThunks';
+import { useAppSelector } from '../../store/hooks';
+import { selectUserError, selectUserLoading } from '../../store/selectors';
+import { EuropassCvProfile } from '../../types';
 import {
   CEFR_LEVELS,
   createEmptyEuropassCv,
@@ -38,20 +32,12 @@ const sectionHints = [
 ];
 
 export const AdayCvBuilderScreen: React.FC = () => {
-  const navigation = useNavigation<RootStackNavigationProp>();
-  const { user } = useAuth();
-  const dispatch = useAppDispatch();
-  const applications = useAppSelector(selectApplications);
-  const isLoading = useAppSelector(selectApplicationLoading);
-  const error = useAppSelector(selectApplicationError);
-
-  const myApplication = useMemo(
-    () => applications.find((app) => app.userId === user?.id),
-    [applications, user?.id],
-  );
+  const { user, update } = useAuth();
+  const isLoading = useAppSelector(selectUserLoading);
+  const error = useAppSelector(selectUserError);
 
   const [cv, setCv] = useState<EuropassCvProfile>(
-    myApplication?.personalInfo.europassCv ?? createEmptyEuropassCv(),
+    user?.europassCv ?? createEmptyEuropassCv(),
   );
 
   const isComplete = useMemo(() => isEuropassCvComplete(cv), [cv]);
@@ -158,37 +144,9 @@ export const AdayCvBuilderScreen: React.FC = () => {
   };
 
   const saveCv = async () => {
-    if (!myApplication) return;
-    await dispatch(
-      updatePersonalInfoDraft({
-        applicationId: myApplication.id,
-        patch: {
-          europassCv: cv,
-        },
-      }),
-    );
+    update({ europassCv: cv });
     Alert.alert('CV Kaydedildi', 'Europass formatindaki CV taslagi kaydedildi.');
   };
-
-  if (!myApplication) {
-    return (
-      <View style={styles.section}>
-        <View style={styles.headerCard}>
-          <View style={styles.accentBar} />
-          <View style={styles.headerContent}>
-            <Text style={styles.h2}>Europass CV Builder</Text>
-            <Text style={styles.subtitle}>Once basvuru taslagi olusturmaniz gerekiyor.</Text>
-          </View>
-        </View>
-        <Card>
-          <Text style={styles.emptyText}>
-            Bu adima gecmeden once Kayit Formu ekranindan taslak basvuru olusturun.
-          </Text>
-          <Button label="Kayit Formuna Git" onPress={() => navigation.navigate('AdayKayit')} />
-        </Card>
-      </View>
-    );
-  }
 
   return (
     <KeyboardAvoidingView
@@ -212,7 +170,7 @@ export const AdayCvBuilderScreen: React.FC = () => {
         <Card title="Format Kontrol Listesi">
           {sectionHints.map((item) => (
             <Text key={item} style={styles.hintRow}>
-              • {item}
+              - {item}
             </Text>
           ))}
         </Card>
@@ -520,4 +478,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   } as TextStyle,
 });
+
 

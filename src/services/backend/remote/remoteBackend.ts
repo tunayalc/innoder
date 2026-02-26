@@ -21,8 +21,8 @@ export const createRemoteBackend = (): InnoBackend => ({
       const res = await authService.register({
         name: params.fullName,
         email: params.email,
-        phone: params.phone || '',
-        password: params.password,
+        phone: '',
+        password: '',
         kvkkAccepted: params.kvkkAccepted,
       });
       if (!res) throw new BackendError('UNKNOWN', 'Registration failed');
@@ -41,6 +41,10 @@ export const createRemoteBackend = (): InnoBackend => ({
     async updateProfile() {
       // TODO: implement /users/me PATCH when API is available.
       throw new BackendError('NOT_FOUND', 'updateProfile endpoint not implemented');
+    },
+    async listCandidates() {
+      // TODO: implement admin-side candidate list endpoint.
+      throw new BackendError('NOT_FOUND', 'listCandidates endpoint not implemented');
     },
   },
 
@@ -65,10 +69,19 @@ export const createRemoteBackend = (): InnoBackend => ({
       const all = await applicationService.getApplications();
       return all.find((a) => a.userId === userId) || null;
     },
+    async listForCandidate({ userId }) {
+      // TODO: call /applications/me (or similar). Temporary fallback filters locally.
+      const all = await applicationService.getApplications();
+      return all.filter((a) => a.userId === userId);
+    },
     async ensureDraft({ programId }) {
       const app = await applicationService.createApplication(programId);
       if (!app) throw new BackendError('UNKNOWN', 'Draft application create failed');
       return app;
+    },
+    async assignProgram() {
+      // TODO: implement admin-side candidate program assignment endpoint.
+      throw new BackendError('NOT_FOUND', 'assignProgram endpoint not implemented');
     },
     async updatePersonalInfo({ applicationId, patch }) {
       const app = await applicationService.updatePersonalInfo(applicationId, patch);
