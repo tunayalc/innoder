@@ -29,7 +29,7 @@ type CaptureFormat = 'jpg' | 'pdf';
 
 const DOC_TYPE_OPTIONS: { key: DocType; label: string }[] = [
   { key: 'identity', label: 'Kimlik Belgesi' },
-  { key: 'form', label: 'Başvuru Formu' },
+  { key: 'form', label: 'Basvuru Formu' },
   { key: 'boarding_pass', label: 'Boarding Pass' },
   { key: 'extra', label: 'Ek Belge' },
 ];
@@ -53,16 +53,20 @@ export const AdayBelgeScreen: React.FC = () => {
   const isLoading = useAppSelector(selectApplicationLoading);
   const error = useAppSelector(selectApplicationError);
 
-  const myApplication = useMemo(
-    () => applications.find((app) => app.userId === user?.id),
-    [applications, user?.id],
-  );
+  const myApplication = useMemo(() => {
+    const byRoute = route.params?.applicationId
+      ? applications.find((app) => app.id === route.params?.applicationId)
+      : null;
+    if (byRoute) return byRoute;
+    return applications.find((app) => app.userId === user?.id);
+  }, [applications, route.params?.applicationId, user?.id]);
 
   const [selectedDocType, setSelectedDocType] = useState<DocType>('identity');
   const [captureFormat, setCaptureFormat] = useState<CaptureFormat>('jpg');
   const [capturedPages, setCapturedPages] = useState<Asset[]>([]);
   const [pdfFileName, setPdfFileName] = useState<string | null>(null);
   const [pdfUri, setPdfUri] = useState<string | null>(null);
+  const [boardingPassCommitmentAccepted, setBoardingPassCommitmentAccepted] = useState(false);
 
   // Receive photo from BelgeCameraScreen
   useEffect(() => {
@@ -104,8 +108,11 @@ export const AdayBelgeScreen: React.FC = () => {
   }, [myApplication, selectedDocType]);
 
   const handleCameraCapture = useCallback(() => {
-    navigation.navigate('BelgeCamera', { docType: selectedDocType });
-  }, [navigation, selectedDocType]);
+    navigation.navigate('BelgeCamera', {
+      docType: selectedDocType,
+      applicationId: myApplication?.id,
+    });
+  }, [navigation, selectedDocType, myApplication?.id]);
 
   const handleGalleryPick = useCallback(async () => {
     try {
@@ -124,7 +131,7 @@ export const AdayBelgeScreen: React.FC = () => {
       if (result.assets?.length) {
         setCapturedPages((prev) => [...prev, ...result.assets!]);
       }
-    } catch (e) {
+    } catch {
       Alert.alert('Hata', 'Galeri açılırken bir sorun oluştu.');
     }
   }, []);
@@ -182,6 +189,7 @@ export const AdayBelgeScreen: React.FC = () => {
     setCapturedPages([]);
     setPdfFileName(null);
     setPdfUri(null);
+    setBoardingPassCommitmentAccepted(false);
     Alert.alert(
       'Yükleme Başlatıldı',
       'Belge backend\'e gönderiliyor. Durum güncellenince checklist üzerinden takip edebilirsiniz.',
@@ -190,6 +198,10 @@ export const AdayBelgeScreen: React.FC = () => {
 
   const handleUpload = useCallback(() => {
     if (!myApplication || !user || !selectedDocument) return;
+    if (selectedDocType === 'boarding_pass' && !boardingPassCommitmentAccepted) {
+      Alert.alert('Uyari', 'Lutfen boarding pass taahhut onayini isaretleyin.');
+      return;
+    }
     const hasContent =
       captureFormat === 'pdf' ? !!pdfUri : capturedPages.length > 0;
     if (!hasContent) {
@@ -202,7 +214,17 @@ export const AdayBelgeScreen: React.FC = () => {
       return;
     }
     performUpload();
-  }, [myApplication, user, selectedDocument, captureFormat, capturedPages.length, pdfUri, performUpload]);
+  }, [
+    myApplication,
+    user,
+    selectedDocument,
+    selectedDocType,
+    boardingPassCommitmentAccepted,
+    captureFormat,
+    capturedPages.length,
+    pdfUri,
+    performUpload,
+  ]);
 
   if (!myApplication) {
     return (
@@ -211,13 +233,13 @@ export const AdayBelgeScreen: React.FC = () => {
           <View style={styles.accentBar} />
           <View style={styles.headerContent}>
             <Text style={styles.h2}>Belge Tarama</Text>
-            <Text style={styles.subtitle}>Önce Kayıt Formu ekranından bilgilerinizi kaydedin.</Text>
+            <Text style={styles.subtitle}>Bu adim icin once admin tarafindan program atamasi gerekir.</Text>
           </View>
         </View>
         <View style={styles.emptyCard}>
           <Button
-            label="Kayıt Formuna Git"
-            onPress={() => navigation.navigate('AdayKayit')}
+            label="Programlarima Git"
+            onPress={() => navigation.navigate('AdayEgitim')}
           />
         </View>
       </View>
@@ -253,6 +275,7 @@ export const AdayBelgeScreen: React.FC = () => {
                 setCapturedPages([]);
                 setPdfFileName(null);
                 setPdfUri(null);
+                setBoardingPassCommitmentAccepted(false);
               }}
             >
               <Text
@@ -305,6 +328,31 @@ export const AdayBelgeScreen: React.FC = () => {
           </TouchableOpacity>
         ))}
       </View>
+
+      {selectedDocType === 'boarding_pass' ? (
+        <View style={styles.commitmentCard}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={styles.commitmentRow}
+            onPress={() => setBoardingPassCommitmentAccepted((prev) => !prev)}
+          >
+            <View
+              style={[
+                styles.commitmentCheckbox,
+                boardingPassCommitmentAccepted && styles.commitmentCheckboxChecked,
+              ]}
+            >
+              {boardingPassCommitmentAccepted ? (
+                <Text style={styles.commitmentCheckboxMark}>X</Text>
+              ) : null}
+            </View>
+            <Text style={styles.commitmentText}>
+              Gidis-donus boarding pass belgelerini seyahat tamamlanir tamamlanmaz yukleyecegimi
+              ve talep edildiginde orijinalini teslim edecegimi taahhut ederim.
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
 
       {/* Camera/scan area */}
       <Text style={styles.sectionLabel}>TARAMA</Text>
@@ -610,9 +658,48 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     marginTop: -6,
   } as TextStyle,
+  commitmentCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    backgroundColor: colors.cardBg,
+    padding: 12,
+  } as ViewStyle,
+  commitmentRow: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'flex-start',
+  } as ViewStyle,
+  commitmentCheckbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.borderMedium,
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  } as ViewStyle,
+  commitmentCheckboxChecked: {
+    borderColor: colors.teal,
+    backgroundColor: colors.tealBg,
+  } as ViewStyle,
+  commitmentCheckboxMark: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.teal,
+  } as TextStyle,
+  commitmentText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.textSecondary,
+  } as TextStyle,
   errorText: {
     fontSize: 14,
     color: '#DC2626',
     textAlign: 'center',
   } as TextStyle,
 });
+
