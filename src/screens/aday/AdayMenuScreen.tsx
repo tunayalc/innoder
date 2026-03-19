@@ -1,22 +1,31 @@
-﻿import React, { useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ViewStyle, TextStyle, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { RootStackNavigationProp } from '../../types';
-import { colors } from '../../theme';
-import { MenuItem, Pill } from '../../components';
+import { useAppTheme, useThemedStyles, type AppColors } from '../../theme';
+import { LanguageSwitcher, MenuItem, Pill } from '../../components';
 import { useAuth } from '../../hooks';
+import { getApplicationStatusLabel, useI18n } from '../../i18n';
 import { useAppSelector } from '../../store/hooks';
 import { selectApplications } from '../../store/selectors';
-import { APPLICATION_STATUS_LABELS } from '../../constants';
 import { isEuropassCvComplete } from '../../utils/europass';
 
 export const AdayMenuScreen: React.FC = () => {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const navigation = useNavigation<RootStackNavigationProp>();
   const { user } = useAuth();
+  const { language, t } = useI18n();
   const applications = useAppSelector(selectApplications);
 
   const myPrograms = useMemo(
-    () => applications.filter((app) => app.userId === user?.id),
+    () =>
+      applications
+        .filter((app) => app.userId === user?.id)
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        ),
     [applications, user?.id],
   );
 
@@ -29,56 +38,59 @@ export const AdayMenuScreen: React.FC = () => {
   const totalDocs = latestProgram?.documents.length ?? 0;
   const completedDocs = totalDocs - missingDocs;
 
-  const cvReady = isEuropassCvComplete(user?.europassCv);
+  const cvReady = user?.europassCv ? isEuropassCvComplete(user.europassCv) : false;
 
   return (
     <ScrollView contentContainerStyle={styles.section}>
-      <Text style={styles.greeting}>Merhaba, {user?.name || 'Aday'}</Text>
+      <LanguageSwitcher />
+      <Text style={styles.greeting}>
+        {t('candidateMenu.greeting', { name: user?.name || t('candidateMenu.fallbackName') })}
+      </Text>
 
       <View style={styles.statusCard}>
         <View style={styles.statusAccent} />
         <View style={styles.statusContent}>
           <View style={styles.statusRow}>
-            <Text style={styles.statusLabel}>Profil Ozeti</Text>
+            <Text style={styles.statusLabel}>{t('candidateMenu.profileSummary')}</Text>
             <Pill
-              label={cvReady ? 'CV Hazir' : 'CV Eksik'}
+              label={cvReady ? t('candidateMenu.cvReady') : t('candidateMenu.cvMissing')}
               variant={cvReady ? 'ok' : 'warn'}
             />
           </View>
           <View style={styles.metaRow}>
-            <Text style={styles.metaLabel}>Program Atamasi:</Text>
+            <Text style={styles.metaLabel}>{t('candidateMenu.programAssignments')}</Text>
             <Text style={styles.metaValue}>{myPrograms.length}</Text>
           </View>
           {latestProgram ? (
             <>
               <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>Son Program:</Text>
+                <Text style={styles.metaLabel}>{t('candidateMenu.latestProgram')}</Text>
                 <Text style={styles.metaValue}>{latestProgram.programName}</Text>
               </View>
               <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>Durum:</Text>
+                <Text style={styles.metaLabel}>{t('candidateMenu.status')}</Text>
                 <Text style={styles.metaValue}>
-                  {APPLICATION_STATUS_LABELS[latestProgram.status] || latestProgram.status}
+                  {getApplicationStatusLabel(latestProgram.status, language)}
                 </Text>
               </View>
               <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>Belge Ilerlemesi:</Text>
+                <Text style={styles.metaLabel}>{t('candidateMenu.documentProgress')}</Text>
                 <Text style={styles.metaValue}>
                   {completedDocs}/{totalDocs}
                 </Text>
               </View>
             </>
           ) : (
-            <Text style={styles.statusHint}>Admin program atamasi bekleniyor.</Text>
+            <Text style={styles.statusHint}>{t('candidateMenu.waitingForAssignment')}</Text>
           )}
         </View>
       </View>
 
-      <Text style={styles.sectionLabel}>ANA BLOK</Text>
+      <Text style={styles.sectionLabel}>{t('candidateMenu.mainBlock')}</Text>
 
       <MenuItem
-        label="Kisisel Bilgiler"
-        subtitle="TC Kimlik, pasaport ve profil bilgileri"
+        label={t('candidateMenu.personalInfo')}
+        subtitle={t('candidateMenu.personalInfoSubtitle')}
         iconName="account-edit-outline"
         iconColor={colors.primary}
         iconBg={colors.warning}
@@ -86,8 +98,8 @@ export const AdayMenuScreen: React.FC = () => {
       />
 
       <MenuItem
-        label="Programlarim"
-        subtitle="Admin tarafindan atanan programlar"
+        label={t('candidateMenu.myPrograms')}
+        subtitle={t('candidateMenu.myProgramsSubtitle')}
         iconName="view-list-outline"
         iconColor={colors.teal}
         iconBg={colors.success}
@@ -95,8 +107,8 @@ export const AdayMenuScreen: React.FC = () => {
       />
 
       <MenuItem
-        label="Mesajlar"
-        subtitle="Programdan bagimsiz mesajlasma alani"
+        label={t('candidateMenu.messages')}
+        subtitle={t('candidateMenu.messagesSubtitle')}
         iconName="message-text-outline"
         iconColor={colors.teal}
         iconBg={colors.success}
@@ -104,8 +116,8 @@ export const AdayMenuScreen: React.FC = () => {
       />
 
       <MenuItem
-        label="Europass CV"
-        subtitle={cvReady ? 'CV formati tamamlandi' : 'CV profilinizi tamamlayin'}
+        label={t('candidateMenu.europassCv')}
+        subtitle={cvReady ? t('candidateMenu.europassCvReady') : t('candidateMenu.europassCvMissing')}
         iconName="file-account-outline"
         iconColor={colors.teal}
         iconBg={colors.success}
@@ -115,7 +127,7 @@ export const AdayMenuScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   section: {
     padding: 20,
     paddingTop: 20,

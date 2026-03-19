@@ -1,4 +1,13 @@
-import type { Application, AuditLog, Document, Message, PersonalInfo, User } from '../../types';
+import type {
+  Application,
+  AssignedProgram,
+  AuditLog,
+  Document,
+  Message,
+  PersonalInfo,
+  ProgramDraftInput,
+  User,
+} from '../../types';
 
 export type BackendErrorCode =
   | 'VALIDATION'
@@ -9,7 +18,7 @@ export type BackendErrorCode =
 
 export class BackendError extends Error {
   code: BackendErrorCode;
-  details?: unknown;
+  details: unknown;
 
   constructor(code: BackendErrorCode, message: string, details?: unknown) {
     super(message);
@@ -22,22 +31,7 @@ export class BackendError extends Error {
 export const isBackendError = (err: unknown): err is BackendError =>
   err instanceof BackendError;
 
-export interface ProgramChecklistItem {
-  documentType: Document['type'];
-  expectedFormat: string;
-  description?: string;
-  exampleHint?: string;
-}
-
-export interface ProgramInfo {
-  id: string;
-  name: string;
-  year: number;
-  steps: string[];
-  deadlines: { label: string; dateISO: string }[];
-  checklist: ProgramChecklistItem[];
-  commonMistakes: string[];
-}
+export type ProgramInfo = AssignedProgram;
 
 export interface AuthBackend {
   loginCandidate(params: { email: string; password: string }): Promise<User>;
@@ -46,10 +40,19 @@ export interface AuthBackend {
     email: string;
     kvkkAccepted: boolean;
   }): Promise<User>;
+  requestCandidatePassword(params: {
+    fullName: string;
+    email: string;
+  }): Promise<User>;
   loginAdmin(params: { username: string; password: string }): Promise<User>;
   logout(): Promise<void>;
   updateProfile(params: { userId: string; patch: Partial<User> }): Promise<User>;
   listCandidates(): Promise<User[]>;
+  sendCandidatePassword(params: {
+    candidateUserId: string;
+    password: string;
+    adminUserId: string;
+  }): Promise<User>;
 }
 
 export interface ProgramBackend {
@@ -58,7 +61,7 @@ export interface ProgramBackend {
 }
 
 export interface ApplicationBackend {
-  listForAdmin(filters?: {
+  listForAdmin(filters: {
     status?: Application['status'];
     programId?: string;
     hasIssues?: boolean;
@@ -67,12 +70,12 @@ export interface ApplicationBackend {
   }): Promise<Application[]>;
   listForCandidate(params: { userId: string }): Promise<Application[]>;
   getForCandidate(params: { userId: string }): Promise<Application | null>;
-  ensureDraft(params: { userId: string; programId: string; fullName: string }): Promise<Application>;
-  assignProgram(params: { userId: string; programId: string; fullName: string }): Promise<Application>;
+  ensureDraft(params: { userId: string; program: ProgramDraftInput; fullName: string }): Promise<Application>;
+  assignProgram(params: { userId: string; program: ProgramDraftInput; fullName: string }): Promise<Application>;
   updatePersonalInfo(params: {
     applicationId: string;
     patch: Partial<PersonalInfo>;
-    programId?: string;
+    programId: string;
   }): Promise<Application>;
   submit(params: { applicationId: string }): Promise<Application>;
 
@@ -81,9 +84,9 @@ export interface ApplicationBackend {
     documentType: Document['type'];
     fileName: string;
     fileUrl?: string;
-    pageCount?: number;
-    mimeType?: string;
-    qualityScore?: number; // 1..3 (mock)
+    pageCount: number;
+    mimeType: string;
+    qualityScore: number; // 1..3 (mock)
     idempotencyKey?: string;
     parseResult?: string;
   }): Promise<{ application: Application; document: Document }>;
@@ -92,7 +95,7 @@ export interface ApplicationBackend {
     applicationId: string;
     documentId: string;
     status: Document['status'];
-    note?: string;
+    note: string;
     verifiedByUserId: string;
   }): Promise<{ application: Application; document: Document }>;
 

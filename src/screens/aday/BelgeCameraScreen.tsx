@@ -1,4 +1,4 @@
-﻿import React, { useRef, useState, useCallback, useEffect } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,12 +18,13 @@ import {
   useCameraPermission,
 } from 'react-native-vision-camera';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors } from '../../theme';
+import { useThemedStyles, type AppColors } from '../../theme';
 import { RootStackParamList, RootStackNavigationProp } from '../../types';
 
 type BelgeCameraRouteProp = RouteProp<RootStackParamList, 'BelgeCamera'>;
 
 export const BelgeCameraScreen: React.FC = () => {
+  const styles = useThemedStyles(createStyles);
   const navigation = useNavigation<RootStackNavigationProp>();
   const route = useRoute<BelgeCameraRouteProp>();
   const insets = useSafeAreaInsets();
@@ -52,7 +53,7 @@ export const BelgeCameraScreen: React.FC = () => {
       });
       setCapturedPhoto(`file://${photo.path}`);
     } catch {
-      Alert.alert('Hata', 'Fotograf cekilemedi. Tekrar deneyin.');
+      Alert.alert('Hata', 'Fotoğraf çekilemedi. Tekrar deneyin.');
     } finally {
       setIsTakingPhoto(false);
     }
@@ -65,10 +66,10 @@ export const BelgeCameraScreen: React.FC = () => {
   const confirmPhoto = useCallback(() => {
     if (!capturedPhoto) return;
     navigation.navigate('AdayBelge', {
-      applicationId: route.params?.applicationId,
+      applicationId: route.params.applicationId,
       capturedPhotoUri: capturedPhoto,
     });
-  }, [capturedPhoto, navigation, route.params?.applicationId]);
+  }, [capturedPhoto, navigation, route.params.applicationId]);
 
   const toggleFlash = useCallback(() => {
     setFlashMode((prev) => (prev === 'off' ? 'on' : 'off'));
@@ -78,10 +79,10 @@ export const BelgeCameraScreen: React.FC = () => {
     return (
       <View style={[styles.center, { paddingTop: insets.top }]}>
         <Text style={styles.permissionText}>
-          Kamera izni gerekli. Lutfen ayarlardan kamera erisimini acin.
+          Kamera izni gerekli. Lütfen ayarlardan kamera erişimini açın.
         </Text>
         <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
-          <Text style={styles.permissionButtonText}>Izin Ver</Text>
+          <Text style={styles.permissionButtonText}>İzin Ver</Text>
         </TouchableOpacity>
       </View>
     );
@@ -91,10 +92,10 @@ export const BelgeCameraScreen: React.FC = () => {
     return (
       <View style={[styles.center, { paddingTop: insets.top }]}>
         <Text style={styles.permissionText}>
-          Kamera bulunamadi. Bu cihazda kamera mevcut degil.
+          Kamera bulunamadı. Bu cihazda kamera mevcut değil.
         </Text>
         <TouchableOpacity style={styles.permissionButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.permissionButtonText}>Geri Don</Text>
+          <Text style={styles.permissionButtonText}>Geri Dön</Text>
         </TouchableOpacity>
       </View>
     );
@@ -108,7 +109,7 @@ export const BelgeCameraScreen: React.FC = () => {
 
         <View style={[styles.previewControls, { paddingBottom: insets.bottom + 20 }]}>
           <TouchableOpacity style={styles.previewBtn} onPress={retakePhoto}>
-            <Text style={styles.previewBtnText}>Tekrar Cek</Text>
+            <Text style={styles.previewBtnText}>Tekrar Çek</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.previewBtn, styles.previewBtnConfirm]}
@@ -190,7 +191,7 @@ export const BelgeCameraScreen: React.FC = () => {
 const CORNER_SIZE = 28;
 const CORNER_THICKNESS = 3;
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',

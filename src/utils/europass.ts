@@ -103,4 +103,3 @@ export const isMotivationLetterComplete = (letter?: MotivationLetterDraft): bool
     wordCount(letter.closingParagraph) >= 20
   );
 };
-

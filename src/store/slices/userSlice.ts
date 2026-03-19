@@ -1,16 +1,17 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { User, UserState } from '../../types';
 
-const initialState: UserState = {
+export const initialUserState: UserState = {
   user: null,
   isAuthenticated: false,
+  rememberMe: false,
   isLoading: false,
   error: null,
 };
 
 const userSlice = createSlice({
   name: 'user',
-  initialState,
+  initialState: initialUserState,
   reducers: {
     setUser: (state, action: PayloadAction<User>) => {
       state.user = action.payload;
@@ -25,6 +26,9 @@ const userSlice = createSlice({
     setLoading: (state, action: PayloadAction<boolean>) => {
       state.isLoading = action.payload;
     },
+    setRememberMe: (state, action: PayloadAction<boolean>) => {
+      state.rememberMe = action.payload;
+    },
     setError: (state, action: PayloadAction<string | null>) => {
       state.error = action.payload;
       state.isLoading = false;
@@ -37,5 +41,5 @@ const userSlice = createSlice({
   },
 });
 
-export const { setUser, clearUser, setLoading, setError, updateUser } = userSlice.actions;
+export const { setUser, clearUser, setLoading, setRememberMe, setError, updateUser } = userSlice.actions;
 export default userSlice.reducer;

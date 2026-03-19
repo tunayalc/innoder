@@ -98,4 +98,3 @@ export const markThreadRead =
       dispatch(setMessageLoading(false));
     }
   };
-

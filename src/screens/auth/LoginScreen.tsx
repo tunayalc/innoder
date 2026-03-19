@@ -1,40 +1,56 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ViewStyle,
-  TextStyle,
-  TouchableOpacity,
   Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextStyle,
+  TouchableOpacity,
+  View,
+  ViewStyle,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { colors } from '../../theme';
-import { Button, InputField } from '../../components';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  Button,
+  ContactLinksCard,
+  InputField,
+  LanguageSwitcher,
+  ThemeSwitcher,
+} from '../../components';
 import { useAuth } from '../../hooks';
+import { useI18n } from '../../i18n';
 import { useAppSelector } from '../../store/hooks';
-import { selectUserError, selectUserLoading } from '../../store/selectors';
+import { selectRememberMe, selectUserError, selectUserLoading } from '../../store/selectors';
+import { useAppTheme, useThemedStyles, type AppColors } from '../../theme';
 
 export const LoginScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const { loginCandidate, loginDemoCandidate } = useAuth();
+  const { t } = useI18n();
+  const { colors } = useAppTheme();
   const isLoading = useAppSelector(selectUserLoading);
   const error = useAppSelector(selectUserError);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const rememberedPreference = useAppSelector(selectRememberMe);
+  const styles = useThemedStyles(createStyles);
+  const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
+  const [rememberMe, setRememberMe] = React.useState(rememberedPreference);
 
-  const handleLogin = async () => {
+  React.useEffect(() => {
+    setRememberMe(rememberedPreference);
+  }, [rememberedPreference]);
+
+  const handleLogin = () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Hata', 'Lutfen e-posta ve sifrenizi girin.');
+      Alert.alert(t('common.errorTitle'), t('auth.fillEmailPassword'));
       return;
     }
-
-    loginCandidate({ email, password });
+    loginCandidate({ email, password, rememberMe });
   };
 
   return (
@@ -45,77 +61,82 @@ export const LoginScreen: React.FC = () => {
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingTop: insets.top + 60, paddingBottom: insets.bottom + 24 },
+          { paddingTop: insets.top + 48, paddingBottom: insets.bottom + 24 },
         ]}
         keyboardShouldPersistTaps="handled"
       >
+        <View style={styles.headerControls}>
+          <ThemeSwitcher compact />
+          <LanguageSwitcher compact />
+        </View>
+
         <View style={styles.header}>
           <View style={styles.accentBar} />
-          <Text style={styles.title}>Giris Yap</Text>
-          <Text style={styles.subtitle}>
-            Devam etmek icin hesap bilgilerinizle giris yapin.
-          </Text>
+          <Text style={styles.title}>{t('auth.loginTitle')}</Text>
+          <Text style={styles.subtitle}>{t('auth.loginSubtitle')}</Text>
         </View>
 
         <View style={styles.form}>
           <InputField
-            label="Email"
+            label={t('common.email')}
             value={email}
             onChangeText={setEmail}
-            placeholder="ornek@email.com"
+            placeholder={t('auth.emailPlaceholder')}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
           />
 
-          <View style={{ height: 20 }} />
-
           <InputField
-            label="Sifre"
+            label={t('common.password')}
             value={password}
             onChangeText={setPassword}
-            placeholder="Sifrenizi girin"
+            placeholder={t('auth.passwordPlaceholder')}
             secureTextEntry
           />
 
+          <View style={styles.rememberRow}>
+            <View style={styles.rememberTextWrap}>
+              <Text style={styles.rememberTitle}>{t('auth.rememberMe')}</Text>
+            </View>
+            <Switch
+              value={rememberMe}
+              onValueChange={setRememberMe}
+              trackColor={{ false: colors.muted, true: colors.teal }}
+              thumbColor={colors.white}
+            />
+          </View>
+
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-          <View style={{ height: 16 }} />
-
           <Button
-            label={isLoading ? 'Giris yapiliyor...' : 'Giris Yap'}
+            label={isLoading ? t('auth.loginButtonLoading') : t('auth.loginButton')}
             onPress={isLoading ? undefined : handleLogin}
           />
 
-          <View style={{ height: 10 }} />
-
           <Button
-            label={isLoading ? 'Demo giris yapiliyor...' : 'Demo Giris (Bilgi Girmeden)'}
+            label={isLoading ? t('auth.demoButtonLoading') : t('auth.demoButton')}
             variant="ghost"
-            onPress={isLoading ? undefined : loginDemoCandidate}
+            onPress={isLoading ? undefined : () => loginDemoCandidate(rememberMe)}
           />
 
-          <Text style={styles.helperText}>
-            Sadece tarafimizca giris bilgisi tanimlanan hesaplar giris yapabilir.
-          </Text>
+          <Text style={styles.helperText}>{t('auth.loginAllowedOnly')}</Text>
 
-          <TouchableOpacity
-            style={styles.registerLink}
-            onPress={() => navigation.navigate('OnboardingIntro')}
-          >
-            <Text style={styles.registerText}>
-              Hesabiniz yok mu?{' '}
-              <Text style={styles.registerTextBold}>Once Videolari Izle</Text>
+          <ContactLinksCard
+            title={t('auth.contactTitle')}
+            subtitle={t('auth.contactSubtitle')}
+          />
+
+          <TouchableOpacity onPress={() => navigation.navigate('OnboardingIntro')}>
+            <Text style={styles.linkText}>
+              {t('auth.noAccount')} <Text style={styles.linkStrong}>{t('auth.watchVideosFirst')}</Text>
             </Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.footer}>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('AdminLogin')}
-            hitSlop={{ top: 12, bottom: 12, left: 20, right: 20 }}
-          >
-            <Text style={styles.adminText}>Yonetici girisi</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('AdminLogin')}>
+            <Text style={styles.footerText}>{t('auth.adminLoginLink')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -123,71 +144,83 @@ export const LoginScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  } as ViewStyle,
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    justifyContent: 'flex-start',
-  } as ViewStyle,
-  header: {
-    marginBottom: 36,
-  } as ViewStyle,
-  accentBar: {
-    width: 28,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: colors.primary,
-    marginBottom: 16,
-  } as ViewStyle,
-  title: {
-    fontSize: 34,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    letterSpacing: -0.5,
-    marginBottom: 10,
-  } as TextStyle,
-  subtitle: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    lineHeight: 23,
-  } as TextStyle,
-  form: {
-    paddingHorizontal: 0,
-  } as ViewStyle,
-  errorText: {
-    fontSize: 13,
-    color: '#DC2626',
-    marginTop: 10,
-  } as TextStyle,
-  helperText: {
-    marginTop: 14,
-    fontSize: 12,
-    lineHeight: 18,
-    color: colors.textSecondary,
-  } as TextStyle,
-  registerLink: {
-    marginTop: 14,
-    alignSelf: 'flex-start',
-  } as ViewStyle,
-  registerText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  } as TextStyle,
-  registerTextBold: {
-    color: colors.primary,
-    fontWeight: '600',
-  } as TextStyle,
-  footer: {
-    marginTop: 'auto' as any,
-    paddingTop: 32,
-    alignItems: 'center',
-  } as ViewStyle,
-  adminText: {
-    fontSize: 14,
-    color: colors.textMuted,
-  } as TextStyle,
-});
+const createStyles = (colors: AppColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    } as ViewStyle,
+    scrollContent: {
+      flexGrow: 1,
+      paddingHorizontal: 24,
+      gap: 18,
+    } as ViewStyle,
+    headerControls: {
+      flexDirection: 'row',
+      gap: 8,
+      alignSelf: 'flex-start',
+    } as ViewStyle,
+    header: {
+      gap: 10,
+    } as ViewStyle,
+    accentBar: {
+      width: 28,
+      height: 3,
+      borderRadius: 2,
+      backgroundColor: colors.primary,
+    } as ViewStyle,
+    title: {
+      fontSize: 32,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    } as TextStyle,
+    subtitle: {
+      fontSize: 16,
+      lineHeight: 22,
+      color: colors.textSecondary,
+    } as TextStyle,
+    form: {
+      gap: 16,
+    } as ViewStyle,
+    rememberRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+    } as ViewStyle,
+    rememberTextWrap: {
+      flex: 1,
+    } as ViewStyle,
+    rememberTitle: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    } as TextStyle,
+    errorText: {
+      fontSize: 13,
+      color: colors.danger,
+    } as TextStyle,
+    helperText: {
+      fontSize: 12,
+      lineHeight: 18,
+      color: colors.textSecondary,
+    } as TextStyle,
+    linkText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    } as TextStyle,
+    linkStrong: {
+      color: colors.primary,
+      fontWeight: '700',
+    } as TextStyle,
+    footer: {
+      marginTop: 'auto' as any,
+      alignItems: 'center',
+      paddingTop: 24,
+    } as ViewStyle,
+    footerText: {
+      fontSize: 14,
+      color: colors.textMuted,
+    } as TextStyle,
+  });
+

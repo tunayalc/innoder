@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { colors } from '../../theme';
+import { useThemedStyles, type AppColors } from '../../theme';
 import { Button, Card, InputField, Pill } from '../../components';
 import { useAuth } from '../../hooks';
 import { useAppSelector } from '../../store/hooks';
@@ -32,6 +32,7 @@ const sectionHints = [
 ];
 
 export const AdayCvBuilderScreen: React.FC = () => {
+  const styles = useThemedStyles(createStyles);
   const { user, update } = useAuth();
   const isLoading = useAppSelector(selectUserLoading);
   const error = useAppSelector(selectUserError);
@@ -159,10 +160,10 @@ export const AdayCvBuilderScreen: React.FC = () => {
           <View style={styles.headerContent}>
             <View style={styles.titleRow}>
               <Text style={styles.h2}>Europass CV Builder</Text>
-              <Pill label={isComplete ? 'Hazir' : 'Eksik'} variant={isComplete ? 'ok' : 'warn'} />
+              <Pill label={isComplete ? 'Hazır' : 'Eksik'} variant={isComplete ? 'ok' : 'warn'} />
             </View>
             <Text style={styles.subtitle}>
-              European Youth Portal / Europass CV formatina uygun bilgileri uygulama icinde doldurun.
+              European Youth Portal / Europass CV formatına uygun bilgileri uygulama içinde doldurun.
             </Text>
           </View>
         </View>
@@ -186,7 +187,7 @@ export const AdayCvBuilderScreen: React.FC = () => {
           label="Professional Summary *"
           value={cv.summary}
           onChangeText={(value) => updateCv({ summary: value })}
-          placeholder="Kisa ozet (en az 40 karakter)"
+          placeholder="Kısa özet (en az 40 karakter)"
           multiline
           numberOfLines={4}
           style={styles.textArea}
@@ -195,7 +196,7 @@ export const AdayCvBuilderScreen: React.FC = () => {
           label="Key Skills *"
           value={cv.keySkills}
           onChangeText={(value) => updateCv({ keySkills: value })}
-          placeholder="Iletisim, takim calismasi, proje yonetimi..."
+          placeholder="İletişim, takım çalışması, proje yönetimi..."
           multiline
           numberOfLines={3}
           style={styles.textArea}
@@ -361,7 +362,7 @@ export const AdayCvBuilderScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   flex: {
     flex: 1,
   } as ViewStyle,

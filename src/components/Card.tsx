@@ -1,14 +1,16 @@
 import React, { ReactNode } from 'react';
-import { View, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
-import { colors } from '../theme/colors';
+import { View, Text, StyleSheet, ViewStyle, TextStyle, StyleProp } from 'react-native';
+import { useThemedStyles, type AppColors } from '../theme';
 
 interface CardProps {
   title?: string;
   children: ReactNode;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }
 
 export const Card: React.FC<CardProps> = ({ title, children, style }) => {
+  const styles = useThemedStyles(createStyles);
+
   return (
     <View style={[styles.card, style]}>
       {title && <Text style={styles.cardTitle}>{title}</Text>}
@@ -17,7 +19,7 @@ export const Card: React.FC<CardProps> = ({ title, children, style }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   card: {
     backgroundColor: colors.cardBg,
     borderRadius: 16,

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+﻿import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,9 +11,10 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { colors } from '../../theme';
+import { useAppTheme, useThemedStyles, type AppColors } from '../../theme';
 import { Button, Pill } from '../../components';
 import { useAuth } from '../../hooks';
+import { useI18n } from '../../i18n';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { selectApplicationById } from '../../store/selectors';
 import { selectApplicationLoading } from '../../store/selectors/applicationSelectors';
@@ -32,23 +33,12 @@ type StatusOption = {
   variant: 'ok' | 'warn' | 'err' | 'info';
 };
 
-const STATUS_OPTIONS: StatusOption[] = [
-  { key: 'ok', label: 'OK', variant: 'ok' },
-  { key: 'missing', label: 'EKSİK', variant: 'warn' },
-  { key: 'wrong_format', label: 'YANLIŞ FORMAT', variant: 'err' },
-  { key: 'unread', label: 'OKUNMADI', variant: 'info' },
-];
-
-const QUICK_MESSAGES: Record<DocumentStatus, string> = {
-  ok: 'Belgeniz onaylandı.',
-  missing: 'Belge eksik. Lütfen gerekli belgeyi yükleyin.',
-  wrong_format: 'Yüklenen dosya beklenen formatta değil. Lütfen doğru formatta yükleyin.',
-  unread: 'Yüklenen görüntü bulanık/okunamıyor. Lütfen daha net bir görüntü çekin.',
-};
-
 export const AdminDogrulamaScreen: React.FC = () => {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const navigation = useNavigation<RootStackNavigationProp>();
   const route = useRoute<AdminDogrulamaRouteProp>();
+  const { t } = useI18n();
   const { applicationId, documentId } = route.params;
   const { user } = useAuth();
   const dispatch = useAppDispatch();
@@ -70,23 +60,43 @@ export const AdminDogrulamaScreen: React.FC = () => {
     [application, selectedDocId],
   );
 
+  const statusOptions: StatusOption[] = useMemo(
+    () => [
+      { key: 'ok', label: t('adminVerification.statusOk'), variant: 'ok' },
+      { key: 'missing', label: t('adminVerification.statusMissing'), variant: 'warn' },
+      { key: 'wrong_format', label: t('adminVerification.statusWrongFormat'), variant: 'err' },
+      { key: 'unread', label: t('adminVerification.statusUnread'), variant: 'info' },
+    ],
+    [t],
+  );
+
+  const quickMessages: Record<DocumentStatus, string> = useMemo(
+    () => ({
+      ok: t('adminVerification.quickOk'),
+      missing: t('adminVerification.quickMissing'),
+      wrong_format: t('adminVerification.quickWrongFormat'),
+      unread: t('adminVerification.quickUnread'),
+    }),
+    [t],
+  );
+
   const handleSave = useCallback(() => {
     if (!application || !user || !selectedDocId || !selectedStatus) {
-      Alert.alert('Uyarı', 'Lütfen belge ve durum seçiniz.');
+      Alert.alert(t('adminVerification.warningTitle'), t('adminVerification.requiredSelection'));
       return;
     }
 
     dispatch(
-      verifyDocument({
-        applicationId: application.id,
-        documentId: selectedDocId,
-        status: selectedStatus,
-        note: notes.trim() || undefined,
-      }),
+        verifyDocument({
+          applicationId: application.id,
+          documentId: selectedDocId,
+          status: selectedStatus,
+          note: notes.trim(),
+        }),
     );
 
     if (sendMessage && selectedStatus !== 'ok') {
-      const msgContent = notes.trim() || QUICK_MESSAGES[selectedStatus];
+      const msgContent = notes.trim() || quickMessages[selectedStatus];
       dispatch(
         sendMessageThunk({
           applicationId: application.id,
@@ -96,8 +106,8 @@ export const AdminDogrulamaScreen: React.FC = () => {
       );
     }
 
-    Alert.alert('Kaydedildi', 'Doğrulama kararı başarıyla kaydedildi.', [
-      { text: 'Tamam', onPress: () => navigation.goBack() },
+    Alert.alert(t('adminVerification.savedTitle'), t('adminVerification.savedText'), [
+      { text: t('adminVerification.ok'), onPress: () => navigation.goBack() },
     ]);
   }, [
     application,
@@ -109,26 +119,28 @@ export const AdminDogrulamaScreen: React.FC = () => {
     sendMessage,
     dispatch,
     navigation,
+    quickMessages,
+    t,
   ]);
 
   if (!application) {
     return (
       <View style={styles.section}>
-        <Text style={styles.h2}>Doğrulama Kararı</Text>
-        <Text style={styles.emptyText}>Başvuru bulunamadı.</Text>
+        <Text style={styles.h2}>{t('adminVerification.title')}</Text>
+        <Text style={styles.emptyText}>{t('adminVerification.applicationNotFound')}</Text>
       </View>
     );
   }
 
   return (
     <ScrollView contentContainerStyle={styles.section}>
-      <Text style={styles.h2}>Doğrulama Kararı</Text>
+      <Text style={styles.h2}>{t('adminVerification.title')}</Text>
       <Text style={styles.subtitle}>
         {application.personalInfo.fullName} - {application.programName}
       </Text>
 
       {/* Document selector */}
-      <Text style={styles.label}>Belge Seçin</Text>
+      <Text style={styles.label}>{t('adminVerification.selectDocument')}</Text>
       {application.documents.map((doc) => (
         <TouchableOpacity
           key={doc.id}
@@ -165,16 +177,16 @@ export const AdminDogrulamaScreen: React.FC = () => {
         <View style={styles.previewBox}>
           <Text style={styles.previewText}>
             {selectedDoc.fileName
-              ? `Dosya: ${selectedDoc.fileName}`
-              : 'Belge henüz yüklenmemiş'}
+              ? `${t('adminVerification.filePrefix')} ${selectedDoc.fileName}`
+              : t('adminVerification.fileMissing')}
           </Text>
         </View>
       )}
 
       {/* Status selection */}
-      <Text style={styles.label}>Yeni Durum Belirleyin</Text>
+      <Text style={styles.label}>{t('adminVerification.selectStatus')}</Text>
       <View style={styles.pillRow}>
-        {STATUS_OPTIONS.map((opt) => (
+        {statusOptions.map((opt) => (
           <TouchableOpacity
             key={opt.key}
             style={[
@@ -184,7 +196,7 @@ export const AdminDogrulamaScreen: React.FC = () => {
             onPress={() => {
               setSelectedStatus(opt.key);
               if (!notes.trim()) {
-                setNotes(QUICK_MESSAGES[opt.key]);
+                setNotes(quickMessages[opt.key]);
               }
             }}
           >
@@ -194,12 +206,12 @@ export const AdminDogrulamaScreen: React.FC = () => {
       </View>
 
       {/* Notes */}
-      <Text style={styles.label}>Açıklama / Not</Text>
+      <Text style={styles.label}>{t('adminVerification.notesLabel')}</Text>
       <TextInput
         style={styles.textArea}
         value={notes}
         onChangeText={setNotes}
-        placeholder="Adaya iletilecek açıklama..."
+        placeholder={t('adminVerification.notesPlaceholder')}
         placeholderTextColor={colors.textMuted}
         multiline
         numberOfLines={3}
@@ -218,20 +230,20 @@ export const AdminDogrulamaScreen: React.FC = () => {
             {sendMessage && <Text style={styles.checkmark}>✓</Text>}
           </View>
           <Text style={styles.toggleText}>
-            Adaya otomatik mesaj gönder
+            {t('adminVerification.autoSendMessage')}
           </Text>
         </TouchableOpacity>
       )}
 
-      <Button label="Durumu Kaydet" onPress={handleSave} />
+      <Button label={t('adminVerification.saveButton')} onPress={handleSave} />
       {isLoading ? (
-        <Text style={styles.loadingText}>Kaydediliyor...</Text>
+        <Text style={styles.loadingText}>{t('adminVerification.saving')}</Text>
       ) : null}
     </ScrollView>
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   section: {
     paddingTop: 16,
     gap: 12,
@@ -349,3 +361,8 @@ const styles = StyleSheet.create({
     marginTop: 6,
   } as TextStyle,
 });
+
+
+
+
+

@@ -1,7 +1,7 @@
-import React from 'react';
-import { Pressable, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
-import { colors } from '../theme/colors';
+﻿import React from 'react';
+import { Pressable, StyleSheet, Text, TextStyle, ViewStyle } from 'react-native';
 import { ButtonVariant } from '../types';
+import { useThemedStyles, type AppColors } from '../theme';
 
 interface ButtonProps {
   label: string;
@@ -16,39 +16,40 @@ export const Button: React.FC<ButtonProps> = ({
   variant = 'solid',
   style,
 }) => {
+  const styles = useThemedStyles(createStyles);
+
   return (
     <Pressable
       style={[styles.button, variant === 'ghost' && styles.buttonGhost, style]}
       onPress={onPress}
     >
-      <Text
-        style={[styles.buttonText, variant === 'ghost' && styles.buttonTextGhost]}
-      >
+      <Text style={[styles.buttonText, variant === 'ghost' && styles.buttonTextGhost]}>
         {label}
       </Text>
     </Pressable>
   );
 };
 
-const styles = StyleSheet.create({
-  button: {
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-  } as ViewStyle,
-  buttonGhost: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: 'rgba(240, 103, 43, 0.35)',
-  } as ViewStyle,
-  buttonText: {
-    color: colors.white,
-    fontWeight: '700',
-    fontSize: 16,
-  } as TextStyle,
-  buttonTextGhost: {
-    color: colors.primaryDark,
-  } as TextStyle,
-});
+const createStyles = (colors: AppColors) =>
+  StyleSheet.create({
+    button: {
+      paddingVertical: 16,
+      paddingHorizontal: 24,
+      borderRadius: 12,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+    } as ViewStyle,
+    buttonGhost: {
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      borderColor: 'rgba(240, 103, 43, 0.35)',
+    } as ViewStyle,
+    buttonText: {
+      color: colors.white,
+      fontWeight: '700',
+      fontSize: 16,
+    } as TextStyle,
+    buttonTextGhost: {
+      color: colors.primaryDark,
+    } as TextStyle,
+  });

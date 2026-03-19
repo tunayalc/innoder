@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { colors } from '../../theme';
+import { useThemedStyles, type AppColors } from '../../theme';
 import { Button, Card, InputField, Pill } from '../../components';
 import { useAuth } from '../../hooks';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
@@ -29,6 +29,7 @@ import {
 } from '../../utils/europass';
 
 export const AdayMotivationScreen: React.FC = () => {
+  const styles = useThemedStyles(createStyles);
   const navigation = useNavigation<RootStackNavigationProp>();
   const route = useRoute<RouteProp<RootStackParamList, 'AdayMotivation'>>();
   const { user } = useAuth();
@@ -69,6 +70,7 @@ export const AdayMotivationScreen: React.FC = () => {
         patch: {
           motivationLetter: letter,
         },
+        programId: myApplication.programId,
       }),
     );
     Alert.alert('Mektup Kaydedildi', 'Motivasyon mektubu taslagi kaydedildi.');
@@ -81,14 +83,14 @@ export const AdayMotivationScreen: React.FC = () => {
           <View style={styles.accentBar} />
           <View style={styles.headerContent}>
             <Text style={styles.h2}>Motivasyon Mektubu Builder</Text>
-            <Text style={styles.subtitle}>Once basvuru taslagi olusturmaniz gerekiyor.</Text>
+            <Text style={styles.subtitle}>Önce başvuru taslağı oluşturmanız gerekiyor.</Text>
           </View>
         </View>
         <Card>
           <Text style={styles.emptyText}>
-            Bu adima gecmeden once admin tarafindan bir programa atanmaniz gerekir.
+            Bu adıma geçmeden önce admin tarafından bir programa atanmanız gerekir.
           </Text>
-          <Button label="Programlarima Git" onPress={() => navigation.navigate('AdayEgitim')} />
+          <Button label="Programlarıma Git" onPress={() => navigation.navigate('AdayEgitim')} />
         </Card>
       </View>
     );
@@ -105,15 +107,15 @@ export const AdayMotivationScreen: React.FC = () => {
           <View style={styles.headerContent}>
             <View style={styles.titleRow}>
               <Text style={styles.h2}>Motivasyon Mektubu Builder</Text>
-              <Pill label={completion ? 'Hazir' : 'Eksik'} variant={completion ? 'ok' : 'warn'} />
+              <Pill label={completion ? 'Hazır' : 'Eksik'} variant={completion ? 'ok' : 'warn'} />
             </View>
             <Text style={styles.subtitle}>
-              Mektubu uygulama icinde olusturun: hitap, neden bu program, katkilariniz ve kapanis.
+              Mektubu uygulama içinde oluşturun: hitap, neden bu program, katkılarınız ve kapanış.
             </Text>
           </View>
         </View>
 
-        <Card title="European Youth Portal Tarzi Mektup Yapisi">
+        <Card title="European Youth Portal Tarzı Mektup Yapısı">
           <Text style={styles.hintRow}>- Addressee and subject</Text>
           <Text style={styles.hintRow}>- Opening (who you are + why writing)</Text>
           <Text style={styles.hintRow}>- Motivation (why this programme)</Text>
@@ -140,7 +142,7 @@ export const AdayMotivationScreen: React.FC = () => {
           label={`Opening Paragraph * (${wordCount(letter.openingParagraph)} words)`}
           value={letter.openingParagraph}
           onChangeText={(value) => updateField('openingParagraph', value)}
-          placeholder="Kimsiniz, hangi role basvuruyorsunuz?"
+          placeholder="Kimsiniz, hangi role başvuruyorsunuz"
           multiline
           numberOfLines={5}
           style={styles.textArea}
@@ -149,7 +151,7 @@ export const AdayMotivationScreen: React.FC = () => {
           label={`Motivation Paragraph * (${wordCount(letter.motivationParagraph)} words)`}
           value={letter.motivationParagraph}
           onChangeText={(value) => updateField('motivationParagraph', value)}
-          placeholder="Bu programa neden katilmak istiyorsunuz?"
+          placeholder="Bu programa neden katılmak istiyorsunuz"
           multiline
           numberOfLines={6}
           style={styles.textArea}
@@ -158,7 +160,7 @@ export const AdayMotivationScreen: React.FC = () => {
           label={`Contribution Paragraph * (${wordCount(letter.contributionParagraph)} words)`}
           value={letter.contributionParagraph}
           onChangeText={(value) => updateField('contributionParagraph', value)}
-          placeholder="Deneyimlerinizle programa nasil katkida bulunacaksiniz?"
+          placeholder="Deneyimlerinizle programa nasıl katkıda bulunacaksınız"
           multiline
           numberOfLines={6}
           style={styles.textArea}
@@ -167,7 +169,7 @@ export const AdayMotivationScreen: React.FC = () => {
           label={`Closing Paragraph * (${wordCount(letter.closingParagraph)} words)`}
           value={letter.closingParagraph}
           onChangeText={(value) => updateField('closingParagraph', value)}
-          placeholder="Tesekkur, uygunluk ve iletisim bilgisi"
+          placeholder="Teşekkür, uygunluk ve iletişim bilgisi"
           multiline
           numberOfLines={5}
           style={styles.textArea}
@@ -175,7 +177,7 @@ export const AdayMotivationScreen: React.FC = () => {
 
         <View style={styles.notice}>
           <Text style={styles.noticeText}>
-            Minimum onerilen kelime sayisi: giris 20+, motivasyon 40+, katkilar 40+, kapanis 20+.
+            Minimum önerilen kelime sayısı: giriş 20+, motivasyon 40+, katkılar 40+, kapanış 20+.
           </Text>
         </View>
 
@@ -190,7 +192,7 @@ export const AdayMotivationScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   flex: {
     flex: 1,
   } as ViewStyle,
@@ -273,5 +275,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   } as TextStyle,
 });
-
 

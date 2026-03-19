@@ -1,10 +1,10 @@
-import type { AnyAction } from '@reduxjs/toolkit';
+﻿import type { AnyAction } from '@reduxjs/toolkit';
 import type { ThunkAction } from '@reduxjs/toolkit';
 
 import type { RootState } from '../index';
 import type { User } from '../../types';
 import { getBackend } from '../../services/backend';
-import { setUser, clearUser, setLoading, setError } from '../slices/userSlice';
+import { setUser, clearUser, setLoading, setRememberMe, setError } from '../slices/userSlice';
 import { clearApplications } from '../slices/applicationSlice';
 import { clearMessages } from '../slices/messageSlice';
 import { clearLogs } from '../slices/auditSlice';
@@ -20,7 +20,7 @@ export type AppThunk<ReturnType = void> = ThunkAction<
 
 export interface RegisterCandidateResult {
   ok: boolean;
-  message?: string;
+  message: string;
 }
 
 const DEMO_CANDIDATE_CREDENTIALS = {
@@ -29,7 +29,7 @@ const DEMO_CANDIDATE_CREDENTIALS = {
 } as const;
 
 export const loginCandidate =
-  (params: { email: string; password: string }): AppThunk =>
+  (params: { email: string; password: string; rememberMe?: boolean }): AppThunk =>
   async (dispatch) => {
     const backend = getBackend();
 
@@ -38,10 +38,11 @@ export const loginCandidate =
 
     try {
       const user = await backend.auth.loginCandidate(params);
+      dispatch(setRememberMe(Boolean(params.rememberMe)));
       dispatch(setUser(user));
       dispatch(hydrateSession(user));
     } catch (err) {
-      dispatch(setError(getErrorMessage(err, 'Giris yapilamadi.')));
+      dispatch(setError(getErrorMessage(err, 'Giriş yapılamadı.')));
     } finally {
       dispatch(setLoading(false));
     }
@@ -61,21 +62,28 @@ export const registerCandidate =
 
     try {
       await backend.auth.registerCandidate(params);
+      await backend.auth.requestCandidatePassword({
+        fullName: params.fullName,
+        email: params.email,
+      });
       return {
         ok: true,
         message:
-          'Kaydiniz alindi. Sadece tarafimizca paylasilan giris bilgileriyle uygulamaya giris yapabilirsiniz.',
+          'Kaydınız ve şifre talebiniz alındı. Inno Derneği onayından sonra giriş şifreniz gönderilecektir.',
       };
     } catch (err) {
-      dispatch(setError(getErrorMessage(err, 'Kayit olusturulamadi.')));
-      return { ok: false };
+      const message = getErrorMessage(err, 'Kayıt oluşturulamadı.');
+      dispatch(setError(message));
+      return { ok: false, message };
     } finally {
       dispatch(setLoading(false));
     }
   };
 
-export const loginDemoCandidate = (): AppThunk => async (dispatch) => {
-  dispatch(loginCandidate(DEMO_CANDIDATE_CREDENTIALS));
+export const loginDemoCandidate =
+  (rememberMe = false): AppThunk =>
+  async (dispatch) => {
+    dispatch(loginCandidate({ ...DEMO_CANDIDATE_CREDENTIALS, rememberMe }));
 };
 
 export const loginAdmin =
@@ -88,10 +96,11 @@ export const loginAdmin =
 
     try {
       const user = await backend.auth.loginAdmin(params);
+      dispatch(setRememberMe(false));
       dispatch(setUser(user));
       dispatch(hydrateSession(user));
     } catch (err) {
-      dispatch(setError(getErrorMessage(err, 'Admin girisi yapilamadi.')));
+      dispatch(setError(getErrorMessage(err, 'Admin girişi yapılamadı.')));
     } finally {
       dispatch(setLoading(false));
     }
@@ -104,7 +113,6 @@ export const logout = (): AppThunk => async (dispatch) => {
   dispatch(setError(null));
 
   try {
-    // Backend logout is best-effort.
     await backend.auth.logout();
   } catch {
     // ignore
@@ -135,7 +143,7 @@ export const updateProfile =
       });
       dispatch(setUser(updated));
     } catch (err) {
-      dispatch(setError(getErrorMessage(err, 'Profil guncellenemedi.')));
+      dispatch(setError(getErrorMessage(err, 'Profil güncellenemedi.')));
     } finally {
       dispatch(setLoading(false));
     }

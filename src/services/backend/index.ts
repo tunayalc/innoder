@@ -7,8 +7,9 @@ let backendInstance: InnoBackend | null = null;
 
 export const getBackend = (): InnoBackend => {
   if (backendInstance) return backendInstance;
+
   backendInstance =
     appConfig.dataSource === 'remote' ? createRemoteBackend() : createMockBackend();
+
   return backendInstance;
 };
-

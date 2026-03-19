@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, View, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { colors } from '../theme/colors';
+import { useAppTheme, useThemedStyles, type AppColors } from '../theme';
 
 interface MenuItemProps {
   label: string;
@@ -16,15 +16,20 @@ export const MenuItem: React.FC<MenuItemProps> = ({
   label,
   subtitle,
   iconName,
-  iconColor = colors.primary,
-  iconBg = colors.warning,
+  iconColor,
+  iconBg,
   onPress,
 }) => {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
+  const resolvedIconColor = iconColor || colors.primary;
+  const resolvedIconBg = iconBg || colors.warning;
+
   return (
     <Pressable style={styles.menuItem} onPress={onPress}>
       {iconName && (
-        <View style={[styles.iconWrap, { backgroundColor: iconBg }]}>
-          <Icon name={iconName} size={20} color={iconColor} />
+        <View style={[styles.iconWrap, { backgroundColor: resolvedIconBg }]}>
+          <Icon name={iconName} size={20} color={resolvedIconColor} />
         </View>
       )}
       <View style={styles.textWrap}>
@@ -36,7 +41,7 @@ export const MenuItem: React.FC<MenuItemProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   menuItem: {
     paddingVertical: 14,
     paddingHorizontal: 16,

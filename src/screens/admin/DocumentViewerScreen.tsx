@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
+﻿import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ViewStyle, TextStyle, ScrollView } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { colors } from '../../theme';
+import { useThemedStyles, type AppColors } from '../../theme';
 import { Button, Pill } from '../../components';
 import { useAppSelector } from '../../store/hooks';
 import { selectApplicationById } from '../../store/selectors';
@@ -24,6 +24,7 @@ const statusToVariant = (status: DocumentStatus) => {
 };
 
 export const DocumentViewerScreen: React.FC = () => {
+  const styles = useThemedStyles(createStyles);
   const navigation = useNavigation<RootStackNavigationProp>();
   const route = useRoute<DocumentViewerRouteProp>();
   const { applicationId, documentId } = route.params;
@@ -65,7 +66,7 @@ export const DocumentViewerScreen: React.FC = () => {
         <Text style={styles.cardTitle}>Önizleme (Mock)</Text>
         <Text style={styles.cardHint}>
           Backend bağlantısı olmadığı için gerçek dosya görüntüleme yerine sayfa bazlı bir önizleme
-          yer tutucusu gösterilir. Gerçek entegrasyonda dosya URL’si ile PDF/IMG viewer açılacak.
+          yer tutucusu gösterilir. Gerçek entegrasyonda dosya URL'si ile PDF/IMG viewer açılacak.
         </Text>
       </View>
 
@@ -85,13 +86,13 @@ export const DocumentViewerScreen: React.FC = () => {
       ) : null}
 
       <Button
-        label="Doğrulama Kararı"
+        label='Doğrulama Kararı'
         onPress={() =>
           navigation.navigate('AdminDogrulama', { applicationId, documentId })
         }
       />
       <Button
-        label="Mesajlaşma"
+        label='Mesajlaşma'
         variant="ghost"
         onPress={() => navigation.navigate('AdayMesaj', { applicationId })}
       />
@@ -99,7 +100,7 @@ export const DocumentViewerScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   section: {
     paddingTop: 16,
     gap: 12,
@@ -161,4 +162,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   } as TextStyle,
 });
+
+
+
+
 

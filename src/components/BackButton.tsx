@@ -2,15 +2,17 @@ import React from 'react';
 import { Pressable, StyleSheet, ViewStyle } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { colors } from '../theme/colors';
+import { useAppTheme, useThemedStyles, type AppColors } from '../theme';
 
 interface BackButtonProps {
-  onPress?: () => void;
-  tintColor?: string;
+  onPress: () => void;
+  tintColor: string;
 }
 
 export const BackButton: React.FC<BackButtonProps> = ({ onPress, tintColor }) => {
   const navigation = useNavigation();
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
 
   const handlePress = () => {
     if (onPress) {
@@ -35,7 +37,7 @@ export const BackButton: React.FC<BackButtonProps> = ({ onPress, tintColor }) =>
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   container: {
     width: 36,
     height: 36,

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
-import { colors } from '../theme/colors';
+import { useThemedStyles, type AppColors } from '../theme';
 
 interface FieldProps {
   label: string;
@@ -8,6 +8,8 @@ interface FieldProps {
 }
 
 export const Field: React.FC<FieldProps> = ({ label, value }) => {
+  const styles = useThemedStyles(createStyles);
+
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
@@ -18,7 +20,7 @@ export const Field: React.FC<FieldProps> = ({ label, value }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   field: {
     gap: 6,
   } as ViewStyle,

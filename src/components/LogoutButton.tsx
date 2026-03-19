@@ -1,26 +1,25 @@
 import React from 'react';
-import { Pressable, StyleSheet, ViewStyle } from 'react-native';
-import { Alert } from 'react-native';
+import { Alert, Pressable, StyleSheet, ViewStyle } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { colors } from '../theme/colors';
 import { useAuth } from '../hooks';
+import { useI18n } from '../i18n';
+import { useAppTheme, useThemedStyles, type AppColors } from '../theme';
 
 export const LogoutButton: React.FC = () => {
   const { logout } = useAuth();
+  const { t } = useI18n();
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
 
   const handleLogout = () => {
-    Alert.alert(
-      'Çıkış Yap',
-      'Çıkış yapmak istediğinizden emin misiniz?',
-      [
-        { text: 'İptal', style: 'cancel' },
-        {
-          text: 'Çıkış Yap',
-          style: 'destructive',
-          onPress: logout,
-        },
-      ]
-    );
+    Alert.alert(t('common.logoutTitle'), t('common.logoutMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('common.logout'),
+        style: 'destructive',
+        onPress: logout,
+      },
+    ]);
   };
 
   return (
@@ -29,16 +28,12 @@ export const LogoutButton: React.FC = () => {
       onPress={handleLogout}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
     >
-      <Icon 
-        name="logout" 
-        size={20} 
-        color={colors.textSecondary} 
-      />
+      <Icon name="logout" size={20} color={colors.textSecondary} />
     </Pressable>
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   container: {
     width: 36,
     height: 36,

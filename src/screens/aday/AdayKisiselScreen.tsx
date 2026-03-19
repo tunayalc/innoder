@@ -11,7 +11,7 @@ import {
   Platform,
   Switch,
 } from 'react-native';
-import { colors } from '../../theme';
+import { useAppTheme, useThemedStyles, type AppColors } from '../../theme';
 import { Button, InputField } from '../../components';
 import { useAuth } from '../../hooks';
 import { useAppSelector } from '../../store/hooks';
@@ -19,6 +19,8 @@ import { selectUserError, selectUserLoading } from '../../store/selectors';
 import { isValidEmail, isValidPhoneNumber, isValidTCKN } from '../../utils/validation';
 
 export const AdayKisiselScreen: React.FC = () => {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const { user, update } = useAuth();
   const isLoading = useAppSelector(selectUserLoading);
   const error = useAppSelector(selectUserError);
@@ -26,11 +28,12 @@ export const AdayKisiselScreen: React.FC = () => {
   const [fullName, setFullName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState(user?.phone || '');
-  const [country, setCountry] = useState(user?.country || 'Turkiye');
+  const [country, setCountry] = useState(user?.country || 'Türkiye');
   const [city, setCity] = useState(user?.city || '');
   const [birthDate, setBirthDate] = useState(user?.birthDate || '');
   const [identityNumber, setIdentityNumber] = useState(user?.identityNumber || '');
   const [passportNumber, setPassportNumber] = useState(user?.passportNumber || '');
+  const [pnrNumber, setPnrNumber] = useState(user?.pnrNumber || '');
   const [kvkkAccepted, setKvkkAccepted] = useState(Boolean(user?.kvkkAccepted));
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -43,24 +46,24 @@ export const AdayKisiselScreen: React.FC = () => {
     if (!email.trim()) {
       nextErrors.email = 'E-posta zorunludur';
     } else if (!isValidEmail(email)) {
-      nextErrors.email = 'Gecerli bir e-posta giriniz';
+      nextErrors.email = 'Geçerli bir e-posta giriniz';
     }
     if (phone.trim() && !isValidPhoneNumber(phone)) {
-      nextErrors.phone = 'Gecerli bir telefon numarasi giriniz';
+      nextErrors.phone = 'Geçerli bir telefon numarası giriniz';
     }
     if (!birthDate.trim()) {
-      nextErrors.birthDate = 'Dogum tarihi zorunludur';
+      nextErrors.birthDate = 'Doğum tarihi zorunludur';
     }
     if (!identityNumber.trim()) {
-      nextErrors.identityNumber = 'TC kimlik numarasi zorunludur';
+      nextErrors.identityNumber = 'TC kimlik numarası zorunludur';
     } else if (!isValidTCKN(identityNumber)) {
-      nextErrors.identityNumber = 'Gecerli bir TC kimlik numarasi giriniz';
+      nextErrors.identityNumber = 'Geçerli bir TC kimlik numarası giriniz';
     }
     if (!passportNumber.trim()) {
-      nextErrors.passportNumber = 'Pasaport numarasi zorunludur';
+      nextErrors.passportNumber = 'Pasaport numarası zorunludur';
     }
     if (!kvkkAccepted) {
-      nextErrors.kvkkAccepted = 'KVKK onayi zorunludur';
+      nextErrors.kvkkAccepted = 'KVKK onayı zorunludur';
     }
 
     setErrors(nextErrors);
@@ -87,10 +90,11 @@ export const AdayKisiselScreen: React.FC = () => {
       birthDate: birthDate.trim(),
       identityNumber: identityNumber.trim(),
       passportNumber: passportNumber.trim(),
+      pnrNumber: pnrNumber.trim() || undefined,
       kvkkAccepted,
     });
 
-    Alert.alert('Kaydedildi', 'Kisisel bilgileriniz guncellendi.');
+    Alert.alert('Kaydedildi', 'Kişisel bilgileriniz güncellendi.');
   }, [
     validate,
     update,
@@ -102,6 +106,7 @@ export const AdayKisiselScreen: React.FC = () => {
     birthDate,
     identityNumber,
     passportNumber,
+    pnrNumber,
     kvkkAccepted,
   ]);
 
@@ -114,19 +119,19 @@ export const AdayKisiselScreen: React.FC = () => {
         <View style={styles.headerCard}>
           <View style={styles.accentBar} />
           <View style={styles.headerContent}>
-            <Text style={styles.h2}>Kisisel Bilgiler</Text>
+            <Text style={styles.h2}>Kişisel Bilgiler</Text>
             <Text style={styles.subtitle}>
-              Kayit sonrasi profilinizi buradan tamamlayin.
+              Kayıt sonrası profilinizi buradan tamamlayın.
             </Text>
           </View>
         </View>
 
-        <Text style={styles.sectionLabel}>HESAP BILGILERI</Text>
+        <Text style={styles.sectionLabel}>HESAP BİLGİLERİ</Text>
         <InputField
           label="Ad Soyad *"
           value={fullName}
           onChangeText={setFullName}
-          placeholder="Adiniz Soyadiniz"
+          placeholder="Adınız Soyadınız"
           error={errors.fullName}
           autoCapitalize="words"
         />
@@ -141,9 +146,9 @@ export const AdayKisiselScreen: React.FC = () => {
           autoCapitalize="none"
         />
 
-        <Text style={styles.sectionLabel}>KIMLIK VE SEYAHAT</Text>
+        <Text style={styles.sectionLabel}>KİMLİK VE SEYAHAT</Text>
         <InputField
-          label="TC Kimlik Numarasi *"
+          label="TC Kimlik Numarası *"
           value={identityNumber}
           onChangeText={setIdentityNumber}
           placeholder="xxxxxxxxxxx"
@@ -154,16 +159,24 @@ export const AdayKisiselScreen: React.FC = () => {
         />
 
         <InputField
-          label="Pasaport Numarasi *"
+          label="Pasaport Numarası *"
           value={passportNumber}
           onChangeText={setPassportNumber}
-          placeholder="Pasaport numaraniz"
+          placeholder="Pasaport numaranız"
           error={errors.passportNumber}
           autoCapitalize="characters"
         />
 
         <InputField
-          label="Dogum Tarihi *"
+          label="PNR Numarası"
+          value={pnrNumber}
+          onChangeText={setPnrNumber}
+          placeholder="Rezervasyon PNR numaranız"
+          autoCapitalize="characters"
+        />
+
+        <InputField
+          label="Doğum Tarihi *"
           value={birthDate}
           onChangeText={setBirthDate}
           placeholder="YYYY-MM-DD"
@@ -181,25 +194,25 @@ export const AdayKisiselScreen: React.FC = () => {
         />
 
         <InputField
-          label="Ulke"
+          label="Ülke"
           value={country}
           onChangeText={setCountry}
-          placeholder="Turkiye"
+          placeholder="Türkiye"
         />
 
         <InputField
-          label="Sehir"
+          label="Şehir"
           value={city}
           onChangeText={setCity}
-          placeholder="Istanbul"
+          placeholder="İstanbul"
         />
 
-        <Text style={styles.sectionLabel}>GIZLILIK</Text>
+        <Text style={styles.sectionLabel}>GİZLİLİK</Text>
         <View style={styles.switchRow}>
           <View style={styles.switchLabel}>
-            <Text style={styles.bodyText}>KVKK Acik Riza Onayi *</Text>
+            <Text style={styles.bodyText}>KVKK Açık Rıza Onayı *</Text>
             <Text style={styles.kvkkHint}>
-              Kisisel verilerimin basvuru sureci icin islenmesini kabul ediyorum.
+              Kişisel verilerimin başvuru süreci için işlenmesini kabul ediyorum.
             </Text>
           </View>
           <Switch
@@ -222,7 +235,7 @@ export const AdayKisiselScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   flex: {
     flex: 1,
   } as ViewStyle,
@@ -296,3 +309,7 @@ const styles = StyleSheet.create({
     marginTop: -4,
   } as TextStyle,
 });
+
+
+
+

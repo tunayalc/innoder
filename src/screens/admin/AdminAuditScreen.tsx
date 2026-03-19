@@ -7,7 +7,7 @@ import {
   TextStyle,
   FlatList,
 } from 'react-native';
-import { colors } from '../../theme';
+import { useThemedStyles, type AppColors } from '../../theme';
 import { Pill } from '../../components';
 import { useAppSelector } from '../../store/hooks';
 import { selectAuditLogs } from '../../store/selectors/auditSelectors';
@@ -35,6 +35,7 @@ const actionToVariant = (action: AuditAction) => {
 };
 
 export const AdminAuditScreen: React.FC = () => {
+  const styles = useThemedStyles(createStyles);
   const logs = useAppSelector(selectAuditLogs);
 
   const sortedLogs = useMemo(
@@ -89,7 +90,7 @@ export const AdminAuditScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -151,3 +152,5 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
   } as TextStyle,
 });
+
+

@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient';
-import { Application, Document, PersonalInfo } from '../../types';
+import { Application, Document, PersonalInfo, ProgramDraftInput } from '../../types';
 
 class ApplicationService {
   async getApplications(): Promise<Application[]> {
@@ -12,8 +12,8 @@ class ApplicationService {
     return response.data || null;
   }
 
-  async createApplication(programId: string): Promise<Application | null> {
-    const response = await apiClient.post<Application>('/applications', { programId });
+  async createApplication(program: ProgramDraftInput): Promise<Application | null> {
+    const response = await apiClient.post<Application>('/applications', { program });
     return response.data || null;
   }
 
@@ -55,7 +55,7 @@ class ApplicationService {
     applicationId: string,
     documentId: string,
     status: Document['status'],
-    note?: string
+    note: string
   ): Promise<Document | null> {
     const response = await apiClient.patch<Document>(
       `/applications/${applicationId}/documents/${documentId}/verify`,

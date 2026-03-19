@@ -1,39 +1,41 @@
-import React, { useState } from 'react';
+﻿import React from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ViewStyle,
-  TextStyle,
-  TouchableOpacity,
   Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StyleSheet,
+  Text,
+  TextStyle,
+  TouchableOpacity,
+  View,
+  ViewStyle,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { colors } from '../../theme';
-import { Button, InputField } from '../../components';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Button, InputField, LanguageSwitcher, ThemeSwitcher } from '../../components';
 import { useAuth } from '../../hooks';
+import { useI18n } from '../../i18n';
 import { useAppSelector } from '../../store/hooks';
 import { selectUserError, selectUserLoading } from '../../store/selectors';
+import { useThemedStyles, type AppColors } from '../../theme';
 
 export const AdminLoginScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const { loginAdmin } = useAuth();
+  const { t } = useI18n();
   const isLoading = useAppSelector(selectUserLoading);
   const error = useAppSelector(selectUserError);
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const styles = useThemedStyles(createStyles);
+  const [username, setUsername] = React.useState('');
+  const [password, setPassword] = React.useState('');
 
   const handleAdminLogin = () => {
     if (!username.trim() || !password.trim()) {
-      Alert.alert('Hata', 'Lütfen kullanıcı adı ve şifrenizi girin.');
+      Alert.alert('Hata', t('auth.fillUsernamePassword'));
       return;
     }
-
     loginAdmin({ username, password });
   };
 
@@ -49,48 +51,40 @@ export const AdminLoginScreen: React.FC = () => {
         ]}
         keyboardShouldPersistTaps="handled"
       >
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Text style={styles.backBtnText}>← Geri</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.backText}>{t('common.back')}</Text>
         </TouchableOpacity>
+
+        <View style={styles.headerControls}>
+          <ThemeSwitcher compact />
+          <LanguageSwitcher compact />
+        </View>
 
         <View style={styles.header}>
           <View style={styles.accentBar} />
-          <Text style={styles.title}>Yönetici Girişi</Text>
-          <Text style={styles.subtitle}>
-            Yönetim paneline erişmek için giriş yapın
-          </Text>
+          <Text style={styles.title}>{t('auth.adminTitle')}</Text>
+          <Text style={styles.subtitle}>{t('auth.adminSubtitle')}</Text>
         </View>
 
         <View style={styles.form}>
           <InputField
-            label="Kullanıcı Adı"
+            label={t('auth.username')}
             value={username}
             onChangeText={setUsername}
-            placeholder="Kullanıcı adınız"
+            placeholder={t('auth.usernamePlaceholder')}
             autoCapitalize="none"
             autoCorrect={false}
           />
-
-          <View style={{ height: 20 }} />
-
           <InputField
-            label="Şifre"
+            label={t('common.password')}
             value={password}
             onChangeText={setPassword}
-            placeholder="Şifrenizi girin"
+            placeholder={t('auth.passwordPlaceholder')}
             secureTextEntry
           />
-
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-          <View style={{ height: 16 }} />
-
           <Button
-            label={isLoading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
+            label={isLoading ? t('auth.loginButtonLoading') : t('auth.loginButton')}
             onPress={handleAdminLogin}
           />
         </View>
@@ -99,52 +93,16 @@ export const AdminLoginScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  } as ViewStyle,
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-  } as ViewStyle,
-  backBtn: {
-    alignSelf: 'flex-start',
-    marginBottom: 32,
-  } as ViewStyle,
-  backBtnText: {
-    fontSize: 16,
-    color: colors.primary,
-    fontWeight: '600',
-  } as TextStyle,
-  header: {
-    marginBottom: 36,
-  } as ViewStyle,
-  accentBar: {
-    width: 28,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: colors.teal,
-    marginBottom: 16,
-  } as ViewStyle,
-  title: {
-    fontSize: 34,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    letterSpacing: -0.5,
-    marginBottom: 10,
-  } as TextStyle,
-  subtitle: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    lineHeight: 23,
-  } as TextStyle,
-  form: {
-    paddingHorizontal: 0,
-  } as ViewStyle,
-  errorText: {
-    fontSize: 13,
-    color: '#DC2626',
-    marginTop: 10,
-  } as TextStyle,
-});
+const createStyles = (colors: AppColors) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background } as ViewStyle,
+    scrollContent: { flexGrow: 1, paddingHorizontal: 24, gap: 18 } as ViewStyle,
+    backText: { color: colors.primary, fontSize: 16, fontWeight: '600' } as TextStyle,
+    headerControls: { flexDirection: 'row', gap: 8, alignSelf: 'flex-start' } as ViewStyle,
+    header: { gap: 10 } as ViewStyle,
+    accentBar: { width: 28, height: 3, borderRadius: 2, backgroundColor: colors.teal } as ViewStyle,
+    title: { fontSize: 32, fontWeight: '700', color: colors.textPrimary } as TextStyle,
+    subtitle: { fontSize: 15, lineHeight: 22, color: colors.textSecondary } as TextStyle,
+    form: { gap: 16 } as ViewStyle,
+    errorText: { fontSize: 13, color: colors.danger } as TextStyle,
+  });

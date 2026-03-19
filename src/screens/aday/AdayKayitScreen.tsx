@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+﻿import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,19 +12,19 @@ import {
   Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { colors } from '../../theme';
+import { useAppTheme, useThemedStyles, type AppColors } from '../../theme';
 import { Button, InputField } from '../../components';
 import { useAuth } from '../../hooks';
-import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { useAppSelector } from '../../store/hooks';
 import { selectApplicationLoading, selectApplications, selectUserLoading } from '../../store/selectors';
 import { isValidEmail, isValidPhoneNumber } from '../../utils/validation';
 import { RootStackNavigationProp } from '../../types';
-import { ensureDraftApplication } from '../../store/thunks/applicationThunks';
 
 export const AdayKayitScreen: React.FC = () => {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const navigation = useNavigation<RootStackNavigationProp>();
   const { user, update } = useAuth();
-  const dispatch = useAppDispatch();
   const applications = useAppSelector(selectApplications);
   const isUserLoading = useAppSelector(selectUserLoading);
   const isApplicationLoading = useAppSelector(selectApplicationLoading);
@@ -69,10 +69,6 @@ export const AdayKayitScreen: React.FC = () => {
     // Update user info
     update({ name: fullName, email, phone, country, city, kvkkAccepted });
 
-    // Ensure the draft application exists (server/DB would create it after personal info step;
-    // for the prototype we create a draft so checklist + docs are visible).
-    dispatch(ensureDraftApplication({ programId: 'prog-a' }));
-
     setSubmitted(true);
     Alert.alert(
       'Başarılı',
@@ -96,10 +92,12 @@ export const AdayKayitScreen: React.FC = () => {
     city,
     kvkkAccepted,
     hasExistingApplication,
-    dispatch,
     update,
     navigation,
   ]);
+
+  const submitButtonStyle =
+    isUserLoading || isApplicationLoading ? styles.buttonDisabled : undefined;
 
   return (
     <KeyboardAvoidingView
@@ -122,7 +120,7 @@ export const AdayKayitScreen: React.FC = () => {
           label="Ad Soyad *"
           value={fullName}
           onChangeText={setFullName}
-          placeholder="Adınız ve soyadınız"
+          placeholder='Adınız ve soyadınız'
           error={errors.fullName}
           autoCapitalize="words"
         />
@@ -148,17 +146,17 @@ export const AdayKayitScreen: React.FC = () => {
         />
 
         <InputField
-          label="Ülke"
+          label='Ülke'
           value={country}
           onChangeText={setCountry}
-          placeholder="Türkiye"
+          placeholder='Türkiye'
         />
 
         <InputField
-          label="Şehir"
+          label='Şehir'
           value={city}
           onChangeText={setCity}
-          placeholder="İstanbul"
+          placeholder='İstanbul'
         />
 
         <Text style={styles.sectionLabel}>GİZLİLİK</Text>
@@ -184,7 +182,7 @@ export const AdayKayitScreen: React.FC = () => {
           label={hasExistingApplication ? 'Bilgileri Güncelle' : 'Hesap Oluştur'}
           onPress={handleSubmit}
           // Prevent repeated taps while backend operations are in-flight.
-          style={isUserLoading || isApplicationLoading ? { opacity: 0.7 } : undefined}
+          style={submitButtonStyle}
         />
 
         {submitted && (
@@ -199,7 +197,7 @@ export const AdayKayitScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   flex: {
     flex: 1,
   } as ViewStyle,
@@ -272,6 +270,9 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     marginTop: -4,
   } as TextStyle,
+  buttonDisabled: {
+    opacity: 0.7,
+  } as ViewStyle,
   notice: {
     backgroundColor: '#E7F5F3',
     padding: 14,
@@ -283,3 +284,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   } as TextStyle,
 });
+
+
+
+

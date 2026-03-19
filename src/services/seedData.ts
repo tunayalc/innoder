@@ -1,4 +1,8 @@
-import { Application, Message, AuditLog } from '../types';
+import { Application, Message, AuditLog, User, createGeneralChatThreadId } from '../types';
+import {
+  createProgramDraftInput,
+  materializeAssignedProgram,
+} from './programFactory';
 
 // Generate unique IDs
 let idCounter = Date.now();
@@ -12,19 +16,40 @@ export const createSeedApplications = (): Application[] => {
   const now = new Date().toISOString();
   const yesterday = new Date(Date.now() - 86400000).toISOString();
   const twoDaysAgo = new Date(Date.now() - 172800000).toISOString();
+  const programA = materializeAssignedProgram({
+    id: 'prog-a',
+    input: createProgramDraftInput({
+      name: 'Program A',
+      year: 2026,
+      documentTypes: ['identity', 'form', 'extra', 'boarding_pass'],
+    }),
+    createdAt: twoDaysAgo,
+    createdByUserId: 'admin-1',
+  });
+  const programB = materializeAssignedProgram({
+    id: 'prog-b',
+    input: createProgramDraftInput({
+      name: 'Program B',
+      year: 2026,
+      documentTypes: ['identity', 'form', 'extra'],
+    }),
+    createdAt: twoDaysAgo,
+    createdByUserId: 'admin-1',
+  });
 
   return [
     {
       id: 'app-001',
       userId: 'user-aylin',
-      programId: 'prog-a',
-      programName: 'Program A',
+      programId: programA.id,
+      programName: programA.name,
+      program: programA,
       status: 'needs_fix',
       personalInfo: {
         fullName: 'Aylin Demir',
         birthDate: '1995-04-15',
         identityNumber: '12345678901',
-        programSelection: 'Program A',
+        programSelection: programA.id,
       },
       documents: [
         {
@@ -68,14 +93,15 @@ export const createSeedApplications = (): Application[] => {
     {
       id: 'app-002',
       userId: 'user-kerem',
-      programId: 'prog-b',
-      programName: 'Program B',
+      programId: programB.id,
+      programName: programB.name,
+      program: programB,
       status: 'under_review',
       personalInfo: {
         fullName: 'Kerem Kaya',
         birthDate: '1998-08-22',
         identityNumber: '98765432109',
-        programSelection: 'Program B',
+        programSelection: programB.id,
       },
       documents: [
         {
@@ -110,14 +136,15 @@ export const createSeedApplications = (): Application[] => {
     {
       id: 'app-003',
       userId: 'user-selin',
-      programId: 'prog-a',
-      programName: 'Program A',
+      programId: programA.id,
+      programName: programA.name,
+      program: programA,
       status: 'approved',
       personalInfo: {
         fullName: 'Selin Bora',
         birthDate: '1997-01-10',
         identityNumber: '55566677788',
-        programSelection: 'Program A',
+        programSelection: programA.id,
       },
       documents: [
         {
@@ -174,6 +201,23 @@ export const createSeedMessages = (): Message[] => {
 
   return [
     {
+      id: 'msg-general-001',
+      applicationId: createGeneralChatThreadId('user-aylin'),
+      senderId: 'admin-1',
+      senderRole: 'admin',
+      content: 'Merhaba Aylin, genel iletişim hattına hoş geldiniz.',
+      createdAt: twoHoursAgo,
+      readAt: hourAgo,
+    },
+    {
+      id: 'msg-general-002',
+      applicationId: createGeneralChatThreadId('user-aylin'),
+      senderId: 'user-aylin',
+      senderRole: 'candidate',
+      content: 'Teşekkürler, genel sorularımı buradan ileteceğim.',
+      createdAt: hourAgo,
+    },
+    {
       id: 'msg-001',
       applicationId: 'app-001',
       senderId: 'admin-1',
@@ -197,6 +241,46 @@ export const createSeedMessages = (): Message[] => {
       senderRole: 'admin',
       content: 'Ek belge bulanık. OKUNMADI olarak işaretlendi.',
       createdAt: now,
+    },
+  ];
+};
+
+export const createSeedUsers = (): User[] => {
+  const now = new Date().toISOString();
+
+  return [
+    {
+      id: 'user-aylin',
+      email: 'aylin@inno.com',
+      name: 'Aylin Demir',
+      role: 'candidate',
+      kvkkAccepted: true,
+      credentialRequestPending: true,
+      credentialRequestedAt: now,
+      status: 'verified',
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: 'user-kerem',
+      email: 'kerem@inno.com',
+      name: 'Kerem Kaya',
+      role: 'candidate',
+      kvkkAccepted: true,
+      status: 'verified',
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: 'user-selin',
+      email: 'selin@inno.com',
+      name: 'Selin Bora',
+      role: 'candidate',
+      kvkkAccepted: true,
+      credentialSentAt: now,
+      status: 'verified',
+      createdAt: now,
+      updatedAt: now,
     },
   ];
 };
@@ -301,11 +385,21 @@ export const createNewApplication = (
 ): Application => {
   const now = new Date().toISOString();
   const appId = generateId();
+  const program = materializeAssignedProgram({
+    id: programName.toLowerCase().replace(/\s+/g, '-'),
+    input: createProgramDraftInput({
+      name: programName,
+      year: new Date().getFullYear(),
+      documentTypes: ['identity', 'form', 'extra', 'boarding_pass'],
+    }),
+    createdAt: now,
+  });
   return {
     id: appId,
     userId,
-    programId: programName.toLowerCase().replace(/\s+/g, '-'),
-    programName,
+    programId: program.id,
+    programName: program.name,
+    program,
     status: 'draft',
     personalInfo,
     documents: [

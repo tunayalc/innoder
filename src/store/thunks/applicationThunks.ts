@@ -2,7 +2,7 @@ import type { AnyAction } from '@reduxjs/toolkit';
 import type { ThunkAction } from '@reduxjs/toolkit';
 
 import type { RootState } from '../index';
-import type { Document, PersonalInfo } from '../../types';
+import type { Document, PersonalInfo, ProgramDraftInput } from '../../types';
 import { getBackend } from '../../services/backend';
 import {
   setApplications,
@@ -22,7 +22,7 @@ export type AppThunk<ReturnType = void> = ThunkAction<
 >;
 
 export const ensureDraftApplication =
-  (params: { programId: string }): AppThunk =>
+  (params: { program: ProgramDraftInput }): AppThunk =>
   async (dispatch, getState) => {
     const backend = getBackend();
     const user = getState().user.user;
@@ -33,7 +33,7 @@ export const ensureDraftApplication =
     try {
       const app = await backend.applications.ensureDraft({
         userId: user.id,
-        programId: params.programId,
+        program: params.program,
         fullName: user.name,
       });
       const existingApps = getState().application.applications;
@@ -52,7 +52,7 @@ export const ensureDraftApplication =
   };
 
 export const assignProgramToCandidate =
-  (params: { userId: string; fullName: string; programId: string }): AppThunk =>
+  (params: { userId: string; fullName: string; program: ProgramDraftInput }): AppThunk =>
   async (dispatch, getState) => {
     const backend = getBackend();
     dispatch(setApplicationLoading(true));
@@ -75,7 +75,7 @@ export const assignProgramToCandidate =
   };
 
 export const updatePersonalInfoDraft =
-  (params: { applicationId: string; patch: Partial<PersonalInfo>; programId?: string }): AppThunk =>
+  (params: { applicationId: string; patch: Partial<PersonalInfo>; programId: string }): AppThunk =>
   async (dispatch) => {
     const backend = getBackend();
     dispatch(setApplicationLoading(true));
@@ -116,9 +116,9 @@ export const uploadDocument =
     documentType: Document['type'];
     fileName: string;
     fileUrl?: string;
-    pageCount?: number;
-    mimeType?: string;
-    qualityScore?: number;
+    pageCount: number;
+    mimeType: string;
+    qualityScore: number;
     parseResult?: string;
   }): AppThunk =>
   async (dispatch) => {
@@ -142,7 +142,7 @@ export const verifyDocument =
     applicationId: string;
     documentId: string;
     status: Document['status'];
-    note?: string;
+    note: string;
   }): AppThunk =>
   async (dispatch, getState) => {
     const backend = getBackend();
@@ -219,12 +219,18 @@ export const rejectApplication =
  * Admin refresh for list screen (includes filters).
  */
 export const loadAdminApplications =
-  (filters?: {
-    status?: string;
-    programId?: string;
-    hasIssues?: boolean;
-    createdAfterISO?: string;
-    query?: string;
+  (filters: {
+    status: string;
+    programId: string;
+    hasIssues: boolean;
+    createdAfterISO: string;
+    query: string;
+  } = {
+    status: '',
+    programId: '',
+    hasIssues: undefined as unknown as boolean,
+    createdAfterISO: '',
+    query: '',
   }): AppThunk =>
   async (dispatch) => {
     const backend = getBackend();

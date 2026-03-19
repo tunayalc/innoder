@@ -1,83 +1,85 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ViewStyle,
-  TextStyle,
-  TouchableOpacity,
   Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StyleSheet,
   Switch,
+  Text,
+  TextStyle,
+  TouchableOpacity,
+  View,
+  ViewStyle,
 } from 'react-native';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { colors } from '../../theme';
-import { Button, InputField } from '../../components';
+import {
+  Button,
+  ContactLinksCard,
+  InputField,
+  LanguageSwitcher,
+  ThemeSwitcher,
+} from '../../components';
+import { RootStackParamList } from '../../types';
 import { useAuth } from '../../hooks';
+import { useI18n } from '../../i18n';
 import { useAppSelector } from '../../store/hooks';
 import { selectUserError, selectUserLoading } from '../../store/selectors';
+import { useAppTheme, useThemedStyles, type AppColors } from '../../theme';
+import { CONTACT_LINKS } from '../../constants';
+import { openMailto } from '../../utils/contact';
 import { isValidEmail } from '../../utils/validation';
-import { RootStackParamList } from '../../types';
 
 export const RegisterScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RootStackParamList, 'Register'>>();
   const insets = useSafeAreaInsets();
   const { registerCandidate } = useAuth();
+  const { t } = useI18n();
+  const { colors } = useAppTheme();
   const isLoading = useAppSelector(selectUserLoading);
   const error = useAppSelector(selectUserError);
+  const styles = useThemedStyles(createStyles);
   const videosCompleted = Boolean(route.params?.videosCompleted);
-
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [kvkkAccepted, setKvkkAccepted] = useState(false);
+  const [fullName, setFullName] = React.useState('');
+  const [email, setEmail] = React.useState('');
+  const [kvkkAccepted, setKvkkAccepted] = React.useState(false);
 
   const handleRegister = async () => {
     if (!videosCompleted) {
-      Alert.alert(
-        'Video Zorunlulugu',
-        'Kayit olmadan once bilgilendirme videolarinin tamamini izlemelisiniz.',
-        [{ text: 'Videolara Don', onPress: () => navigation.navigate('OnboardingIntro') }],
-      );
+      Alert.alert(t('auth.videoRequiredTitle'), t('auth.videoRequiredText'));
       return;
     }
-
     if (!fullName.trim() || !email.trim()) {
-      Alert.alert('Hata', 'Lutfen ad soyad ve e-posta alanlarini doldurun.');
+      Alert.alert(t('common.errorTitle'), t('auth.fillNameEmail'));
       return;
     }
-
     if (!isValidEmail(email)) {
-      Alert.alert('Hata', 'Gecerli bir e-posta giriniz.');
+      Alert.alert(t('common.errorTitle'), t('auth.validEmail'));
       return;
     }
-
     if (!kvkkAccepted) {
-      Alert.alert('Hata', 'KVKK onayi zorunludur.');
+      Alert.alert(t('common.errorTitle'), t('auth.kvkkRequired'));
       return;
     }
 
-    const result = await registerCandidate({
-      fullName,
-      email,
-      kvkkAccepted,
-    });
-
+    const result = await registerCandidate({ fullName, email, kvkkAccepted });
     if (result?.ok) {
-      Alert.alert(
-        'Kayit alindi',
-        result.message ||
-          'Basvurunuz alindi. Tarafimizca paylasilan giris bilgileriyle daha sonra uygulamaya giris yapabilirsiniz.',
-        [
-          {
-            text: 'Tamam',
-            onPress: () => navigation.navigate('Login'),
-          },
-        ],
-      );
+      try {
+        await openMailto({
+          to: CONTACT_LINKS.email,
+          subject: `${t('auth.passwordRequestButton')} - ${fullName.trim()}`,
+          body:
+            `${fullName.trim()} (${email.trim().toLowerCase()}) dogrulama ve giris icin sifre talep etti.`,
+        });
+      } catch {
+        // Fall back to in-app confirmation when no mail app is available.
+      }
+
+      Alert.alert(t('auth.passwordRequestSuccessTitle'), result.message || t('auth.passwordRequestSuccessText'), [
+        { text: t('auth.ok'), onPress: () => navigation.navigate('Login') },
+      ]);
     }
   };
 
@@ -93,179 +95,98 @@ export const RegisterScreen: React.FC = () => {
         ]}
         keyboardShouldPersistTaps="handled"
       >
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Text style={styles.backBtnText}>Geri</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.backText}>{t('common.back')}</Text>
         </TouchableOpacity>
+
+        <View style={styles.headerControls}>
+          <ThemeSwitcher compact />
+          <LanguageSwitcher compact />
+        </View>
 
         <View style={styles.header}>
           <View style={styles.accentBar} />
-          <Text style={styles.title}>Kayit Ol</Text>
-          <Text style={styles.subtitle}>
-            Kayit olabilirsiniz. Uygulamaya sadece tarafimizca paylasilan giris
-            bilgileri ile giris yapilabilir.
-          </Text>
-          {!videosCompleted ? (
-            <Text style={styles.warningText}>
-              Kayit icin once bilgilendirme videolarini tamamlayin.
-            </Text>
-          ) : null}
+          <Text style={styles.title}>{t('auth.registerTitle')}</Text>
+          <Text style={styles.subtitle}>{t('auth.registerSubtitle')}</Text>
+          {!videosCompleted ? <Text style={styles.warningText}>{t('auth.registerWarning')}</Text> : null}
+          <Text style={styles.helperText}>{t('auth.registerPasswordInfo')}</Text>
         </View>
 
         <View style={styles.form}>
           <InputField
-            label="Ad Soyad *"
+            label={t('auth.fullName')}
             value={fullName}
             onChangeText={setFullName}
-            placeholder="Adiniz Soyadiniz"
+            placeholder={t('auth.fullNamePlaceholder')}
             autoCapitalize="words"
           />
-
-          <View style={{ height: 20 }} />
-
           <InputField
-            label="E-posta *"
+            label={t('auth.emailRequired')}
             value={email}
             onChangeText={setEmail}
-            placeholder="ornek@email.com"
+            placeholder={t('auth.emailPlaceholder')}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
           />
         </View>
 
-        <View style={styles.kvkkWrap}>
-          <View style={styles.kvkkRow}>
-            <View style={styles.kvkkTextWrap}>
-              <Text style={styles.kvkkTitle}>KVKK Acik Riza Onayi</Text>
-              <Text style={styles.kvkkHint}>
-                Kisisel verilerimin basvuru surecinin yonetimi, iletisim ve
-                dogrulama amaciyla islenmesini kabul ediyorum.
-              </Text>
-            </View>
-            <Switch
-              value={kvkkAccepted}
-              onValueChange={setKvkkAccepted}
-              trackColor={{ false: colors.muted, true: colors.teal }}
-              thumbColor={colors.white}
-            />
+        <View style={styles.kvkkRow}>
+          <View style={styles.kvkkTextWrap}>
+            <Text style={styles.kvkkTitle}>{t('auth.kvkkTitle')}</Text>
+            <Text style={styles.kvkkText}>{t('auth.kvkkText')}</Text>
           </View>
+          <Switch
+            value={kvkkAccepted}
+            onValueChange={setKvkkAccepted}
+            trackColor={{ false: colors.muted, true: colors.teal }}
+            thumbColor={colors.white}
+          />
         </View>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        <View style={{ paddingHorizontal: 4, marginTop: 16 }}>
-          <Button
-            label={isLoading ? 'Kayit yapiliyor...' : 'Kayit Ol'}
-            onPress={videosCompleted ? handleRegister : undefined}
-          />
-        </View>
+        <Button
+          label={isLoading ? t('auth.registerLoading') : t('auth.passwordRequestButton')}
+          onPress={videosCompleted ? handleRegister : undefined}
+        />
 
-        <TouchableOpacity
-          style={styles.loginLink}
-          onPress={() => navigation.navigate('Login')}
-        >
-          <Text style={styles.loginText}>
-            Giris ekranina don: <Text style={styles.loginTextBold}>Giris Yap</Text>
-          </Text>
+        <ContactLinksCard
+          title={t('auth.contactTitle')}
+          subtitle={t('auth.contactSubtitle')}
+        />
+
+        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+          <Text style={styles.loginText}>{t('auth.backToLogin')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  } as ViewStyle,
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-  } as ViewStyle,
-  backBtn: {
-    alignSelf: 'flex-start',
-    marginBottom: 24,
-  } as ViewStyle,
-  backBtnText: {
-    fontSize: 16,
-    color: colors.primary,
-    fontWeight: '600',
-  } as TextStyle,
-  header: {
-    marginBottom: 30,
-  } as ViewStyle,
-  accentBar: {
-    width: 28,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: colors.primary,
-    marginBottom: 16,
-  } as ViewStyle,
-  title: {
-    fontSize: 34,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    letterSpacing: -0.5,
-    marginBottom: 10,
-  } as TextStyle,
-  subtitle: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    lineHeight: 22,
-  } as TextStyle,
-  form: {
-    paddingHorizontal: 0,
-  } as ViewStyle,
-  kvkkWrap: {
-    marginTop: 20,
-  } as ViewStyle,
-  kvkkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  } as ViewStyle,
-  kvkkTextWrap: {
-    flex: 1,
-  } as ViewStyle,
-  kvkkTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  } as TextStyle,
-  kvkkHint: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginTop: 4,
-    lineHeight: 19,
-  } as TextStyle,
-  errorText: {
-    fontSize: 13,
-    color: '#DC2626',
-    marginTop: 12,
-    paddingHorizontal: 4,
-  } as TextStyle,
-  warningText: {
-    marginTop: 8,
-    fontSize: 13,
-    color: colors.noticeText,
-    lineHeight: 19,
-  } as TextStyle,
-  loginLink: {
-    alignSelf: 'center',
-    marginTop: 28,
-    marginBottom: 16,
-  } as ViewStyle,
-  loginText: {
-    fontSize: 15,
-    color: colors.textSecondary,
-  } as TextStyle,
-  loginTextBold: {
-    color: colors.primary,
-    fontWeight: '600',
-  } as TextStyle,
-});
+const createStyles = (colors: AppColors) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background } as ViewStyle,
+    scrollContent: { flexGrow: 1, paddingHorizontal: 24, gap: 18 } as ViewStyle,
+    backText: { color: colors.primary, fontSize: 16, fontWeight: '600' } as TextStyle,
+    headerControls: { flexDirection: 'row', gap: 8, alignSelf: 'flex-start' } as ViewStyle,
+    header: { gap: 10 } as ViewStyle,
+    accentBar: { width: 28, height: 3, borderRadius: 2, backgroundColor: colors.primary } as ViewStyle,
+    title: { fontSize: 32, fontWeight: '700', color: colors.textPrimary } as TextStyle,
+    subtitle: { fontSize: 15, lineHeight: 22, color: colors.textSecondary } as TextStyle,
+    warningText: { fontSize: 13, color: colors.noticeText } as TextStyle,
+    helperText: { fontSize: 13, lineHeight: 20, color: colors.textSecondary } as TextStyle,
+    form: { gap: 16 } as ViewStyle,
+    kvkkRow: {
+      flexDirection: 'row',
+      gap: 12,
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    } as ViewStyle,
+    kvkkTextWrap: { flex: 1 } as ViewStyle,
+    kvkkTitle: { fontSize: 14, fontWeight: '700', color: colors.textPrimary } as TextStyle,
+    kvkkText: { fontSize: 13, color: colors.textSecondary, lineHeight: 19 } as TextStyle,
+    errorText: { fontSize: 13, color: colors.danger } as TextStyle,
+    loginText: { textAlign: 'center', color: colors.textSecondary, fontSize: 14 } as TextStyle,
+  });
+

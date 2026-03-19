@@ -18,7 +18,7 @@ export const useAuth = () => {
   const role = useAppSelector(selectUserRole);
 
   const loginCandidate = useCallback(
-    (params: { email: string; password: string }) => {
+    (params: { email: string; password: string; rememberMe?: boolean }) => {
       dispatch(loginCandidateThunk(params));
     },
     [dispatch],
@@ -35,8 +35,8 @@ export const useAuth = () => {
     [dispatch],
   );
 
-  const loginDemoCandidate = useCallback(() => {
-    dispatch(loginDemoCandidateThunk());
+  const loginDemoCandidate = useCallback((rememberMe = false) => {
+    dispatch(loginDemoCandidateThunk(rememberMe));
   }, [dispatch]);
 
   const loginAdmin = useCallback(

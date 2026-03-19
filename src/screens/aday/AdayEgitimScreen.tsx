@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,10 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { colors } from '../../theme';
+import { useThemedStyles, type AppColors } from '../../theme';
 import { Button, Pill } from '../../components';
 import { useAuth } from '../../hooks';
+import { useI18n } from '../../i18n';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { selectApplicationLoading, selectApplications } from '../../store/selectors';
 import { APPLICATION_STATUS_LABELS } from '../../constants';
@@ -19,14 +20,22 @@ import { RootStackNavigationProp } from '../../types';
 import { hydrateSession } from '../../store/thunks/sessionThunks';
 
 export const AdayEgitimScreen: React.FC = () => {
+  const styles = useThemedStyles(createStyles);
   const navigation = useNavigation<RootStackNavigationProp>();
   const { user } = useAuth();
+  const { t } = useI18n();
   const dispatch = useAppDispatch();
   const applications = useAppSelector(selectApplications);
   const isLoading = useAppSelector(selectApplicationLoading);
 
   const myPrograms = useMemo(
-    () => applications.filter((app) => app.userId === user?.id),
+    () =>
+      applications
+        .filter((app) => app.userId === user?.id)
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        ),
     [applications, user?.id],
   );
 
@@ -41,24 +50,20 @@ export const AdayEgitimScreen: React.FC = () => {
       <View style={styles.headerCard}>
         <View style={styles.accentBar} />
         <View style={styles.headerContent}>
-          <Text style={styles.h2}>Programlarim</Text>
-          <Text style={styles.subtitle}>
-            Admin tarafindan atanmis tum programlarinizi bu alandan yonetebilirsiniz.
-          </Text>
+          <Text style={styles.h2}>{t('candidatePrograms.title')}</Text>
+          <Text style={styles.subtitle}>{t('candidatePrograms.subtitle')}</Text>
         </View>
       </View>
 
       <Button
-        label={isLoading ? 'Yukleniyor...' : 'Programlari Yenile'}
+        label={isLoading ? t('candidatePrograms.refreshing') : t('candidatePrograms.refresh')}
         variant="ghost"
         onPress={() => user && dispatch(hydrateSession(user))}
       />
 
       {myPrograms.length === 0 ? (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyText}>
-            Henuz size atanmis bir program yok. Lutfen admin atamasini bekleyin.
-          </Text>
+          <Text style={styles.emptyText}>{t('candidatePrograms.empty')}</Text>
         </View>
       ) : (
         myPrograms.map((app) => {
@@ -66,37 +71,52 @@ export const AdayEgitimScreen: React.FC = () => {
           const completedDocs = app.documents.filter((d) => d.status === 'ok').length;
 
           return (
-            <TouchableOpacity
-              key={app.id}
-              activeOpacity={0.8}
-              style={styles.programCard}
-              onPress={() => navigation.navigate('AdayProgramDetay', { applicationId: app.id })}
-            >
-              <View style={styles.programTopRow}>
-                <Text style={styles.programTitle}>{app.programName}</Text>
-                <Pill
-                  label={APPLICATION_STATUS_LABELS[app.status] || app.status}
-                  variant={
-                    app.status === 'approved'
-                      ? 'ok'
-                      : app.status === 'needs_fix'
-                        ? 'warn'
-                        : app.status === 'rejected'
-                          ? 'err'
-                          : 'info'
-                  }
+            <View key={app.id} style={styles.programCard}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={styles.programCardMain}
+                onPress={() => navigation.navigate('AdayProgramDetay', { applicationId: app.id })}
+              >
+                <View style={styles.programTopRow}>
+                  <Text style={styles.programTitle}>{app.programName}</Text>
+                  <Pill
+                    label={APPLICATION_STATUS_LABELS[app.status] || app.status}
+                    variant={
+                      app.status === 'approved'
+                        ? 'ok'
+                        : app.status === 'needs_fix'
+                          ? 'warn'
+                          : app.status === 'rejected'
+                            ? 'err'
+                            : 'info'
+                    }
+                  />
+                </View>
+
+                <View style={styles.metaRow}>
+                  <Text style={styles.metaLabel}>{t('candidatePrograms.documentProgress')}</Text>
+                  <Text style={styles.metaValue}>
+                    {completedDocs}/{totalDocs}
+                  </Text>
+                </View>
+
+                <Text style={styles.cardHint}>{t('candidatePrograms.cardHint')}</Text>
+              </TouchableOpacity>
+
+              <View style={styles.programActions}>
+                <Button
+                  label={t('candidatePrograms.detailButton')}
+                  variant="ghost"
+                  style={styles.programActionButton}
+                  onPress={() => navigation.navigate('AdayProgramDetay', { applicationId: app.id })}
+                />
+                <Button
+                  label={t('candidatePrograms.messageButton')}
+                  style={styles.programActionButton}
+                  onPress={() => navigation.navigate('AdayMesaj', { applicationId: app.id })}
                 />
               </View>
-
-              <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>Belge Ilerlemesi</Text>
-                <Text style={styles.metaValue}>
-                  {completedDocs}/{totalDocs}
-                </Text>
-              </View>
-
-              <Text style={styles.cardHint}>Program detayina girerek motivasyon, belge ve checklist adimlarini yonetin.</Text>
-            </TouchableOpacity>
+            </View>
           );
         })
       )}
@@ -104,7 +124,7 @@ export const AdayEgitimScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   section: {
     paddingTop: 16,
     gap: 14,
@@ -145,7 +165,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderLight,
     padding: 16,
+    gap: 12,
+  } as ViewStyle,
+  programCardMain: {
     gap: 8,
+  } as ViewStyle,
+  programActions: {
+    flexDirection: 'row',
+    gap: 10,
+  } as ViewStyle,
+  programActionButton: {
+    flex: 1,
   } as ViewStyle,
   programTopRow: {
     flexDirection: 'row',

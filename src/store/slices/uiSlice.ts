@@ -4,12 +4,14 @@ interface UIState {
   isDarkMode: boolean;
   isOnline: boolean;
   globalLoading: boolean;
+  language: 'tr' | 'en';
 }
 
 const initialState: UIState = {
   isDarkMode: false,
   isOnline: true,
   globalLoading: false,
+  language: 'tr',
 };
 
 const uiSlice = createSlice({
@@ -28,6 +30,9 @@ const uiSlice = createSlice({
     setGlobalLoading: (state, action: PayloadAction<boolean>) => {
       state.globalLoading = action.payload;
     },
+    setLanguage: (state, action: PayloadAction<'tr' | 'en'>) => {
+      state.language = action.payload;
+    },
   },
 });
 
@@ -36,6 +41,7 @@ export const {
   toggleDarkMode,
   setOnlineStatus,
   setGlobalLoading,
+  setLanguage,
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

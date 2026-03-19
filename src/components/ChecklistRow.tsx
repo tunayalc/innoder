@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
-import { colors } from '../theme/colors';
+import { useThemedStyles, type AppColors } from '../theme';
 import { Pill } from './Pill';
 import { PillVariant } from '../types';
 
@@ -17,6 +17,8 @@ export const ChecklistRow: React.FC<ChecklistRowProps> = ({
   status,
   variant,
 }) => {
+  const styles = useThemedStyles(createStyles);
+
   return (
     <View style={styles.checkRow}>
       <View style={styles.textWrap}>
@@ -28,7 +30,7 @@ export const ChecklistRow: React.FC<ChecklistRowProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   checkRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

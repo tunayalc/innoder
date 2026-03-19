@@ -1,14 +1,15 @@
-import React from 'react';
+﻿import React from 'react';
 import { View, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
-import { colors } from '../../theme';
+import { useThemedStyles, type AppColors } from '../../theme';
 import { Card } from '../../components';
 
 export const DataModelScreen: React.FC = () => {
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.section}>
       <Text style={styles.h2}>Veri Modeli</Text>
       <Text style={styles.subtitle}>
-        Her ekranın ürettiği bilgi DB'de karşılık bulur.
+        Her ekranın ürettiği bilgi veritabanında karşılık bulur.
       </Text>
       <Card title="users">
         <Text style={styles.bodyText}>kimlik, iletişim, doğrulama, KVKK</Text>
@@ -29,7 +30,7 @@ export const DataModelScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   section: {
     marginTop: 16,
     gap: 12,
@@ -49,3 +50,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   } as TextStyle,
 });
+
+
+
+

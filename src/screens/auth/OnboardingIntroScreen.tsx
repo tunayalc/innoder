@@ -1,88 +1,100 @@
-import React, { useMemo, useState } from 'react';
+﻿import React, { useMemo, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ViewStyle,
-  TextStyle,
-  ImageStyle,
-  ScrollView,
-  Pressable,
-  Switch,
   Image,
+  ImageStyle,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextStyle,
+  View,
+  ViewStyle,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import Video from 'react-native-video';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import { colors } from '../../theme';
-import { Card } from '../../components';
-import { RootStackNavigationProp } from '../../types';
+import { Card, LanguageSwitcher, ThemeSwitcher } from '../../components';
 import { appConfig } from '../../config/appConfig';
 import { useAuth } from '../../hooks';
+import { useI18n } from '../../i18n';
+import { useAppTheme, useThemedStyles, type AppColors } from '../../theme';
+import { RootStackNavigationProp } from '../../types';
 
 const APP_LAUNCHER_IMAGE = require('../../assets/images/app-launcher.jpg');
 const ESC_INTRO_VIDEO = require('../../assets/videos/esc-intro.mp4');
+const REQUIRED_VIDEO_IDS = ['video-1', 'video-2', 'video-3'] as const;
 
-const REQUIRED_VIDEOS = [
-  {
-    id: 'video-1',
-    title: 'ESC Projeleri Basvuru Sureci',
-    duration: 'Yerel Video',
-    summary:
-      'Inno Dernegi, Italya gonulluluk sureci ve projelere katilim adimlarini bu videodan izleyin.',
-  },
-  {
-    id: 'video-2',
-    title: 'Aday Sorumluluklari',
-    duration: '05:10',
-    summary: 'Basvuru surecindeki sorumluluklar ve dogrulama adimlari.',
-  },
-  {
-    id: 'video-3',
-    title: 'Belge ve Etik Kurallar',
-    duration: '03:45',
-    summary: 'Belge yukleme, dogruluk beyani ve gizlilik kurallari.',
-  },
-] as const;
+type VideoId = (typeof REQUIRED_VIDEO_IDS)[number];
+type WatchedState = Record<VideoId, boolean>;
+type VideoTranslation = {
+  id: VideoId;
+  title: string;
+  duration: string;
+  summary: string;
+};
 
-const createInitialWatchState = (): Record<string, boolean> =>
-  REQUIRED_VIDEOS.reduce<Record<string, boolean>>((acc, video) => {
-    acc[video.id] = false;
-    return acc;
-  }, {});
+const createInitialWatchState = (): WatchedState => ({
+  'video-1': false,
+  'video-2': false,
+  'video-3': false,
+});
+
+const readTranslationString = (value: unknown, fallback: string) =>
+  typeof value === 'string' && value.trim().length > 0 ? value : fallback;
 
 export const OnboardingIntroScreen: React.FC = () => {
-  const insets = useSafeAreaInsets();
   const navigation = useNavigation<RootStackNavigationProp>();
+  const insets = useSafeAreaInsets();
   const { loginDemoCandidate } = useAuth();
-  const [watched, setWatched] = useState<Record<string, boolean>>(
-    createInitialWatchState(),
-  );
+  const { colors } = useAppTheme();
+  const { t, tm } = useI18n();
+  const styles = useThemedStyles(createStyles);
+  const [watched, setWatched] = useState<WatchedState>(createInitialWatchState);
   const [alreadyInformed, setAlreadyInformed] = useState(false);
   const [isIntroVideoPlaying, setIsIntroVideoPlaying] = useState(false);
   const isMockMode = appConfig.dataSource === 'mock';
 
+  const videos = useMemo<VideoTranslation[]>(() => {
+    const translatedVideos = tm('onboarding.videos');
+
+    return REQUIRED_VIDEO_IDS.map((id, index) => {
+      const entry = translatedVideos[index] as Record<string, unknown> | undefined;
+
+      return {
+        id,
+        title: readTranslationString(entry?.title, `Video ${index + 1}`),
+        duration: readTranslationString(entry?.duration, ''),
+        summary: readTranslationString(entry?.summary, ''),
+      };
+    });
+  }, [tm]);
+
   const watchedCount = useMemo(
-    () => REQUIRED_VIDEOS.filter((video) => watched[video.id]).length,
+    () => REQUIRED_VIDEO_IDS.filter((videoId) => watched[videoId]).length,
     [watched],
   );
+  const allVideosWatched = watchedCount === REQUIRED_VIDEO_IDS.length;
+  const canLogin = allVideosWatched || alreadyInformed;
 
-  const allVideosWatched = watchedCount === REQUIRED_VIDEOS.length;
-  const canContinue = allVideosWatched || alreadyInformed;
-  const canRegister = allVideosWatched;
-
-  const toggleWatched = (videoId: string) => {
+  const toggleWatched = (videoId: VideoId) => {
     setWatched((prev) => ({
       ...prev,
       [videoId]: !prev[videoId],
     }));
   };
 
-  const setVideo1Watched = () => {
-    setWatched((prev) => ({
-      ...prev,
-      'video-1': true,
-    }));
+  const markVideoWatched = (videoId: VideoId) => {
+    setWatched((prev) => {
+      if (prev[videoId]) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [videoId]: true,
+      };
+    });
   };
 
   return (
@@ -94,50 +106,53 @@ export const OnboardingIntroScreen: React.FC = () => {
         ]}
         showsVerticalScrollIndicator={false}
       >
+        <View style={styles.headerControls}>
+          <ThemeSwitcher compact />
+          <LanguageSwitcher compact />
+        </View>
+
         <View style={styles.header}>
           <View style={styles.accentBar} />
-          <Text style={styles.title}>Bilgilendirme Alani</Text>
-          <Text style={styles.subtitle}>
-            Kayit icin tum videolari tamamlamak zorunludur. Giris icin ise
-            videolari tamamlayabilir veya beyan secenegini kullanabilirsiniz.
-          </Text>
+          <Text style={styles.title}>{t('onboarding.title')}</Text>
+          <Text style={styles.subtitle}>{t('onboarding.subtitle')}</Text>
         </View>
 
         <Card style={styles.logoCard}>
           <Image source={APP_LAUNCHER_IMAGE} style={styles.logoImage} resizeMode="cover" />
-          <Text style={styles.logoCaption}>Uygulama simgesi ve tanitim gorseli</Text>
+          <Text style={styles.logoCaption}>{t('onboarding.launcherCaption')}</Text>
         </Card>
 
         {isMockMode ? (
-          <Card style={styles.mockInfoCard}>
-            <Text style={styles.mockInfoTitle}>Demo Giris Bilgisi</Text>
-            <Text style={styles.mockInfoText}>Email: aday@inno.com</Text>
-            <Text style={styles.mockInfoText}>Sifre: 123123</Text>
-            <Pressable style={styles.mockLoginButton} onPress={loginDemoCandidate}>
-              <Text style={styles.mockLoginButtonText}>Bilgi Girmeden Demo Giris</Text>
+          <Card style={styles.infoCard}>
+            <Text style={styles.infoTitle}>{t('onboarding.demoTitle')}</Text>
+            <Text style={styles.infoText}>{t('onboarding.demoEmail')}</Text>
+            <Text style={styles.infoText}>{t('onboarding.demoPassword')}</Text>
+            <Pressable style={styles.demoButton} onPress={() => loginDemoCandidate()}>
+              <Text style={styles.demoButtonText}>{t('onboarding.demoCta')}</Text>
             </Pressable>
           </Card>
         ) : null}
 
         <Card style={styles.progressCard}>
-          <Text style={styles.progressTitle}>Video Tamamlama Durumu</Text>
+          <Text style={styles.progressTitle}>{t('onboarding.progressTitle')}</Text>
           <View style={styles.progressTrack}>
             <View
               style={[
                 styles.progressFill,
-                {
-                  width: `${(watchedCount / REQUIRED_VIDEOS.length) * 100}%`,
-                },
+                { width: `${(watchedCount / REQUIRED_VIDEO_IDS.length) * 100}%` },
               ]}
             />
           </View>
           <Text style={styles.progressCaption}>
-            {watchedCount}/{REQUIRED_VIDEOS.length} video tamamlandi
+            {t('onboarding.progressCaption', {
+              watched: watchedCount,
+              total: REQUIRED_VIDEO_IDS.length,
+            })}
           </Text>
         </Card>
 
         <View style={styles.videoList}>
-          {REQUIRED_VIDEOS.map((video, index) => {
+          {videos.map((video, index) => {
             const isWatched = watched[video.id];
             const isPrimaryVideo = index === 0;
 
@@ -145,7 +160,7 @@ export const OnboardingIntroScreen: React.FC = () => {
               <Card key={video.id} style={styles.videoCard}>
                 <View style={styles.videoMetaRow}>
                   <Text style={styles.videoMeta}>
-                    {index + 1}. Video - {video.duration}
+                    {index + 1}. {video.duration}
                   </Text>
                   <Text
                     style={[
@@ -153,9 +168,10 @@ export const OnboardingIntroScreen: React.FC = () => {
                       isWatched ? styles.statusDone : styles.statusPending,
                     ]}
                   >
-                    {isWatched ? 'Izlendi' : 'Bekliyor'}
+                    {isWatched ? t('onboarding.statusDone') : t('onboarding.statusPending')}
                   </Text>
                 </View>
+
                 <Text style={styles.videoTitle}>{video.title}</Text>
                 <Text style={styles.videoSummary}>{video.summary}</Text>
 
@@ -170,17 +186,18 @@ export const OnboardingIntroScreen: React.FC = () => {
                         resizeMode="contain"
                         onEnd={() => {
                           setIsIntroVideoPlaying(false);
-                          setVideo1Watched();
+                          markVideoWatched(video.id);
                         }}
                       />
                     </View>
+
                     <View style={styles.videoControlRow}>
                       <Pressable
                         style={styles.playButton}
                         onPress={() => setIsIntroVideoPlaying((prev) => !prev)}
                       >
                         <Text style={styles.playButtonText}>
-                          {isIntroVideoPlaying ? 'Videoyu Durdur' : 'Videoyu Oynat'}
+                          {isIntroVideoPlaying ? t('onboarding.pause') : t('onboarding.play')}
                         </Text>
                       </Pressable>
                     </View>
@@ -200,7 +217,7 @@ export const OnboardingIntroScreen: React.FC = () => {
                       isWatched && styles.videoActionTextDone,
                     ]}
                   >
-                    {isWatched ? 'Izlemeyi Geri Al' : 'Videoyu Izledim'}
+                    {isWatched ? t('onboarding.unmarkWatched') : t('onboarding.markWatched')}
                   </Text>
                 </Pressable>
               </Card>
@@ -208,14 +225,11 @@ export const OnboardingIntroScreen: React.FC = () => {
           })}
         </View>
 
-        <Card style={styles.ackCard}>
-          <View style={styles.ackRow}>
-            <View style={styles.ackTextWrap}>
-              <Text style={styles.ackTitle}>Beyanim</Text>
-              <Text style={styles.ackDescription}>
-                Inno Dernegi ile ilgili icerikleri daha once izledim, tum
-                sorumluluklari biliyorum ve kabul ediyorum.
-              </Text>
+        <Card style={styles.declarationCard}>
+          <View style={styles.declarationRow}>
+            <View style={styles.declarationTextWrap}>
+              <Text style={styles.declarationTitle}>{t('onboarding.declarationTitle')}</Text>
+              <Text style={styles.declarationText}>{t('onboarding.declarationText')}</Text>
             </View>
             <Switch
               value={alreadyInformed}
@@ -226,300 +240,184 @@ export const OnboardingIntroScreen: React.FC = () => {
           </View>
         </Card>
 
+        <Card>
+          <Text style={styles.helperText}>{t('onboarding.helper')}</Text>
+        </Card>
+
         <Pressable
-          style={[styles.loginButton, !canContinue && styles.loginButtonDisabled]}
-          disabled={!canContinue}
+          style={[styles.primaryButton, !canLogin && styles.primaryButtonDisabled]}
           onPress={() => navigation.navigate('Login')}
+          disabled={!canLogin}
         >
-          <Text
-            style={[
-              styles.loginButtonText,
-              !canContinue && styles.loginButtonTextDisabled,
-            ]}
-          >
-            Giris Yap
+          <Text style={[styles.primaryButtonText, !canLogin && styles.primaryButtonTextDisabled]}>
+            {t('onboarding.login')}
           </Text>
         </Pressable>
 
         <Pressable
-          style={[styles.registerButton, !canRegister && styles.registerButtonDisabled]}
-          disabled={!canRegister}
-          onPress={() => navigation.navigate('Register', { videosCompleted: true })}
+          style={[styles.secondaryButton, !allVideosWatched && styles.secondaryButtonDisabled]}
+          onPress={() => navigation.navigate('Register', { videosCompleted: allVideosWatched })}
+          disabled={!allVideosWatched}
         >
           <Text
             style={[
-              styles.registerButtonText,
-              !canRegister && styles.registerButtonTextDisabled,
+              styles.secondaryButtonText,
+              !allVideosWatched && styles.secondaryButtonTextDisabled,
             ]}
           >
-            Kayit Ol
+            {t('onboarding.register')}
           </Text>
         </Pressable>
-
-        {!canContinue || !canRegister ? (
-          <Text style={styles.helperText}>
-            Giris icin tum videolari tamamlayin veya beyani acin. Kayit icin tum videolar zorunlu.
-          </Text>
-        ) : null}
       </ScrollView>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  } as ViewStyle,
-  scrollContent: {
-    paddingHorizontal: 22,
-    gap: 14,
-  } as ViewStyle,
-  header: {
-    marginBottom: 2,
-  } as ViewStyle,
-  accentBar: {
-    width: 34,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.primary,
-    marginBottom: 14,
-  } as ViewStyle,
-  title: {
-    fontSize: 31,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    letterSpacing: -0.4,
-    marginBottom: 8,
-  } as TextStyle,
-  subtitle: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    lineHeight: 22,
-  } as TextStyle,
-  logoCard: {
-    gap: 10,
-  } as ViewStyle,
-  logoImage: {
-    width: '100%',
-    height: 160,
-    borderRadius: 12,
-  } as ImageStyle,
-  logoCaption: {
-    fontSize: 13,
-    color: colors.textSecondary,
-  } as TextStyle,
-  progressCard: {
-    marginTop: 8,
-    gap: 10,
-  } as ViewStyle,
-  mockInfoCard: {
-    gap: 4,
-    borderColor: colors.tealBorder,
-    backgroundColor: colors.tealBg,
-  } as ViewStyle,
-  mockInfoTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.teal,
-    marginBottom: 2,
-  } as TextStyle,
-  mockInfoText: {
-    fontSize: 13,
-    color: colors.textPrimary,
-  } as TextStyle,
-  mockLoginButton: {
-    marginTop: 8,
-    alignSelf: 'flex-start',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.tealBorder,
-    backgroundColor: colors.white,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-  } as ViewStyle,
-  mockLoginButtonText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.teal,
-  } as TextStyle,
-  progressTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  } as TextStyle,
-  progressTrack: {
-    height: 8,
-    borderRadius: 999,
-    backgroundColor: colors.tealSoft,
-    overflow: 'hidden',
-  } as ViewStyle,
-  progressFill: {
-    height: '100%',
-    borderRadius: 999,
-    backgroundColor: colors.teal,
-  } as ViewStyle,
-  progressCaption: {
-    fontSize: 13,
-    color: colors.textSecondary,
-  } as TextStyle,
-  videoList: {
-    gap: 12,
-  } as ViewStyle,
-  videoCard: {
-    gap: 12,
-  } as ViewStyle,
-  videoMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  } as ViewStyle,
-  videoMeta: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  } as TextStyle,
-  statusPill: {
-    borderRadius: 999,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    fontSize: 11,
-    fontWeight: '700',
-    overflow: 'hidden',
-  } as TextStyle,
-  statusPending: {
-    backgroundColor: colors.warning,
-    color: colors.primaryDark,
-  } as TextStyle,
-  statusDone: {
-    backgroundColor: colors.success,
-    color: colors.teal,
-  } as TextStyle,
-  videoTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  } as TextStyle,
-  videoSummary: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 21,
-  } as TextStyle,
-  videoFrame: {
-    width: '100%',
-    height: 220,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#000000',
-  } as ViewStyle,
-  videoPlayer: {
-    width: '100%',
-    height: '100%',
-  } as ViewStyle,
-  videoControlRow: {
-    flexDirection: 'row',
-  } as ViewStyle,
-  playButton: {
-    alignSelf: 'flex-start',
-    borderRadius: 11,
-    borderWidth: 1,
-    borderColor: colors.tealBorder,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    backgroundColor: colors.tealLight,
-  } as ViewStyle,
-  playButtonText: {
-    color: colors.teal,
-    fontSize: 13,
-    fontWeight: '700',
-  } as TextStyle,
-  videoActionButton: {
-    alignSelf: 'flex-start',
-    borderRadius: 11,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    backgroundColor: colors.white,
-  } as ViewStyle,
-  videoActionButtonDone: {
-    borderColor: colors.tealBorder,
-    backgroundColor: colors.tealLight,
-  } as ViewStyle,
-  videoActionText: {
-    color: colors.primaryDark,
-    fontSize: 13,
-    fontWeight: '700',
-  } as TextStyle,
-  videoActionTextDone: {
-    color: colors.teal,
-  } as TextStyle,
-  ackCard: {
-    marginTop: 4,
-  } as ViewStyle,
-  ackRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  } as ViewStyle,
-  ackTextWrap: {
-    flex: 1,
-  } as ViewStyle,
-  ackTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: 6,
-  } as TextStyle,
-  ackDescription: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    lineHeight: 20,
-  } as TextStyle,
-  loginButton: {
-    marginTop: 6,
-    borderRadius: 13,
-    backgroundColor: colors.primary,
-    paddingVertical: 16,
-    alignItems: 'center',
-  } as ViewStyle,
-  loginButtonDisabled: {
-    backgroundColor: colors.placeholder,
-  } as ViewStyle,
-  loginButtonText: {
-    color: colors.white,
-    fontSize: 17,
-    fontWeight: '700',
-  } as TextStyle,
-  loginButtonTextDisabled: {
-    color: colors.textMuted,
-  } as TextStyle,
-  registerButton: {
-    borderRadius: 13,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    backgroundColor: colors.white,
-    paddingVertical: 14,
-    alignItems: 'center',
-  } as ViewStyle,
-  registerButtonText: {
-    color: colors.primary,
-    fontSize: 16,
-    fontWeight: '700',
-  } as TextStyle,
-  registerButtonDisabled: {
-    borderColor: colors.placeholder,
-    backgroundColor: colors.placeholder,
-  } as ViewStyle,
-  registerButtonTextDisabled: {
-    color: colors.textMuted,
-  } as TextStyle,
-  helperText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 18,
-    marginTop: 4,
-  } as TextStyle,
-});
+const createStyles = (colors: AppColors) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background } as ViewStyle,
+    scrollContent: { paddingHorizontal: 22, gap: 14 } as ViewStyle,
+    headerControls: { flexDirection: 'row', gap: 8, alignSelf: 'flex-start' } as ViewStyle,
+    header: { gap: 8 } as ViewStyle,
+    accentBar: { width: 34, height: 4, borderRadius: 2, backgroundColor: colors.primary } as ViewStyle,
+    title: { fontSize: 31, fontWeight: '700', color: colors.textPrimary } as TextStyle,
+    subtitle: { fontSize: 15, lineHeight: 22, color: colors.textSecondary } as TextStyle,
+    logoCard: { gap: 10 } as ViewStyle,
+    logoImage: { width: '100%', height: 160, borderRadius: 12 } as ImageStyle,
+    logoCaption: { fontSize: 13, color: colors.textSecondary } as TextStyle,
+    infoCard: { gap: 6 } as ViewStyle,
+    infoTitle: { fontSize: 14, fontWeight: '700', color: colors.teal } as TextStyle,
+    infoText: { fontSize: 13, color: colors.textPrimary } as TextStyle,
+    demoButton: {
+      marginTop: 8,
+      alignSelf: 'flex-start',
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.tealBorder,
+      backgroundColor: colors.cardBg,
+    } as ViewStyle,
+    demoButtonText: { fontSize: 12, fontWeight: '700', color: colors.teal } as TextStyle,
+    progressCard: { gap: 10 } as ViewStyle,
+    progressTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary } as TextStyle,
+    progressTrack: {
+      height: 8,
+      borderRadius: 999,
+      backgroundColor: colors.tealSoft,
+      overflow: 'hidden',
+    } as ViewStyle,
+    progressFill: {
+      height: '100%',
+      borderRadius: 999,
+      backgroundColor: colors.teal,
+    } as ViewStyle,
+    progressCaption: { fontSize: 13, color: colors.textSecondary } as TextStyle,
+    videoList: { gap: 12 } as ViewStyle,
+    videoCard: { gap: 12 } as ViewStyle,
+    videoMetaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+    } as ViewStyle,
+    videoMeta: { fontSize: 12, fontWeight: '600', color: colors.textSecondary } as TextStyle,
+    statusPill: {
+      borderRadius: 999,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      fontSize: 11,
+      fontWeight: '700',
+      overflow: 'hidden',
+    } as TextStyle,
+    statusPending: {
+      backgroundColor: colors.warning,
+      color: colors.primaryDark,
+    } as TextStyle,
+    statusDone: {
+      backgroundColor: colors.success,
+      color: colors.teal,
+    } as TextStyle,
+    videoTitle: { fontSize: 19, fontWeight: '700', color: colors.textPrimary } as TextStyle,
+    videoSummary: {
+      fontSize: 14,
+      lineHeight: 21,
+      color: colors.textSecondary,
+    } as TextStyle,
+    videoFrame: {
+      width: '100%',
+      height: 220,
+      borderRadius: 12,
+      overflow: 'hidden',
+      backgroundColor: '#000000',
+    } as ViewStyle,
+    videoPlayer: {
+      width: '100%',
+      height: '100%',
+    } as ViewStyle,
+    videoControlRow: { flexDirection: 'row' } as ViewStyle,
+    playButton: {
+      alignSelf: 'flex-start',
+      borderRadius: 11,
+      borderWidth: 1,
+      borderColor: colors.tealBorder,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      backgroundColor: colors.tealLight,
+    } as ViewStyle,
+    playButtonText: { fontSize: 13, fontWeight: '700', color: colors.teal } as TextStyle,
+    videoActionButton: {
+      alignSelf: 'flex-start',
+      borderRadius: 11,
+      borderWidth: 1,
+      borderColor: colors.primary,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      backgroundColor: colors.cardBg,
+    } as ViewStyle,
+    videoActionButtonDone: {
+      borderColor: colors.tealBorder,
+      backgroundColor: colors.tealLight,
+    } as ViewStyle,
+    videoActionText: { fontSize: 13, fontWeight: '700', color: colors.primaryDark } as TextStyle,
+    videoActionTextDone: { color: colors.teal } as TextStyle,
+    declarationCard: { marginTop: 2 } as ViewStyle,
+    declarationRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+    } as ViewStyle,
+    declarationTextWrap: { flex: 1 } as ViewStyle,
+    declarationTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary } as TextStyle,
+    declarationText: {
+      marginTop: 6,
+      fontSize: 13,
+      lineHeight: 20,
+      color: colors.textSecondary,
+    } as TextStyle,
+    helperText: { fontSize: 13, lineHeight: 20, color: colors.textSecondary } as TextStyle,
+    primaryButton: {
+      borderRadius: 13,
+      backgroundColor: colors.primary,
+      paddingVertical: 16,
+      alignItems: 'center',
+    } as ViewStyle,
+    primaryButtonDisabled: { backgroundColor: colors.placeholder } as ViewStyle,
+    primaryButtonText: { color: colors.white, fontSize: 17, fontWeight: '700' } as TextStyle,
+    primaryButtonTextDisabled: { color: colors.textMuted } as TextStyle,
+    secondaryButton: {
+      borderRadius: 13,
+      borderWidth: 1,
+      borderColor: colors.primary,
+      backgroundColor: colors.cardBg,
+      paddingVertical: 14,
+      alignItems: 'center',
+    } as ViewStyle,
+    secondaryButtonDisabled: {
+      borderColor: colors.borderMedium,
+      backgroundColor: colors.rowBg,
+    } as ViewStyle,
+    secondaryButtonText: { color: colors.primary, fontSize: 16, fontWeight: '700' } as TextStyle,
+    secondaryButtonTextDisabled: { color: colors.textMuted } as TextStyle,
+  });

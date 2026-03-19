@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+﻿import React, { useMemo, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,8 +12,8 @@ import {
   Linking,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { colors } from '../../theme';
-import { Button, ChecklistRow, Pill, Field } from '../../components';
+import { useAppTheme, useThemedStyles, type AppColors } from '../../theme';
+import { Button, ChecklistRow, Pill, Field, InputField } from '../../components';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   selectApplicationById,
@@ -29,19 +29,33 @@ import {
 } from '../../constants';
 import { formatDateShort, getRelativeTime } from '../../utils/date';
 import {
+  buildYouthpassWorkbookDataUri,
+  XLSX_MIME_TYPE,
+} from '../../utils/youthpassExcel';
+import { openMailto } from '../../utils/contact';
+import {
   DocumentStatus,
+  DocumentType,
+  ProgramDraftInput,
   AdminDetayRouteProp,
   RootStackNavigationProp,
+  User,
+  createGeneralChatThreadId,
 } from '../../types';
 import {
   approveApplication,
   rejectApplication,
   assignProgramToCandidate,
 } from '../../store/thunks/applicationThunks';
-import { PROGRAM_CATALOG } from '../../services/programCatalog';
+import {
+  createProgramDraftInput,
+  DEFAULT_REQUIRED_DOCUMENT_TYPES,
+  DOCUMENT_TYPE_OPTIONS,
+  parseDeadlines,
+  parseTextLines,
+} from '../../services/programFactory';
+import { getBackend } from '../../services/backend';
 import { saveDocuments } from '@react-native-documents/picker';
-
-const toCsvCell = (value: string) => `"${value.replace(/"/g, '""')}"`;
 
 const statusToVariant = (status: DocumentStatus) => {
   switch (status) {
@@ -59,6 +73,8 @@ const statusToVariant = (status: DocumentStatus) => {
 };
 
 export const AdminDetayScreen: React.FC = () => {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const navigation = useNavigation<RootStackNavigationProp>();
   const route = useRoute<AdminDetayRouteProp>();
   const { applicationId } = route.params;
@@ -71,12 +87,22 @@ export const AdminDetayScreen: React.FC = () => {
   const messages = useAppSelector(selectMessagesByApplicationId(applicationId));
 
   const [rejectReason, setRejectReason] = useState('');
-  const [selectedProgramId, setSelectedProgramId] = useState('');
+  const [programName, setProgramName] = useState('');
+  const [programYear, setProgramYear] = useState(String(new Date().getFullYear()));
+  const [programStepsText, setProgramStepsText] = useState('');
+  const [programDeadlinesText, setProgramDeadlinesText] = useState('');
+  const [selectedDocumentTypes, setSelectedDocumentTypes] = useState<DocumentType[]>(
+    DEFAULT_REQUIRED_DOCUMENT_TYPES,
+  );
   const [selectedYouthpassProgramApplicationId, setSelectedYouthpassProgramApplicationId] =
     useState('');
+  const [candidateUser, setCandidateUser] = useState<User | null>(null);
+  const [candidateUserError, setCandidateUserError] = useState<string | null>(null);
+  const [credentialPassword, setCredentialPassword] = useState('');
+  const [isCredentialSending, setIsCredentialSending] = useState(false);
 
   const initials = useMemo(() => {
-    if (!application) return '?';
+    if (!application) return '';
     return application.personalInfo.fullName
       .split(' ')
       .map((w) => w[0])
@@ -84,20 +110,6 @@ export const AdminDetayScreen: React.FC = () => {
       .slice(0, 2)
       .toUpperCase();
   }, [application]);
-
-  const assignedProgramIds = useMemo(() => {
-    if (!application) return new Set<string>();
-    return new Set(
-      allApplications
-        .filter((app) => app.userId === application.userId)
-        .map((app) => app.programId),
-    );
-  }, [allApplications, application]);
-
-  const assignablePrograms = useMemo(
-    () => PROGRAM_CATALOG.filter((p) => !assignedProgramIds.has(p.id)),
-    [assignedProgramIds],
-  );
 
   const candidatePrograms = useMemo(() => {
     if (!application) return [];
@@ -118,18 +130,6 @@ export const AdminDetayScreen: React.FC = () => {
   );
 
   useEffect(() => {
-    if (assignablePrograms.length === 0) {
-      setSelectedProgramId('');
-      return;
-    }
-
-    const hasSelected = assignablePrograms.some((p) => p.id === selectedProgramId);
-    if (!hasSelected) {
-      setSelectedProgramId(assignablePrograms[0].id);
-    }
-  }, [assignablePrograms, selectedProgramId]);
-
-  useEffect(() => {
     if (candidatePrograms.length === 0) {
       setSelectedYouthpassProgramApplicationId('');
       return;
@@ -143,11 +143,38 @@ export const AdminDetayScreen: React.FC = () => {
     }
   }, [candidatePrograms, selectedYouthpassProgramApplicationId]);
 
+  useEffect(() => {
+    if (!application) return;
+
+    let cancelled = false;
+
+    const loadCandidateUser = async () => {
+      try {
+        const backend = getBackend();
+        const candidates = await backend.auth.listCandidates();
+        const nextCandidate = candidates.find((candidate) => candidate.id === application.userId) || null;
+        if (cancelled) return;
+        setCandidateUser(nextCandidate);
+        setCandidateUserError(nextCandidate ? null : 'Kullanıcı kaydı bulunamadı.');
+      } catch (err) {
+        if (cancelled) return;
+        setCandidateUser(null);
+        setCandidateUserError(err instanceof Error ? err.message : 'Kullanıcı bilgisi yüklenemedi.');
+      }
+    };
+
+    loadCandidateUser();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [application]);
+
   if (!application) {
     return (
       <View style={styles.section}>
-        <Text style={styles.h2}>Basvuru Detayi</Text>
-        <Text style={styles.emptyText}>Basvuru bulunamadi.</Text>
+        <Text style={styles.h2}>Başvuru Detayı</Text>
+        <Text style={styles.emptyText}>Başvuru bulunamadı.</Text>
       </View>
     );
   }
@@ -161,17 +188,49 @@ export const AdminDetayScreen: React.FC = () => {
           ? 'err'
           : 'info';
 
-  const handleAssignProgram = () => {
-    if (!selectedProgramId) return;
+  const toggleDocumentType = (documentType: DocumentType) => {
+    setSelectedDocumentTypes((prev) =>
+      prev.includes(documentType)
+        ? prev.filter((item) => item !== documentType)
+        : [...prev, documentType],
+    );
+  };
 
-    const selectedProgram = PROGRAM_CATALOG.find((p) => p.id === selectedProgramId);
+  const buildProgramDraft = (): ProgramDraftInput | null => {
+    if (!programName.trim()) {
+      Alert.alert('Uyarı', 'Program adı zorunludur.');
+      return null;
+    }
+
+    if (selectedDocumentTypes.length === 0) {
+      Alert.alert('Uyarı', 'En az bir gerekli belge seçmelisiniz.');
+      return null;
+    }
+
+    const numericYear = Number(programYear);
+    if (!Number.isFinite(numericYear) || numericYear < 2020 || numericYear > 2100) {
+      Alert.alert('Uyarı', 'Geçerli bir yıl giriniz.');
+      return null;
+    }
+
+    return createProgramDraftInput({
+      name: programName,
+      year: numericYear,
+      documentTypes: selectedDocumentTypes,
+      steps: parseTextLines(programStepsText),
+      deadlines: parseDeadlines(programDeadlinesText),
+    });
+  };
+
+  const handleAssignProgram = () => {
+    const selectedProgram = buildProgramDraft();
     if (!selectedProgram) return;
 
     Alert.alert(
       'Program Atama',
-      `${application.personalInfo.fullName} icin ${selectedProgram.name} atamasi yapilsin mi?`,
+      `${application.personalInfo.fullName} için ${selectedProgram.name} ataması yapılsın mı`,
       [
-        { text: 'Iptal', style: 'cancel' },
+        { text: 'İptal', style: 'cancel' },
         {
           text: 'Ata',
           onPress: () => {
@@ -179,9 +238,14 @@ export const AdminDetayScreen: React.FC = () => {
               assignProgramToCandidate({
                 userId: application.userId,
                 fullName: application.personalInfo.fullName,
-                programId: selectedProgramId,
+                program: selectedProgram,
               }),
             );
+            setProgramName('');
+            setProgramYear(String(new Date().getFullYear()));
+            setProgramStepsText('');
+            setProgramDeadlinesText('');
+            setSelectedDocumentTypes(DEFAULT_REQUIRED_DOCUMENT_TYPES);
           },
         },
       ],
@@ -191,7 +255,7 @@ export const AdminDetayScreen: React.FC = () => {
   const handleDownloadYouthpassExcel = async () => {
     const targetApplication = selectedYouthpassProgram;
     if (!targetApplication) {
-      Alert.alert('Uyari', 'Indirme icin once bir program secin.');
+      Alert.alert('Uyarı', 'İndirme için önce bir program seçin.');
       return;
     }
 
@@ -206,30 +270,28 @@ export const AdminDetayScreen: React.FC = () => {
       (doc) => !!doc.fileName,
     ).length;
 
-    const csvRows = [
-      `${toCsvCell('Alan')},${toCsvCell('Deger')}`,
-      `${toCsvCell('Program Kodu')},${toCsvCell(targetApplication.programId)}`,
-      `${toCsvCell('Program Adi')},${toCsvCell(targetApplication.programName)}`,
-      `${toCsvCell('Aday Ad Soyad')},${toCsvCell(targetApplication.personalInfo.fullName)}`,
-      `${toCsvCell('Basvuru Durumu')},${toCsvCell(
+    const rows = [
+      ['Alan', 'Değer'],
+      ['Program Kodu', targetApplication.programId],
+      ['Program Adı', targetApplication.programName],
+      ['Aday Ad Soyad', targetApplication.personalInfo.fullName],
+      [
+        'Başvuru Durumu',
         APPLICATION_STATUS_LABELS[targetApplication.status] || targetApplication.status,
-      )}`,
-      `${toCsvCell('Olusturma Tarihi')},${toCsvCell(formatDateShort(targetApplication.createdAt))}`,
-      `${toCsvCell('Guncelleme Tarihi')},${toCsvCell(formatDateShort(targetApplication.updatedAt))}`,
-      `${toCsvCell('Yuklu Belge Sayisi')},${toCsvCell(String(uploadedDocumentCount))}`,
-      `${toCsvCell('Not')},${toCsvCell(
-        'Placeholder youthpass export. Nihai kolonlar sonraki adimda eklenecek.',
-      )}`,
+      ],
+      ['Oluşturma Tarihi', formatDateShort(targetApplication.createdAt)],
+      ['Güncelleme Tarihi', formatDateShort(targetApplication.updatedAt)],
+      ['Yüklü Belge Sayısı', String(uploadedDocumentCount)],
+      ['Not', 'Placeholder youthpass export. Nihai kolonlar sonraki adımda eklenecek.'],
     ];
-
-    const dataUri = `data:text/csv;charset=utf-8,${encodeURIComponent(csvRows.join('\n'))}`;
+    const dataUri = buildYouthpassWorkbookDataUri(rows);
     const fileName = `youthpass_${targetApplication.programId}_${safeCandidateName}.xlsx`;
 
     try {
       await saveDocuments({
         sourceUris: [dataUri],
         fileName,
-        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        mimeType: XLSX_MIME_TYPE,
       });
       return;
     } catch {
@@ -237,14 +299,63 @@ export const AdminDetayScreen: React.FC = () => {
         await Linking.openURL(dataUri);
         return;
       } catch {
-        Alert.alert('Hata', 'Youthpass Excel indirilemedi. Lutfen tekrar deneyin.');
+        Alert.alert('Hata', 'Youthpass Excel indirilemedi. Lütfen tekrar deneyin.');
       }
+    }
+  };
+
+  const handleSendCandidatePassword = async () => {
+    if (!candidateUser) {
+      Alert.alert('Uyarı', 'Şifre göndermek için kayıtlı aday bilgisi bulunamadı.');
+      return;
+    }
+
+    if (!credentialPassword.trim()) {
+      Alert.alert('Uyarı', 'Lütfen gönderilecek şifreyi yazın.');
+      return;
+    }
+
+    setIsCredentialSending(true);
+
+    try {
+      const backend = getBackend();
+      const updatedCandidate = await backend.auth.sendCandidatePassword({
+        candidateUserId: candidateUser.id,
+        password: credentialPassword.trim(),
+        adminUserId: 'admin-001',
+      });
+
+      setCandidateUser(updatedCandidate);
+      setCandidateUserError(null);
+      setCredentialPassword('');
+
+      try {
+        await openMailto({
+          to: updatedCandidate.email,
+          subject: 'Inno Derneği Giriş ve Doğrulama Şifresi',
+          body:
+            `Merhaba ${updatedCandidate.name},\n\n` +
+            `Giriş ve doğrulama için kullanacağınız şifreniz: ${credentialPassword.trim()}\n\n` +
+            `İyi günler,\nInno Derneği`,
+        });
+      } catch {
+        // Mail client yoksa şifre yine mock backend tarafında aktif edilmiş olur.
+      }
+
+      Alert.alert('Şifre Gönderildi', 'Aday için giriş şifresi hazırlandı ve mail akışı tetiklendi.');
+    } catch (err) {
+      Alert.alert(
+        'Hata',
+        err instanceof Error ? err.message : 'Şifre gönderilirken bir sorun oluştu.',
+      );
+    } finally {
+      setIsCredentialSending(false);
     }
   };
 
   return (
     <ScrollView contentContainerStyle={styles.section}>
-      <Text style={styles.h2}>Basvuru Detayi</Text>
+      <Text style={styles.h2}>Başvuru Detayı</Text>
 
       <View style={styles.profileRow}>
         <View style={styles.avatar}>
@@ -263,7 +374,7 @@ export const AdminDetayScreen: React.FC = () => {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Kisisel Bilgiler</Text>
+        <Text style={styles.cardTitle}>Kişisel Bilgiler</Text>
         <Field label="Ad Soyad" value={application.personalInfo.fullName} />
         {application.personalInfo.birthDate ? (
           <Field
@@ -280,62 +391,130 @@ export const AdminDetayScreen: React.FC = () => {
         <Field label="Program" value={application.programName} />
         {application.submittedAt ? (
           <Field
-            label="Gonderim Tarihi"
+            label='Gönderim Tarihi'
             value={formatDateShort(application.submittedAt)}
           />
         ) : null}
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Program Atama</Text>
+        <Text style={styles.cardTitle}>Şifre Gönderimi</Text>
         <Text style={styles.cardHint}>
-          Adaya ek program atayabilirsiniz. Atanan programlar adayin Programlarim alanina duser.
+          Aday doğrulama ve giriş için şifre talep ettiğinde, şifreyi yazıp buradan
+          gönderin. Mail akışı cihazdaki e-posta uygulaması üzerinden tetiklenir.
         </Text>
 
-        {assignablePrograms.length === 0 ? (
-          <Text style={styles.mutedText}>Bu adaya atanabilecek yeni program yok.</Text>
-        ) : (
-          <View style={styles.programChipRow}>
-            {assignablePrograms.map((program) => {
-              const isActive = program.id === selectedProgramId;
-              return (
-                <TouchableOpacity
-                  key={program.id}
-                  style={[
-                    styles.programChip,
-                    isActive && styles.programChipActive,
-                  ]}
-                  onPress={() => setSelectedProgramId(program.id)}
-                >
-                  <Text
-                    style={[
-                      styles.programChipText,
-                      isActive && styles.programChipTextActive,
-                    ]}
-                  >
-                    {program.name}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
+        <Field
+          label="Aday E-posta"
+          value={candidateUser?.email || 'Kullanıcı kaydı bulunamadı'}
+        />
+        <Field
+          label="Şifre Talebi"
+          value={
+            candidateUser?.credentialRequestPending
+              ? `Bekliyor${candidateUser.credentialRequestedAt ? ` • ${formatDateShort(candidateUser.credentialRequestedAt)}` : ''}`
+              : candidateUser?.credentialSentAt
+                ? `Şifre Gönderildi • ${formatDateShort(candidateUser.credentialSentAt)}`
+                : 'Bekleyen talep yok'
+          }
+        />
+        {candidateUserError ? <Text style={styles.errorText}>{candidateUserError}</Text> : null}
+
+        <InputField
+          label="Gönderilecek Şifre"
+          value={credentialPassword}
+          onChangeText={setCredentialPassword}
+          placeholder="Örnek: inno2026!"
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
 
         <Button
-          label={isLoading ? 'Isleniyor...' : 'Secili Programi Ata'}
-          onPress={assignablePrograms.length > 0 ? handleAssignProgram : undefined}
+          label={isCredentialSending ? 'Şifre Gönderiliyor...' : 'Şifreyi Gönder'}
+          onPress={isCredentialSending ? undefined : handleSendCandidatePassword}
           variant="ghost"
         />
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Kullanicinin Programlari</Text>
+        <Text style={styles.cardTitle}>Program Atama</Text>
+        <Text style={styles.cardHint}>
+          Aday için yeni programı burada oluşturup doğrudan atayabilirsiniz.
+        </Text>
+
+        <View style={styles.programChipRow}>
+          {DOCUMENT_TYPE_OPTIONS.map((documentType) => {
+            const isActive = selectedDocumentTypes.includes(documentType.key);
+            return (
+              <TouchableOpacity
+                key={documentType.key}
+                style={[
+                  styles.programChip,
+                  isActive && styles.programChipActive,
+                ]}
+                onPress={() => toggleDocumentType(documentType.key)}
+              >
+                <Text
+                  style={[
+                    styles.programChipText,
+                    isActive && styles.programChipTextActive,
+                  ]}
+                >
+                  {documentType.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <InputField
+          label='Program Adı *'
+          value={programName}
+          onChangeText={setProgramName}
+          placeholder='Örnek: ESC İtalya Gönüllülük Programı'
+        />
+
+        <InputField
+          label='Yıl *'
+          value={programYear}
+          onChangeText={setProgramYear}
+          placeholder="2026"
+          keyboardType="number-pad"
+        />
+
+        <InputField
+          label='Adımlar (her satıra bir adım)'
+          value={programStepsText}
+          onChangeText={setProgramStepsText}
+          placeholder='Boş bırakılırsa varsayılan adımlar kullanılır'
+          multiline
+          numberOfLines={4}
+        />
+
+        <InputField
+          label='Teslim Tarihleri (Satır formatı: Etiket|YYYY-MM-DD)'
+          value={programDeadlinesText}
+          onChangeText={setProgramDeadlinesText}
+          placeholder='Başvuru kapanış|2026-06-15'
+          multiline
+          numberOfLines={3}
+        />
+
+        <Button
+          label={isLoading ? 'İşleniyor...' : 'Programi Olustur ve Ata'}
+          onPress={handleAssignProgram}
+          variant="ghost"
+        />
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Kullanıcının Programları</Text>
         <Text style={styles.cardHint}>
           Program secip Youthpass Excel bilgisini indirebilirsiniz.
         </Text>
 
         {candidatePrograms.length === 0 ? (
-          <Text style={styles.mutedText}>Bu kullaniciya ait program bulunamadi.</Text>
+          <Text style={styles.mutedText}>Bu kullanıcıya ait program bulunamadı.</Text>
         ) : (
           <View style={styles.programChipRow}>
             {candidatePrograms.map((candidateProgram) => {
@@ -416,17 +595,26 @@ export const AdminDetayScreen: React.FC = () => {
       ) : null}
 
       <Button
-        label="Belge Dogrulama"
+        label="Belge Doğrulama"
         onPress={() => navigation.navigate('AdminDogrulama', { applicationId })}
       />
       <Button
-        label="Mesaj Gonder"
+        label='Program Sohbeti'
         variant="ghost"
         onPress={() => navigation.navigate('AdayMesaj', { applicationId })}
       />
+      <Button
+        label='Genel Sohbet'
+        variant="ghost"
+        onPress={() =>
+          navigation.navigate('AdayMesaj', {
+            applicationId: createGeneralChatThreadId(application.userId),
+          })
+        }
+      />
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Basvuru Karari</Text>
+        <Text style={styles.cardTitle}>Başvuru Karari</Text>
         <Text style={styles.cardHint}>
           Bu bolum, operasyonel olarak basvuruyu onaylamak veya reddetmek icindir.
         </Text>
@@ -434,9 +622,9 @@ export const AdminDetayScreen: React.FC = () => {
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         <Button
-          label={isLoading ? 'Isleniyor...' : 'Basvuruyu Onayla'}
+          label={isLoading ? 'İşleniyor...' : 'Başvuruyu Onayla'}
           onPress={() => {
-            Alert.alert('Onay', 'Basvuruyu onaylamak istiyor musunuz?', [
+            Alert.alert('Onay', 'Başvuruyu onaylamak istiyor musunuz', [
               { text: 'Iptal', style: 'cancel' },
               {
                 text: 'Onayla',
@@ -458,14 +646,14 @@ export const AdminDetayScreen: React.FC = () => {
           textAlignVertical="top"
         />
         <Button
-          label={isLoading ? 'Isleniyor...' : 'Basvuruyu Reddet'}
+          label={isLoading ? 'İşleniyor...' : 'Başvuruyu Reddet'}
           variant="ghost"
           onPress={() => {
             if (!rejectReason.trim()) {
-              Alert.alert('Uyari', 'Lutfen ret gerekcesi giriniz.');
+              Alert.alert('Uyarı', 'Lütfen ret gerekçesi giriniz.');
               return;
             }
-            Alert.alert('Ret', 'Basvuruyu reddetmek istiyor musunuz?', [
+            Alert.alert('Ret', 'Başvuruyu reddetmek istiyor musunuz', [
               { text: 'Iptal', style: 'cancel' },
               {
                 text: 'Reddet',
@@ -483,7 +671,7 @@ export const AdminDetayScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   section: {
     paddingTop: 16,
     gap: 12,
@@ -623,3 +811,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cardBg,
   } as TextStyle,
 });
+
+
+
+
+

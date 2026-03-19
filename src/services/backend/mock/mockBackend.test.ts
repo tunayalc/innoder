@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { appConfig } from '../../../config/appConfig';
+import { createGeneralChatThreadId } from '../../../types';
+import { createProgramDraftInput } from '../../programFactory';
 import { createMockBackend } from './mockBackend';
 
 jest.mock('@react-native-async-storage/async-storage', () =>
@@ -42,7 +44,11 @@ describe('mock backend', () => {
 
     const draft = await backend.applications.ensureDraft({
       userId: loggedIn.id,
-      programId: 'prog-a',
+      program: createProgramDraftInput({
+        name: 'Program A',
+        year: 2026,
+        documentTypes: ['identity', 'form', 'boarding_pass', 'extra'],
+      }),
       fullName: loggedIn.name,
     });
     expect(['draft', 'under_review']).toContain(draft.status);
@@ -77,5 +83,43 @@ describe('mock backend', () => {
 
     const logs = await backend.audit.list();
     expect(logs.length).toBeGreaterThan(0);
+  });
+
+  it('creates a password request and allows admin to provision login credentials', async () => {
+    const backend = createMockBackend();
+
+    const candidate = await backend.auth.registerCandidate({
+      fullName: 'Password User',
+      email: 'password@example.com',
+      kvkkAccepted: true,
+    });
+
+    const requested = await backend.auth.requestCandidatePassword({
+      fullName: candidate.name,
+      email: candidate.email,
+    });
+
+    expect(requested.credentialRequestPending).toBe(true);
+    expect(requested.credentialRequestedAt).toBeTruthy();
+
+    const generalThread = await backend.messages.listByApplicationId({
+      applicationId: createGeneralChatThreadId(candidate.id),
+    });
+    expect(generalThread[generalThread.length - 1]?.content).toContain('şifre talep ediyorum');
+
+    const updated = await backend.auth.sendCandidatePassword({
+      candidateUserId: candidate.id,
+      password: 'inno-pass-2026',
+      adminUserId: 'admin-001',
+    });
+
+    expect(updated.credentialRequestPending).toBe(false);
+    expect(updated.credentialSentAt).toBeTruthy();
+
+    const loggedIn = await backend.auth.loginCandidate({
+      email: candidate.email,
+      password: 'inno-pass-2026',
+    });
+    expect(loggedIn.id).toBe(candidate.id);
   });
 });

@@ -2,7 +2,6 @@ import type { InnoBackend } from '../types';
 import { BackendError } from '../types';
 import type { AuditLog, Message } from '../../../types';
 import { authService, applicationService } from '../../api';
-import { PROGRAM_CATALOG } from '../../programCatalog';
 
 /**
  * Remote backend implementation (real API).
@@ -28,9 +27,10 @@ export const createRemoteBackend = (): InnoBackend => ({
       if (!res) throw new BackendError('UNKNOWN', 'Registration failed');
       return res.user;
     },
+    async requestCandidatePassword() {
+      throw new BackendError('NOT_FOUND', 'requestCandidatePassword endpoint not implemented');
+    },
     async loginAdmin({ username, password }) {
-      // TODO: replace with real admin auth endpoint/flow when available.
-      // For now, try the same login endpoint if backend supports it.
       const res = await authService.login({ email: username, password });
       if (!res) throw new BackendError('UNKNOWN', 'Admin login failed');
       return res.user;
@@ -39,24 +39,22 @@ export const createRemoteBackend = (): InnoBackend => ({
       await authService.logout();
     },
     async updateProfile() {
-      // TODO: implement /users/me PATCH when API is available.
       throw new BackendError('NOT_FOUND', 'updateProfile endpoint not implemented');
     },
     async listCandidates() {
-      // TODO: implement admin-side candidate list endpoint.
       throw new BackendError('NOT_FOUND', 'listCandidates endpoint not implemented');
+    },
+    async sendCandidatePassword() {
+      throw new BackendError('NOT_FOUND', 'sendCandidatePassword endpoint not implemented');
     },
   },
 
   programs: {
     async listPrograms() {
-      // TODO: fetch from API. Static fallback keeps UI functional.
-      return PROGRAM_CATALOG;
+      return [];
     },
     async getProgram(programId: string) {
-      const program = PROGRAM_CATALOG.find((p) => p.id === programId);
-      if (!program) throw new BackendError('NOT_FOUND', 'Program bulunamadı.');
-      return program;
+      throw new BackendError('NOT_FOUND', `Program ${programId} not found`);
     },
   },
 
@@ -65,22 +63,19 @@ export const createRemoteBackend = (): InnoBackend => ({
       return applicationService.getApplications();
     },
     async getForCandidate({ userId }) {
-      // TODO: call /applications/me (or similar). Temporary fallback filters locally.
       const all = await applicationService.getApplications();
       return all.find((a) => a.userId === userId) || null;
     },
     async listForCandidate({ userId }) {
-      // TODO: call /applications/me (or similar). Temporary fallback filters locally.
       const all = await applicationService.getApplications();
       return all.filter((a) => a.userId === userId);
     },
-    async ensureDraft({ programId }) {
-      const app = await applicationService.createApplication(programId);
+    async ensureDraft({ program }) {
+      const app = await applicationService.createApplication(program);
       if (!app) throw new BackendError('UNKNOWN', 'Draft application create failed');
       return app;
     },
     async assignProgram() {
-      // TODO: implement admin-side candidate program assignment endpoint.
       throw new BackendError('NOT_FOUND', 'assignProgram endpoint not implemented');
     },
     async updatePersonalInfo({ applicationId, patch }) {
@@ -100,7 +95,6 @@ export const createRemoteBackend = (): InnoBackend => ({
         fileUrl,
       );
       if (!doc) throw new BackendError('UNKNOWN', 'Upload failed');
-      // Remote doc model should match our `Document` type.
       const app = await applicationService.getApplicationById(applicationId);
       if (!app) throw new BackendError('UNKNOWN', 'Application fetch failed');
       return { application: app, document: { ...doc, fileName } as any };
@@ -131,25 +125,19 @@ export const createRemoteBackend = (): InnoBackend => ({
 
   messages: {
     async listByApplicationId() {
-      // TODO: implement /messages?applicationId
       return [] as Message[];
     },
     async send() {
-      // TODO: implement /messages POST
       throw new BackendError('NOT_FOUND', 'messages.send endpoint not implemented');
     },
-    async markThreadRead() {
-      // TODO: implement /messages/read (or similar)
-    },
+    async markThreadRead() {},
   },
 
   audit: {
     async list() {
-      // TODO: implement /audit endpoint
       return [] as AuditLog[];
     },
     async append() {
-      // In real backend, audit is server-generated.
       throw new BackendError('NOT_FOUND', 'audit.append not supported on remote backend');
     },
   },

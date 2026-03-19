@@ -1,4 +1,4 @@
-export { BackButton } from './BackButton';
+﻿export { BackButton } from './BackButton';
 export { Button } from './Button';
 export { Pill } from './Pill';
 export { MenuItem } from './MenuItem';
@@ -8,3 +8,6 @@ export { ListRow } from './ListRow';
 export { Card } from './Card';
 export { InputField } from './InputField';
 export { LogoutButton } from './LogoutButton';
+export { LanguageSwitcher } from './LanguageSwitcher';
+export { ThemeSwitcher } from './ThemeSwitcher';
+export { ContactLinksCard } from './ContactLinksCard';

@@ -11,7 +11,7 @@ export const PROGRAM_CATALOG: ProgramInfo[] = [
     name: 'Program A',
     year: 2026,
     steps: [
-      'Kayit formunu tamamla',
+      'Kayıt formunu tamamla',
       'Katilim bilgilendirmesini oku ve checklisti takip et',
       'Kisisel bilgi formunu doldur ve basvuruyu gonder',
       'Belgeleri kamera ile tara ve yukle',
@@ -71,8 +71,8 @@ export const PROGRAM_CATALOG: ProgramInfo[] = [
     name: 'Program B',
     year: 2026,
     steps: [
-      'Kayit formunu tamamla',
-      'Program B adimlarini incele',
+      'Kayıt formunu tamamla',
+      'Program B adımlarını incele',
       'Kisisel bilgi formunu doldur ve basvuruyu gonder',
       'Zorunlu belgeleri yukle',
     ],
@@ -114,7 +114,7 @@ export const PROGRAM_CATALOG: ProgramInfo[] = [
     name: 'Program C',
     year: 2026,
     steps: [
-      'Kayit formunu tamamla',
+      'Kayıt formunu tamamla',
       'Program C bilgilendirmesini oku',
       'Kisisel bilgi formunu doldur',
       'Belgeleri yukle ve mesajlari takip et',

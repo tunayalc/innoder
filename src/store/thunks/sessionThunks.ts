@@ -48,7 +48,7 @@ export const hydrateSession = (user: User): AppThunk => async (dispatch) => {
 
   try {
     if (user.role === 'admin') {
-      const apps = await backend.applications.listForAdmin();
+      const apps = await backend.applications.listForAdmin({});
       dispatch(setApplications(apps));
       dispatch(setCurrentApplication(null));
 
@@ -87,3 +87,4 @@ export const hydrateSession = (user: User): AppThunk => async (dispatch) => {
     dispatch(setAuditLoading(false));
   }
 };
+

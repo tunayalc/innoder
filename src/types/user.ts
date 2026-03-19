@@ -12,12 +12,16 @@ export interface User {
   birthDate?: string;
   identityNumber?: string;
   passportNumber?: string;
+  pnrNumber?: string;
   europassCv?: EuropassCvProfile;
   role: 'candidate' | 'admin';
   kvkkAccepted: boolean;
+  credentialRequestPending?: boolean;
+  credentialRequestedAt?: string;
+  credentialSentAt?: string;
   consentVersion?: string;
   consentedAt?: string;
-  status?: UserStatus;
+  status: UserStatus;
   createdAt: string;
   updatedAt: string;
 }
@@ -25,6 +29,7 @@ export interface User {
 export interface UserState {
   user: User | null;
   isAuthenticated: boolean;
+  rememberMe: boolean;
   isLoading: boolean;
   error: string | null;
 }

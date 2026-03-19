@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
-import { colors } from '../theme/colors';
+import { useAppTheme, useThemedStyles, type AppColors } from '../theme';
 import { PillVariant } from '../types';
 
 interface PillProps {
@@ -8,14 +8,16 @@ interface PillProps {
   variant: PillVariant;
 }
 
-const variantStyles: Record<PillVariant, ViewStyle> = {
-  ok: { backgroundColor: colors.success },
-  warn: { backgroundColor: colors.warning },
-  err: { backgroundColor: colors.error },
-  info: { backgroundColor: colors.info },
-};
-
 export const Pill: React.FC<PillProps> = ({ label, variant }) => {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
+  const variantStyles: Record<PillVariant, ViewStyle> = {
+    ok: { backgroundColor: colors.success },
+    warn: { backgroundColor: colors.warning },
+    err: { backgroundColor: colors.error },
+    info: { backgroundColor: colors.info },
+  };
+
   return (
     <View style={[styles.pill, variantStyles[variant]]}>
       <Text style={styles.pillText}>{label}</Text>
@@ -23,7 +25,7 @@ export const Pill: React.FC<PillProps> = ({ label, variant }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   pill: {
     paddingHorizontal: 12,
     paddingVertical: 5,
