@@ -1,44 +1,42 @@
-﻿import React from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { RootStackNavigationProp } from '../../types';
-import { useThemedStyles, type AppColors } from '../../theme';
+import { colors } from '../../theme';
 import { Button, Card, Pill } from '../../components';
 
 export const HomeScreen: React.FC = () => {
-  const styles = useThemedStyles(createStyles);
   const navigation = useNavigation<RootStackNavigationProp>();
 
   return (
     <View style={styles.section}>
-      <Text style={styles.h1}>Aday ve Admin Akışı</Text>
+      <Text style={styles.h1}>Tek kaynaklı başvuru akışı</Text>
       <Text style={styles.subtitle}>
-        Bu prototipte aday akışı program ataması odaklıdır: önce kişisel bilgiler,
-        sonra Programlarım içinde program bazlı belge/motivasyon adımları.
+        Bu prototip, aday ve admin akışlarını tıklanabilir bir şekilde gösteren
+        basit bir mobil arayüzdür. Sadece görsel sunum amaçlıdır.
       </Text>
 
       <Card title="Hızlı Giriş">
-        <Button
-          label="Aday Ekranları"
-          onPress={() => navigation.navigate('AdayMenu')}
+        <Button 
+          label="Aday Ekranları" 
+          onPress={() => navigation.navigate('AdayKayit')} 
         />
-        <Button
-          label="Admin Ekranları"
-          onPress={() => navigation.navigate('AdminListe')}
+        <Button 
+          label="Admin Ekranları" 
+          onPress={() => navigation.navigate('AdminListe')} 
         />
-        <Button
-          label="Veri Modeli"
-          onPress={() => navigation.navigate('DataModel')}
+        <Button 
+          label="Veri Modeli" 
+          onPress={() => navigation.navigate('DataModel')} 
         />
       </Card>
 
       <Card title="Özet Akış">
-        <Text style={styles.bodyText}>1) Kayıt (ad-soyad, e-posta, KVKK)</Text>
-        <Text style={styles.bodyText}>2) Login (demo veya atanmış bilgiler)</Text>
-        <Text style={styles.bodyText}>3) Kişisel Bilgiler (TC, pasaport, profil)</Text>
-        <Text style={styles.bodyText}>4) Programlarım (admin atar)</Text>
-        <Text style={styles.bodyText}>5) Program içi: motivasyon ve belgeler</Text>
-        <Text style={styles.bodyText}>6) Program dışı: CV ve mesajlar</Text>
+        <Text style={styles.bodyText}>1) Kayıt ve iletişim doğrulama</Text>
+        <Text style={styles.bodyText}>2) Program bilgilendirme + kontrol listesi</Text>
+        <Text style={styles.bodyText}>3) Kişisel bilgi formu</Text>
+        <Text style={styles.bodyText}>4) Belge tarama / yükleme</Text>
+        <Text style={styles.bodyText}>5) Admin doğrulama + mesaj</Text>
         <View style={styles.pillRow}>
           <Pill label="OK" variant="ok" />
           <Pill label="EKSİK" variant="warn" />
@@ -50,7 +48,7 @@ export const HomeScreen: React.FC = () => {
   );
 };
 
-const createStyles = (colors: AppColors) => StyleSheet.create({
+const styles = StyleSheet.create({
   section: {
     marginTop: 16,
     gap: 12,
@@ -76,5 +74,3 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     marginTop: 8,
   } as ViewStyle,
 });
-
-

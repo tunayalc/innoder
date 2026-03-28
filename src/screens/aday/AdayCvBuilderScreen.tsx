@@ -11,12 +11,18 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useThemedStyles, type AppColors } from '../../theme';
+import { useNavigation } from '@react-navigation/native';
+import { colors } from '../../theme';
 import { Button, Card, InputField, Pill } from '../../components';
 import { useAuth } from '../../hooks';
-import { useAppSelector } from '../../store/hooks';
-import { selectUserError, selectUserLoading } from '../../store/selectors';
-import { EuropassCvProfile } from '../../types';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import {
+  selectApplicationError,
+  selectApplicationLoading,
+  selectApplications,
+} from '../../store/selectors';
+import { RootStackNavigationProp, EuropassCvProfile } from '../../types';
+import { updatePersonalInfoDraft } from '../../store/thunks/applicationThunks';
 import {
   CEFR_LEVELS,
   createEmptyEuropassCv,
@@ -24,21 +30,28 @@ import {
 } from '../../utils/europass';
 
 const sectionHints = [
-  '1) Personal profile and summary',
-  '2) Work experience (reverse chronology)',
-  '3) Education and training',
-  '4) Language levels in CEFR (A1-C2)',
-  '5) Skills and digital competences',
+  '1) Kişisel profil ve özet',
+  '2) İş deneyimi (en yeni deneyim önce)',
+  '3) Eğitim ve öğrenim',
+  '4) CEFR dil seviyeleri (A1-C2)',
+  '5) Yetkinlikler ve dijital beceriler',
 ];
 
 export const AdayCvBuilderScreen: React.FC = () => {
-  const styles = useThemedStyles(createStyles);
-  const { user, update } = useAuth();
-  const isLoading = useAppSelector(selectUserLoading);
-  const error = useAppSelector(selectUserError);
+  const navigation = useNavigation<RootStackNavigationProp>();
+  const { user } = useAuth();
+  const dispatch = useAppDispatch();
+  const applications = useAppSelector(selectApplications);
+  const isLoading = useAppSelector(selectApplicationLoading);
+  const error = useAppSelector(selectApplicationError);
+
+  const myApplication = useMemo(
+    () => applications.find((app) => app.userId === user?.id),
+    [applications, user?.id],
+  );
 
   const [cv, setCv] = useState<EuropassCvProfile>(
-    user?.europassCv ?? createEmptyEuropassCv(),
+    myApplication?.personalInfo.europassCv ?? createEmptyEuropassCv(),
   );
 
   const isComplete = useMemo(() => isEuropassCvComplete(cv), [cv]);
@@ -145,9 +158,38 @@ export const AdayCvBuilderScreen: React.FC = () => {
   };
 
   const saveCv = async () => {
-    update({ europassCv: cv });
-    Alert.alert('CV Kaydedildi', 'Europass formatindaki CV taslagi kaydedildi.');
+    if (!myApplication) return;
+    await dispatch(
+      updatePersonalInfoDraft({
+        applicationId: myApplication.id,
+        programId: myApplication.programId,
+        patch: {
+          europassCv: cv,
+        },
+      }),
+    );
+    Alert.alert('CV Kaydedildi', 'Europass formatındaki CV taslağı kaydedildi.');
   };
+
+  if (!myApplication) {
+    return (
+      <View style={styles.section}>
+        <View style={styles.headerCard}>
+          <View style={styles.accentBar} />
+          <View style={styles.headerContent}>
+            <Text style={styles.h2}>Europass CV Oluşturucu</Text>
+            <Text style={styles.subtitle}>Önce başvuru taslağı oluşturmanız gerekiyor.</Text>
+          </View>
+        </View>
+        <Card>
+          <Text style={styles.emptyText}>
+            Bu adıma geçmeden önce Kayıt Formu ekranından taslak başvuru oluşturun.
+          </Text>
+          <Button label="Kayıt Formuna Git" onPress={() => navigation.navigate('AdayKayit')} />
+        </Card>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -159,7 +201,7 @@ export const AdayCvBuilderScreen: React.FC = () => {
           <View style={styles.accentBar} />
           <View style={styles.headerContent}>
             <View style={styles.titleRow}>
-              <Text style={styles.h2}>Europass CV Builder</Text>
+              <Text style={styles.h2}>Europass CV Oluşturucu</Text>
               <Pill label={isComplete ? 'Hazır' : 'Eksik'} variant={isComplete ? 'ok' : 'warn'} />
             </View>
             <Text style={styles.subtitle}>
@@ -171,20 +213,20 @@ export const AdayCvBuilderScreen: React.FC = () => {
         <Card title="Format Kontrol Listesi">
           {sectionHints.map((item) => (
             <Text key={item} style={styles.hintRow}>
-              - {item}
+              • {item}
             </Text>
           ))}
         </Card>
 
-        <Text style={styles.sectionLabel}>PROFILE</Text>
+        <Text style={styles.sectionLabel}>PROFİL</Text>
         <InputField
-          label="Profile Title *"
+          label="Profil Başlığı *"
           value={cv.profileTitle}
           onChangeText={(value) => updateCv({ profileTitle: value })}
-          placeholder="Youth Worker / Volunteer / Student"
+          placeholder="Gençlik Çalışanı / Gönüllü / Öğrenci"
         />
         <InputField
-          label="Professional Summary *"
+          label="Profesyonel Özet *"
           value={cv.summary}
           onChangeText={(value) => updateCv({ summary: value })}
           placeholder="Kısa özet (en az 40 karakter)"
@@ -193,7 +235,7 @@ export const AdayCvBuilderScreen: React.FC = () => {
           style={styles.textArea}
         />
         <InputField
-          label="Key Skills *"
+          label="Temel Yetkinlikler *"
           value={cv.keySkills}
           onChangeText={(value) => updateCv({ keySkills: value })}
           placeholder="İletişim, takım çalışması, proje yönetimi..."
@@ -202,120 +244,120 @@ export const AdayCvBuilderScreen: React.FC = () => {
           style={styles.textArea}
         />
         <InputField
-          label="Digital Skills"
+          label="Dijital Beceriler"
           value={cv.digitalSkills}
           onChangeText={(value) => updateCv({ digitalSkills: value })}
-          placeholder="Canva, Notion, Excel, video editing..."
+          placeholder="Canva, Notion, Excel, video düzenleme..."
           multiline
           numberOfLines={2}
           style={styles.textArea}
         />
 
-        <Text style={styles.sectionLabel}>WORK EXPERIENCE</Text>
+        <Text style={styles.sectionLabel}>İŞ DENEYİMİ</Text>
         {cv.workExperiences.map((item, index) => (
-          <Card key={`work-${index}`} title={`Experience ${index + 1}`}>
+          <Card key={`work-${index}`} title={`Deneyim ${index + 1}`}>
             <InputField
-              label="Role *"
+              label="Pozisyon *"
               value={item.role}
               onChangeText={(value) => updateWorkField(index, 'role', value)}
-              placeholder="Project Assistant"
+              placeholder="Proje Asistanı"
             />
             <InputField
-              label="Organization *"
+              label="Kurum *"
               value={item.organization}
               onChangeText={(value) => updateWorkField(index, 'organization', value)}
-              placeholder="NGO / School / Company"
+              placeholder="STK / Okul / Şirket"
             />
             <InputField
-              label="Start Date *"
+              label="Başlangıç Tarihi *"
               value={item.startDate}
               onChangeText={(value) => updateWorkField(index, 'startDate', value)}
               placeholder="YYYY-MM"
             />
             <InputField
-              label="End Date"
+              label="Bitiş Tarihi"
               value={item.endDate}
               onChangeText={(value) => updateWorkField(index, 'endDate', value)}
-              placeholder="YYYY-MM or Present"
+              placeholder="YYYY-MM veya Devam Ediyor"
             />
             <InputField
-              label="Responsibilities"
+              label="Sorumluluklar"
               value={item.responsibilities}
               onChangeText={(value) => updateWorkField(index, 'responsibilities', value)}
-              placeholder="Main achievements and tasks"
+              placeholder="Ana başarılar ve görevler"
               multiline
               numberOfLines={3}
               style={styles.textArea}
             />
             {cv.workExperiences.length > 1 ? (
               <Pressable style={styles.removeButton} onPress={() => removeWorkExperience(index)}>
-                <Text style={styles.removeButtonText}>Deneyimi Kaldir</Text>
+                <Text style={styles.removeButtonText}>Deneyimi Kaldır</Text>
               </Pressable>
             ) : null}
           </Card>
         ))}
         <Button label="Deneyim Ekle" variant="ghost" onPress={addWorkExperience} />
 
-        <Text style={styles.sectionLabel}>EDUCATION</Text>
+        <Text style={styles.sectionLabel}>EĞİTİM</Text>
         {cv.educationEntries.map((item, index) => (
-          <Card key={`edu-${index}`} title={`Education ${index + 1}`}>
+          <Card key={`edu-${index}`} title={`Eğitim ${index + 1}`}>
             <InputField
-              label="Qualification *"
+              label="Yeterlilik *"
               value={item.qualification}
               onChangeText={(value) => updateEducationField(index, 'qualification', value)}
-              placeholder="BSc Computer Engineering"
+              placeholder="Lisans: Bilgisayar Mühendisliği"
             />
             <InputField
-              label="Institution *"
+              label="Kurum *"
               value={item.institution}
               onChangeText={(value) => updateEducationField(index, 'institution', value)}
-              placeholder="University / School"
+              placeholder="Üniversite / Okul"
             />
             <InputField
-              label="Start Date *"
+              label="Başlangıç Tarihi *"
               value={item.startDate}
               onChangeText={(value) => updateEducationField(index, 'startDate', value)}
               placeholder="YYYY-MM"
             />
             <InputField
-              label="End Date"
+              label="Bitiş Tarihi"
               value={item.endDate}
               onChangeText={(value) => updateEducationField(index, 'endDate', value)}
               placeholder="YYYY-MM"
             />
             <InputField
-              label="Description"
+              label="Açıklama"
               value={item.description}
               onChangeText={(value) => updateEducationField(index, 'description', value)}
-              placeholder="Projects, thesis, GPA, etc."
+              placeholder="Projeler, tez, not ortalaması vb."
               multiline
               numberOfLines={3}
               style={styles.textArea}
             />
             {cv.educationEntries.length > 1 ? (
               <Pressable style={styles.removeButton} onPress={() => removeEducation(index)}>
-                <Text style={styles.removeButtonText}>Egitimi Kaldir</Text>
+                <Text style={styles.removeButtonText}>Eğitimi Kaldır</Text>
               </Pressable>
             ) : null}
           </Card>
         ))}
-        <Button label="Egitim Ekle" variant="ghost" onPress={addEducation} />
+        <Button label="Eğitim Ekle" variant="ghost" onPress={addEducation} />
 
-        <Text style={styles.sectionLabel}>LANGUAGE SKILLS (CEFR)</Text>
+        <Text style={styles.sectionLabel}>DİL YETKİNLİKLERİ (CEFR)</Text>
         {cv.languageSkills.map((item, index) => (
-          <Card key={`lang-${index}`} title={`Language ${index + 1}`}>
+          <Card key={`lang-${index}`} title={`Dil ${index + 1}`}>
             <InputField
-              label="Language *"
+              label="Dil *"
               value={item.language}
               onChangeText={(value) => updateLanguageField(index, 'language', value)}
-              placeholder="English"
+              placeholder="İngilizce"
             />
             {[
-              ['listening', 'Listening'],
-              ['reading', 'Reading'],
-              ['spokenInteraction', 'Spoken Interaction'],
-              ['spokenProduction', 'Spoken Production'],
-              ['writing', 'Writing'],
+              ['listening', 'Dinleme'],
+              ['reading', 'Okuma'],
+              ['spokenInteraction', 'Sözlü Etkileşim'],
+              ['spokenProduction', 'Sözlü Anlatım'],
+              ['writing', 'Yazma'],
             ].map(([fieldKey, label]) => (
               <View key={`${index}-${fieldKey}`} style={styles.levelGroup}>
                 <Text style={styles.levelLabel}>{label}</Text>
@@ -344,7 +386,7 @@ export const AdayCvBuilderScreen: React.FC = () => {
             ))}
             {cv.languageSkills.length > 1 ? (
               <Pressable style={styles.removeButton} onPress={() => removeLanguage(index)}>
-                <Text style={styles.removeButtonText}>Dili Kaldir</Text>
+                <Text style={styles.removeButtonText}>Dili Kaldır</Text>
               </Pressable>
             ) : null}
           </Card>
@@ -354,7 +396,7 @@ export const AdayCvBuilderScreen: React.FC = () => {
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         <Button
-          label={isLoading ? 'Kaydediliyor...' : 'CV Taslagini Kaydet'}
+          label={isLoading ? 'Kaydediliyor...' : 'CV Taslağını Kaydet'}
           onPress={saveCv}
         />
       </ScrollView>
@@ -362,7 +404,7 @@ export const AdayCvBuilderScreen: React.FC = () => {
   );
 };
 
-const createStyles = (colors: AppColors) => StyleSheet.create({
+const styles = StyleSheet.create({
   flex: {
     flex: 1,
   } as ViewStyle,
@@ -479,5 +521,3 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     textAlign: 'center',
   } as TextStyle,
 });
-
-

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -10,8 +10,8 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { useThemedStyles, type AppColors } from '../../theme';
+import { useNavigation } from '@react-navigation/native';
+import { colors } from '../../theme';
 import { Button, Card, InputField, Pill } from '../../components';
 import { useAuth } from '../../hooks';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
@@ -20,7 +20,7 @@ import {
   selectApplicationLoading,
   selectApplications,
 } from '../../store/selectors';
-import { RootStackNavigationProp, RootStackParamList, MotivationLetterDraft } from '../../types';
+import { RootStackNavigationProp, MotivationLetterDraft } from '../../types';
 import { updatePersonalInfoDraft } from '../../store/thunks/applicationThunks';
 import {
   createEmptyMotivationLetter,
@@ -29,32 +29,21 @@ import {
 } from '../../utils/europass';
 
 export const AdayMotivationScreen: React.FC = () => {
-  const styles = useThemedStyles(createStyles);
   const navigation = useNavigation<RootStackNavigationProp>();
-  const route = useRoute<RouteProp<RootStackParamList, 'AdayMotivation'>>();
   const { user } = useAuth();
   const dispatch = useAppDispatch();
   const applications = useAppSelector(selectApplications);
   const isLoading = useAppSelector(selectApplicationLoading);
   const error = useAppSelector(selectApplicationError);
 
-  const myApplication = useMemo(() => {
-    const byRoute = route.params?.applicationId
-      ? applications.find((app) => app.id === route.params?.applicationId)
-      : null;
-    if (byRoute) return byRoute;
-    return applications.find((app) => app.userId === user?.id);
-  }, [applications, route.params?.applicationId, user?.id]);
+  const myApplication = useMemo(
+    () => applications.find((app) => app.userId === user?.id),
+    [applications, user?.id],
+  );
 
   const [letter, setLetter] = useState<MotivationLetterDraft>(
     myApplication?.personalInfo.motivationLetter ?? createEmptyMotivationLetter(),
   );
-
-  useEffect(() => {
-    setLetter(
-      myApplication?.personalInfo.motivationLetter ?? createEmptyMotivationLetter(),
-    );
-  }, [myApplication?.id, myApplication?.personalInfo.motivationLetter]);
 
   const completion = useMemo(() => isMotivationLetterComplete(letter), [letter]);
 
@@ -67,13 +56,13 @@ export const AdayMotivationScreen: React.FC = () => {
     await dispatch(
       updatePersonalInfoDraft({
         applicationId: myApplication.id,
+        programId: myApplication.programId,
         patch: {
           motivationLetter: letter,
         },
-        programId: myApplication.programId,
       }),
     );
-    Alert.alert('Mektup Kaydedildi', 'Motivasyon mektubu taslagi kaydedildi.');
+    Alert.alert('Mektup Kaydedildi', 'Motivasyon mektubu taslağı kaydedildi.');
   };
 
   if (!myApplication) {
@@ -82,15 +71,15 @@ export const AdayMotivationScreen: React.FC = () => {
         <View style={styles.headerCard}>
           <View style={styles.accentBar} />
           <View style={styles.headerContent}>
-            <Text style={styles.h2}>Motivasyon Mektubu Builder</Text>
+            <Text style={styles.h2}>Motivasyon Mektubu Oluşturucu</Text>
             <Text style={styles.subtitle}>Önce başvuru taslağı oluşturmanız gerekiyor.</Text>
           </View>
         </View>
         <Card>
           <Text style={styles.emptyText}>
-            Bu adıma geçmeden önce admin tarafından bir programa atanmanız gerekir.
+            Bu adıma geçmeden önce Kayıt Formu ekranından taslak başvuru oluşturun.
           </Text>
-          <Button label="Programlarıma Git" onPress={() => navigation.navigate('AdayEgitim')} />
+          <Button label="Kayıt Formuna Git" onPress={() => navigation.navigate('AdayKayit')} />
         </Card>
       </View>
     );
@@ -106,7 +95,7 @@ export const AdayMotivationScreen: React.FC = () => {
           <View style={styles.accentBar} />
           <View style={styles.headerContent}>
             <View style={styles.titleRow}>
-              <Text style={styles.h2}>Motivasyon Mektubu Builder</Text>
+              <Text style={styles.h2}>Motivasyon Mektubu Oluşturucu</Text>
               <Pill label={completion ? 'Hazır' : 'Eksik'} variant={completion ? 'ok' : 'warn'} />
             </View>
             <Text style={styles.subtitle}>
@@ -116,57 +105,57 @@ export const AdayMotivationScreen: React.FC = () => {
         </View>
 
         <Card title="European Youth Portal Tarzı Mektup Yapısı">
-          <Text style={styles.hintRow}>- Addressee and subject</Text>
-          <Text style={styles.hintRow}>- Opening (who you are + why writing)</Text>
-          <Text style={styles.hintRow}>- Motivation (why this programme)</Text>
-          <Text style={styles.hintRow}>- Contribution (what you will bring)</Text>
-          <Text style={styles.hintRow}>- Closing (availability and thanks)</Text>
+          <Text style={styles.hintRow}>• Hitap ve konu</Text>
+          <Text style={styles.hintRow}>• Açılış (kimsiniz + neden yazıyorsunuz)</Text>
+          <Text style={styles.hintRow}>• Motivasyon (neden bu program)</Text>
+          <Text style={styles.hintRow}>• Katkı (ne katacaksınız)</Text>
+          <Text style={styles.hintRow}>• Kapanış (uygunluk ve teşekkür)</Text>
         </Card>
 
-        <Text style={styles.sectionLabel}>HEADER</Text>
+        <Text style={styles.sectionLabel}>BAŞLIK</Text>
         <InputField
-          label="Addressee *"
+          label="Hitap *"
           value={letter.addressee}
           onChangeText={(value) => updateField('addressee', value)}
-          placeholder="Inno Association Selection Team"
+          placeholder="Inno Derneği Seçim Ekibi"
         />
         <InputField
-          label="Subject *"
+          label="Konu *"
           value={letter.subject}
           onChangeText={(value) => updateField('subject', value)}
-          placeholder="Application Motivation Letter"
+          placeholder="Başvuru Motivasyon Mektubu"
         />
 
-        <Text style={styles.sectionLabel}>BODY</Text>
+        <Text style={styles.sectionLabel}>GÖVDE</Text>
         <InputField
-          label={`Opening Paragraph * (${wordCount(letter.openingParagraph)} words)`}
+          label={`Açılış Paragrafı * (${wordCount(letter.openingParagraph)} kelime)`}
           value={letter.openingParagraph}
           onChangeText={(value) => updateField('openingParagraph', value)}
-          placeholder="Kimsiniz, hangi role başvuruyorsunuz"
+          placeholder="Kimsiniz, hangi role başvuruyorsunuz?"
           multiline
           numberOfLines={5}
           style={styles.textArea}
         />
         <InputField
-          label={`Motivation Paragraph * (${wordCount(letter.motivationParagraph)} words)`}
+          label={`Motivasyon Paragrafı * (${wordCount(letter.motivationParagraph)} kelime)`}
           value={letter.motivationParagraph}
           onChangeText={(value) => updateField('motivationParagraph', value)}
-          placeholder="Bu programa neden katılmak istiyorsunuz"
+          placeholder="Bu programa neden katılmak istiyorsunuz?"
           multiline
           numberOfLines={6}
           style={styles.textArea}
         />
         <InputField
-          label={`Contribution Paragraph * (${wordCount(letter.contributionParagraph)} words)`}
+          label={`Katkı Paragrafı * (${wordCount(letter.contributionParagraph)} kelime)`}
           value={letter.contributionParagraph}
           onChangeText={(value) => updateField('contributionParagraph', value)}
-          placeholder="Deneyimlerinizle programa nasıl katkıda bulunacaksınız"
+          placeholder="Deneyimlerinizle programa nasıl katkıda bulunacaksınız?"
           multiline
           numberOfLines={6}
           style={styles.textArea}
         />
         <InputField
-          label={`Closing Paragraph * (${wordCount(letter.closingParagraph)} words)`}
+          label={`Kapanış Paragrafı * (${wordCount(letter.closingParagraph)} kelime)`}
           value={letter.closingParagraph}
           onChangeText={(value) => updateField('closingParagraph', value)}
           placeholder="Teşekkür, uygunluk ve iletişim bilgisi"
@@ -184,7 +173,7 @@ export const AdayMotivationScreen: React.FC = () => {
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         <Button
-          label={isLoading ? 'Kaydediliyor...' : 'Mektup Taslagini Kaydet'}
+          label={isLoading ? 'Kaydediliyor...' : 'Mektup Taslağını Kaydet'}
           onPress={saveLetter}
         />
       </ScrollView>
@@ -192,7 +181,7 @@ export const AdayMotivationScreen: React.FC = () => {
   );
 };
 
-const createStyles = (colors: AppColors) => StyleSheet.create({
+const styles = StyleSheet.create({
   flex: {
     flex: 1,
   } as ViewStyle,
@@ -275,4 +264,3 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     textAlign: 'center',
   } as TextStyle,
 });
-

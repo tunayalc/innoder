@@ -5,8 +5,8 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAppTheme, useThemedStyles, type AppColors } from '../theme';
 
 interface BackButtonProps {
-  onPress: () => void;
-  tintColor: string;
+  onPress?: () => void;
+  tintColor?: string;
 }
 
 export const BackButton: React.FC<BackButtonProps> = ({ onPress, tintColor }) => {

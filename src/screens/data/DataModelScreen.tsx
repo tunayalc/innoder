@@ -18,7 +18,7 @@ export const DataModelScreen: React.FC = () => {
         <Text style={styles.bodyText}>program, form verisi, başvuru durumu</Text>
       </Card>
       <Card title="documents">
-        <Text style={styles.bodyText}>belge tipi, dosya, parse sonucu, status</Text>
+        <Text style={styles.bodyText}>belge tipi, dosya, parse sonucu, durum</Text>
       </Card>
       <Card title="messages">
         <Text style={styles.bodyText}>başvuruya bağlı mesajlaşma</Text>

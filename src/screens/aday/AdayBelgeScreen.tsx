@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,17 +14,25 @@ import {
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { launchImageLibrary, Asset } from 'react-native-image-picker';
 import { pick, types as docTypes } from '@react-native-documents/picker';
-import { useThemedStyles, type AppColors } from '../../theme';
+import { colors } from '../../theme';
 import { Button, Pill } from '../../components';
 import { useAuth } from '../../hooks';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { selectApplicationError, selectApplicationLoading, selectApplications } from '../../store/selectors';
 import { DOCUMENT_TYPES, DOCUMENT_STATUS_LABELS } from '../../constants';
-import { Document, DocumentStatus, RootStackNavigationProp, RootStackParamList } from '../../types';
+import { DocumentStatus, RootStackNavigationProp, RootStackParamList } from '../../types';
 import { uploadDocument } from '../../store/thunks/applicationThunks';
+import { getProgramById } from '../../services/programCatalog';
 
-type DocType = Document['type'];
+type DocType = 'identity' | 'form' | 'boarding_pass' | 'extra';
 type CaptureFormat = 'jpg' | 'pdf';
+
+const DOC_TYPE_OPTIONS: { key: DocType; label: string }[] = [
+  { key: 'identity', label: 'Kimlik Belgesi' },
+  { key: 'form', label: 'Başvuru Formu' },
+  { key: 'boarding_pass', label: 'Biniş Kartı' },
+  { key: 'extra', label: 'Ek Belge' },
+];
 
 const statusToVariant = (status: DocumentStatus) => {
   switch (status) {
@@ -37,7 +45,6 @@ const statusToVariant = (status: DocumentStatus) => {
 };
 
 export const AdayBelgeScreen: React.FC = () => {
-  const styles = useThemedStyles(createStyles);
   const navigation = useNavigation<RootStackNavigationProp>();
   const route = useRoute<RouteProp<RootStackParamList, 'AdayBelge'>>();
   const { user } = useAuth();
@@ -46,20 +53,16 @@ export const AdayBelgeScreen: React.FC = () => {
   const isLoading = useAppSelector(selectApplicationLoading);
   const error = useAppSelector(selectApplicationError);
 
-  const myApplication = useMemo(() => {
-    const byRoute = route.params?.applicationId
-      ? applications.find((app) => app.id === route.params?.applicationId)
-      : null;
-    if (byRoute) return byRoute;
-    return applications.find((app) => app.userId === user?.id);
-  }, [applications, route.params?.applicationId, user?.id]);
+  const myApplication = useMemo(
+    () => applications.find((app) => app.userId === user?.id),
+    [applications, user?.id],
+  );
 
   const [selectedDocType, setSelectedDocType] = useState<DocType>('identity');
   const [captureFormat, setCaptureFormat] = useState<CaptureFormat>('jpg');
   const [capturedPages, setCapturedPages] = useState<Asset[]>([]);
   const [pdfFileName, setPdfFileName] = useState<string | null>(null);
   const [pdfUri, setPdfUri] = useState<string | null>(null);
-  const [documentCommitmentAccepted, setDocumentCommitmentAccepted] = useState(false);
 
   // Receive photo from BelgeCameraScreen
   useEffect(() => {
@@ -75,12 +78,10 @@ export const AdayBelgeScreen: React.FC = () => {
   }, [route.params?.capturedPhotoUri, navigation]);
 
   const availableDocTypes = useMemo(() => {
-    if (!myApplication) return [];
-    return myApplication.program.checklist.map((item) => ({
-      key: item.documentType,
-      label: DOCUMENT_TYPES[item.documentType] || item.documentType,
-      expectedFormat: item.expectedFormat,
-    }));
+    if (!myApplication) return DOC_TYPE_OPTIONS;
+    return DOC_TYPE_OPTIONS.filter((opt) =>
+      myApplication.documents.some((d) => d.type === opt.key),
+    );
   }, [myApplication]);
 
   useEffect(() => {
@@ -94,38 +95,19 @@ export const AdayBelgeScreen: React.FC = () => {
   );
 
   const expectedFormat = useMemo(() => {
+    if (!myApplication) return '';
+    const program = getProgramById(myApplication.programId);
     return (
-      availableDocTypes.find((item) => item.key === selectedDocType)?.expectedFormat || ''
+      program.checklist.find((x) => x.documentType === selectedDocType)?.expectedFormat ||
+      ''
     );
-  }, [availableDocTypes, selectedDocType]);
-  const selectedDocLabel = useMemo(
-    () => DOCUMENT_TYPES[selectedDocType] || selectedDocType,
-    [selectedDocType],
-  );
-  const isBoardingPassSelected = selectedDocType === 'boarding_pass';
-
-  const selectDocumentType = useCallback(
-    (nextDocType: DocType) => {
-      const nextOption = availableDocTypes.find((item) => item.key === nextDocType);
-      if (!nextOption) return;
-
-      setSelectedDocType(nextDocType);
-      setCaptureFormat(
-        nextOption.expectedFormat.toLowerCase().includes('pdf') &&
-          !nextOption.expectedFormat.toLowerCase().includes('jpg')
-          ? 'pdf'
-          : 'jpg',
-      );
-      setCapturedPages([]);
-      setPdfFileName(null);
-      setPdfUri(null);
-      setDocumentCommitmentAccepted(false);
-    },
-    [availableDocTypes],
-  );
+  }, [myApplication, selectedDocType]);
 
   const handleCameraCapture = useCallback(() => {
-    if (!myApplication) return;
+    if (!myApplication) {
+      Alert.alert('Uyarı', 'Önce başvuru taslağı oluşturun.');
+      return;
+    }
     navigation.navigate('BelgeCamera', {
       docType: selectedDocType,
       applicationId: myApplication.id,
@@ -207,19 +189,14 @@ export const AdayBelgeScreen: React.FC = () => {
     setCapturedPages([]);
     setPdfFileName(null);
     setPdfUri(null);
-    setDocumentCommitmentAccepted(false);
     Alert.alert(
       'Yükleme Başlatıldı',
-      'Belge backend\'e gönderiliyor. Durum güncellenince checklist üzerinden takip edebilirsiniz.',
+      'Belge backend\'e gönderiliyor. Durum güncellenince kontrol listesi üzerinden takip edebilirsiniz.',
     );
   }, [myApplication, user, selectedDocument, selectedDocType, captureFormat, capturedPages, pdfFileName, pdfUri, dispatch]);
 
   const handleUpload = useCallback(() => {
     if (!myApplication || !user || !selectedDocument) return;
-    if (!documentCommitmentAccepted) {
-      Alert.alert('Uyarı', 'Lütfen belge teslim taahhüt onayını işaretleyin.');
-      return;
-    }
     const hasContent =
       captureFormat === 'pdf' ? !!pdfUri : capturedPages.length > 0;
     if (!hasContent) {
@@ -232,16 +209,7 @@ export const AdayBelgeScreen: React.FC = () => {
       return;
     }
     performUpload();
-  }, [
-    myApplication,
-    user,
-    selectedDocument,
-    documentCommitmentAccepted,
-    captureFormat,
-    capturedPages.length,
-    pdfUri,
-    performUpload,
-  ]);
+  }, [myApplication, user, selectedDocument, captureFormat, capturedPages.length, pdfUri, performUpload]);
 
   if (!myApplication) {
     return (
@@ -250,15 +218,13 @@ export const AdayBelgeScreen: React.FC = () => {
           <View style={styles.accentBar} />
           <View style={styles.headerContent}>
             <Text style={styles.h2}>Belge Tarama</Text>
-            <Text style={styles.subtitle}>
-              Bu adım için önce admin tarafından program ataması gerekir.
-            </Text>
+            <Text style={styles.subtitle}>Önce Kayıt Formu ekranından bilgilerinizi kaydedin.</Text>
           </View>
         </View>
         <View style={styles.emptyCard}>
           <Button
-            label="Programlarıma Git"
-            onPress={() => navigation.navigate('AdayEgitim')}
+            label="Kayıt Formuna Git"
+            onPress={() => navigation.navigate('AdayKayit')}
           />
         </View>
       </View>
@@ -276,7 +242,7 @@ export const AdayBelgeScreen: React.FC = () => {
 
       {/* Document type selector */}
       <Text style={styles.sectionLabel}>BELGE TİPİ</Text>
-      <View style={styles.typeRow}>
+        <View style={styles.typeRow}>
         {availableDocTypes.map((opt) => {
           const doc = myApplication.documents.find((d) => d.type === opt.key);
           return (
@@ -286,7 +252,15 @@ export const AdayBelgeScreen: React.FC = () => {
                 styles.typeChip,
                 selectedDocType === opt.key && styles.typeChipActive,
               ]}
-              onPress={() => selectDocumentType(opt.key)}
+              onPress={() => {
+                setSelectedDocType(opt.key);
+                setCaptureFormat(
+                  opt.key === 'form' || opt.key === 'boarding_pass' ? 'pdf' : 'jpg',
+                );
+                setCapturedPages([]);
+                setPdfFileName(null);
+                setPdfUri(null);
+              }}
             >
               <Text
                 style={[
@@ -339,30 +313,6 @@ export const AdayBelgeScreen: React.FC = () => {
         ))}
       </View>
 
-      <View style={styles.commitmentCard}>
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={styles.commitmentRow}
-          onPress={() => setDocumentCommitmentAccepted((prev) => !prev)}
-        >
-          <View
-            style={[
-              styles.commitmentCheckbox,
-              documentCommitmentAccepted && styles.commitmentCheckboxChecked,
-            ]}
-          >
-            {documentCommitmentAccepted ? (
-              <Text style={styles.commitmentCheckboxMark}>✓</Text>
-            ) : null}
-          </View>
-          <Text style={styles.commitmentText}>
-            {isBoardingPassSelected
-              ? `Yüklediğim ${selectedDocLabel} belgesinin doğru ve geçerli olduğunu, aslını doğrudan Inno Derneği'ne teslim edeceğimi ve aksi durumda uygulanacak yaptırımları kabul ettiğimi taahhüt ederim.`
-              : `Yüklediğim ${selectedDocLabel} belgesinin doğru ve geçerli olduğunu ve aksi durumda uygulanacak yaptırımları kabul ettiğimi taahhüt ederim.`}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
       {/* Camera/scan area */}
       <Text style={styles.sectionLabel}>TARAMA</Text>
       {captureFormat === 'jpg' ? (
@@ -370,13 +320,13 @@ export const AdayBelgeScreen: React.FC = () => {
           <View style={styles.scanActions}>
             <TouchableOpacity style={styles.scanBox} onPress={handleCameraCapture}>
               <View style={styles.scanGuide}>
-                <Text style={styles.scanOkText}>[CAM]</Text>
+                <Text style={styles.scanOkText}>📷</Text>
                 <Text style={styles.scanHintText}>Kamera ile Çek</Text>
               </View>
             </TouchableOpacity>
             <TouchableOpacity style={styles.scanBoxAlt} onPress={handleGalleryPick}>
               <View style={styles.scanGuide}>
-                <Text style={styles.scanOkText}>[GAL]</Text>
+                <Text style={styles.scanOkText}>🖼️</Text>
                 <Text style={styles.scanHintText}>Galeriden Seç</Text>
               </View>
             </TouchableOpacity>
@@ -406,7 +356,7 @@ export const AdayBelgeScreen: React.FC = () => {
         <>
           <TouchableOpacity style={styles.scanBox} onPress={handleDocumentPick}>
             <View style={styles.scanGuide}>
-              <Text style={styles.scanOkText}>[PDF]</Text>
+              <Text style={styles.scanOkText}>📄</Text>
               <Text style={styles.scanHintText}>
                 {pdfFileName || 'PDF Dosyası Seç'}
               </Text>
@@ -449,7 +399,7 @@ export const AdayBelgeScreen: React.FC = () => {
   );
 };
 
-const createStyles = (colors: AppColors) => StyleSheet.create({
+const styles = StyleSheet.create({
   section: {
     paddingTop: 16,
     gap: 16,
@@ -667,52 +617,9 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     marginLeft: 4,
     marginTop: -6,
   } as TextStyle,
-  commitmentCard: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    backgroundColor: colors.cardBg,
-    padding: 12,
-  } as ViewStyle,
-  commitmentRow: {
-    flexDirection: 'row',
-    gap: 10,
-    alignItems: 'flex-start',
-  } as ViewStyle,
-  commitmentCheckbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: colors.borderMedium,
-    backgroundColor: colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 1,
-  } as ViewStyle,
-  commitmentCheckboxChecked: {
-    borderColor: colors.teal,
-    backgroundColor: colors.tealBg,
-  } as ViewStyle,
-  commitmentCheckboxMark: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.teal,
-  } as TextStyle,
-  commitmentText: {
-    flex: 1,
-    fontSize: 13,
-    lineHeight: 18,
-    color: colors.textSecondary,
-  } as TextStyle,
   errorText: {
     fontSize: 14,
     color: '#DC2626',
     textAlign: 'center',
   } as TextStyle,
 });
-
-
-
-
-

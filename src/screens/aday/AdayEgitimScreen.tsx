@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,128 +6,217 @@ import {
   ViewStyle,
   TextStyle,
   ScrollView,
-  TouchableOpacity,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useThemedStyles, type AppColors } from '../../theme';
-import { Button, Pill } from '../../components';
+import { colors } from '../../theme';
+import { Button, ChecklistRow, Pill } from '../../components';
 import { useAuth } from '../../hooks';
-import { useI18n } from '../../i18n';
-import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { selectApplicationLoading, selectApplications } from '../../store/selectors';
-import { APPLICATION_STATUS_LABELS } from '../../constants';
-import { RootStackNavigationProp } from '../../types';
-import { hydrateSession } from '../../store/thunks/sessionThunks';
+import { useAppSelector } from '../../store/hooks';
+import { selectApplications } from '../../store/selectors';
+import { DOCUMENT_STATUS_LABELS, DOCUMENT_TYPES } from '../../constants';
+import { DocumentStatus, RootStackNavigationProp } from '../../types';
+import { getProgramById } from '../../services/programCatalog';
+import { formatDateShort } from '../../utils/date';
+import { isEuropassCvComplete, isMotivationLetterComplete } from '../../utils/europass';
+
+const statusToVariant = (status: DocumentStatus) => {
+  switch (status) {
+    case 'ok':
+      return 'ok';
+    case 'missing':
+      return 'warn';
+    case 'wrong_format':
+      return 'err';
+    case 'unread':
+      return 'info';
+    default:
+      return 'info';
+  }
+};
 
 export const AdayEgitimScreen: React.FC = () => {
-  const styles = useThemedStyles(createStyles);
   const navigation = useNavigation<RootStackNavigationProp>();
   const { user } = useAuth();
-  const { t } = useI18n();
-  const dispatch = useAppDispatch();
   const applications = useAppSelector(selectApplications);
-  const isLoading = useAppSelector(selectApplicationLoading);
 
-  const myPrograms = useMemo(
-    () =>
-      applications
-        .filter((app) => app.userId === user?.id)
-        .sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-        ),
+  const myApplication = useMemo(
+    () => applications.find((app) => app.userId === user?.id),
     [applications, user?.id],
   );
 
-  useEffect(() => {
-    if (!user) return;
-    if (myPrograms.length > 0) return;
-    dispatch(hydrateSession(user));
-  }, [dispatch, user, myPrograms.length]);
+  const program = useMemo(
+    () => (myApplication ? getProgramById(myApplication.programId) : null),
+    [myApplication],
+  );
+
+  const completedCount = useMemo(
+    () => myApplication?.documents.filter((d) => d.status === 'ok').length ?? 0,
+    [myApplication],
+  );
+  const totalCount = myApplication?.documents.length ?? 0;
+  const progressFillStyle = useMemo(
+    () => ({
+      width: totalCount > 0 ? `${(completedCount / totalCount) * 100}%` : '0%',
+    } as ViewStyle),
+    [completedCount, totalCount],
+  );
+
+  const cvReady = isEuropassCvComplete(myApplication?.personalInfo.europassCv);
+  const motivationReady = isMotivationLetterComplete(
+    myApplication?.personalInfo.motivationLetter,
+  );
 
   return (
     <ScrollView contentContainerStyle={styles.section}>
       <View style={styles.headerCard}>
         <View style={styles.accentBar} />
         <View style={styles.headerContent}>
-          <Text style={styles.h2}>{t('candidatePrograms.title')}</Text>
-          <Text style={styles.subtitle}>{t('candidatePrograms.subtitle')}</Text>
+          <Text style={styles.h2}>Eğitim Bilgilendirme</Text>
+          <Text style={styles.subtitle}>
+            {myApplication
+              ? `${myApplication.programName} / ${program?.year ?? 2026}`
+              : 'Henüz başvuru yok'}
+          </Text>
         </View>
       </View>
 
-      <Button
-        label={isLoading ? t('candidatePrograms.refreshing') : t('candidatePrograms.refresh')}
-        variant="ghost"
-        onPress={() => user && dispatch(hydrateSession(user))}
-      />
-
-      {myPrograms.length === 0 ? (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyText}>{t('candidatePrograms.empty')}</Text>
-        </View>
-      ) : (
-        myPrograms.map((app) => {
-          const totalDocs = app.documents.length;
-          const completedDocs = app.documents.filter((d) => d.status === 'ok').length;
-
-          return (
-            <View key={app.id} style={styles.programCard}>
-              <TouchableOpacity
-                activeOpacity={0.8}
-                style={styles.programCardMain}
-                onPress={() => navigation.navigate('AdayProgramDetay', { applicationId: app.id })}
-              >
-                <View style={styles.programTopRow}>
-                  <Text style={styles.programTitle}>{app.programName}</Text>
-                  <Pill
-                    label={APPLICATION_STATUS_LABELS[app.status] || app.status}
-                    variant={
-                      app.status === 'approved'
-                        ? 'ok'
-                        : app.status === 'needs_fix'
-                          ? 'warn'
-                          : app.status === 'rejected'
-                            ? 'err'
-                            : 'info'
-                    }
-                  />
-                </View>
-
-                <View style={styles.metaRow}>
-                  <Text style={styles.metaLabel}>{t('candidatePrograms.documentProgress')}</Text>
-                  <Text style={styles.metaValue}>
-                    {completedDocs}/{totalDocs}
-                  </Text>
-                </View>
-
-                <Text style={styles.cardHint}>{t('candidatePrograms.cardHint')}</Text>
-              </TouchableOpacity>
-
-              <View style={styles.programActions}>
-                <Button
-                  label={t('candidatePrograms.detailButton')}
-                  variant="ghost"
-                  style={styles.programActionButton}
-                  onPress={() => navigation.navigate('AdayProgramDetay', { applicationId: app.id })}
-                />
-                <Button
-                  label={t('candidatePrograms.messageButton')}
-                  style={styles.programActionButton}
-                  onPress={() => navigation.navigate('AdayMesaj', { applicationId: app.id })}
-                />
-              </View>
+      {myApplication ? (
+        <>
+          <View style={styles.progressCard}>
+            <View style={styles.progressHeader}>
+              <Text style={styles.progressLabel}>Belge İlerlemesi</Text>
+              <Text style={styles.progressCount}>
+                {completedCount}/{totalCount}
+              </Text>
             </View>
-          );
-        })
+            <View style={styles.progressBar}>
+              <View
+                style={[
+                  styles.progressFill,
+                  progressFillStyle,
+                ]}
+              />
+            </View>
+          </View>
+
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Program Başvuru Dosyası</Text>
+            <View style={styles.statusRow}>
+              <Text style={styles.statusLabel}>Europass CV</Text>
+              <Pill label={cvReady ? 'Tamam' : 'Eksik'} variant={cvReady ? 'ok' : 'warn'} />
+            </View>
+            <Button
+              label="CV Ekranına Git"
+              variant="ghost"
+              onPress={() => navigation.navigate('AdayCvBuilder')}
+            />
+            <View style={styles.statusRow}>
+              <Text style={styles.statusLabel}>Motivasyon Mektubu</Text>
+              <Pill
+                label={motivationReady ? 'Tamam' : 'Eksik'}
+                variant={motivationReady ? 'ok' : 'warn'}
+              />
+            </View>
+            <Button
+              label="Mektup Ekranına Git"
+              variant="ghost"
+              onPress={() => navigation.navigate('AdayMotivation')}
+            />
+          </View>
+
+          <Text style={styles.sectionLabel}>KATILIM ADIMLARI</Text>
+          <View style={styles.card}>
+            <Text style={styles.cardHint}>
+              Program bazlı bilgilendirme ve kontrol listesi, süreçteki yanlış anlamaları azaltmak için tasarlanmıştır.
+            </Text>
+          </View>
+
+          {program?.steps?.length ? (
+            <View style={styles.card}>
+              {program.steps.map((s, idx) => (
+                <Text key={`${idx}-${s}`} style={styles.stepText}>
+                  {idx + 1}) {s}
+                </Text>
+              ))}
+            </View>
+          ) : null}
+
+          {program?.deadlines?.length ? (
+            <>
+              <Text style={styles.sectionLabel}>TESLİM TARİHLERİ</Text>
+              <View style={styles.card}>
+                {program.deadlines.map((d) => (
+                  <View key={d.label} style={styles.deadlineRow}>
+                    <Text style={styles.deadlineLabel}>{d.label}</Text>
+                    <Text style={styles.deadlineValue}>{formatDateShort(d.dateISO)}</Text>
+                  </View>
+                ))}
+              </View>
+            </>
+          ) : null}
+
+          <Text style={styles.sectionLabel}>GEREKLİ BELGELER</Text>
+          <View style={styles.card}>
+            <Text style={styles.cardHint}>
+              Belge durumları server parse/doğrulama mantığıyla takip edilir:
+              OK / EKSİK / YANLIŞ FORMAT / OKUNMADI.
+            </Text>
+          </View>
+
+          {(program?.checklist || []).map((item) => {
+            const doc = myApplication.documents.find((d) => d.type === item.documentType);
+            const status = doc?.status || 'missing';
+            return (
+              <ChecklistRow
+                key={item.documentType}
+                label={DOCUMENT_TYPES[item.documentType] || item.documentType}
+                hint={item.expectedFormat}
+                status={DOCUMENT_STATUS_LABELS[status] || status}
+                variant={statusToVariant(status as DocumentStatus)}
+              />
+            );
+          })}
+
+          <Text style={styles.sectionLabel}>DİKKAT EDİLMESİ GEREKENLER</Text>
+          <View style={styles.card}>
+            <Text style={styles.cardHint}>
+              {(program?.commonMistakes?.length
+                ? program.commonMistakes
+                : [
+                    'Bulanık veya karanlık fotoğraf -> OKUNMADI',
+                    'PDF yerine fotoğraf -> YANLIŞ FORMAT',
+                    'Eksik sayfa -> EKSİK',
+                    'Yanlış belge türü seçimi',
+                  ]
+              )
+                .map((m) => `• ${m}`)
+                .join('\n')}
+            </Text>
+          </View>
+
+          <Button label="Belge Yükle" onPress={() => navigation.navigate('AdayBelge')} />
+          <Button
+            label="Mesajları Görüntüle"
+            variant="ghost"
+            onPress={() => navigation.navigate('AdayMesaj', { applicationId: myApplication.id })}
+          />
+        </>
+      ) : (
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyText}>
+            Henüz bir başvurunuz bulunmuyor. Önce Kayıt Formu ekranından bilgilerinizi kaydedin.
+          </Text>
+          <Button label="Kayıt Formuna Git" onPress={() => navigation.navigate('AdayKayit')} />
+        </View>
       )}
     </ScrollView>
   );
 };
 
-const createStyles = (colors: AppColors) => StyleSheet.create({
+const styles = StyleSheet.create({
   section: {
     paddingTop: 16,
-    gap: 14,
+    gap: 16,
     padding: 20,
     paddingBottom: 40,
   } as ViewStyle,
@@ -147,7 +236,7 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   } as ViewStyle,
   headerContent: {
     flex: 1,
-    gap: 6,
+    gap: 4,
   } as ViewStyle,
   h2: {
     fontSize: 24,
@@ -156,63 +245,102 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   } as TextStyle,
   subtitle: {
     color: colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 15,
   } as TextStyle,
-  programCard: {
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 0.8,
+    marginTop: 4,
+  } as TextStyle,
+  progressCard: {
+    backgroundColor: colors.cardBg,
+    borderRadius: 14,
+    padding: 16,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  } as ViewStyle,
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  } as ViewStyle,
+  progressLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  } as TextStyle,
+  progressCount: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.teal,
+  } as TextStyle,
+  progressBar: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.borderLight,
+    overflow: 'hidden',
+  } as ViewStyle,
+  progressFill: {
+    height: '100%',
+    borderRadius: 4,
+    backgroundColor: colors.teal,
+  } as ViewStyle,
+  card: {
     backgroundColor: colors.cardBg,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.borderLight,
     padding: 16,
-    gap: 12,
-  } as ViewStyle,
-  programCardMain: {
     gap: 8,
   } as ViewStyle,
-  programActions: {
-    flexDirection: 'row',
-    gap: 10,
-  } as ViewStyle,
-  programActionButton: {
-    flex: 1,
-  } as ViewStyle,
-  programTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 10,
-  } as ViewStyle,
-  programTitle: {
-    flex: 1,
+  cardTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: colors.textPrimary,
   } as TextStyle,
-  metaRow: {
+  cardHint: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  } as TextStyle,
+  statusRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   } as ViewStyle,
-  metaLabel: {
-    fontSize: 13,
-    color: colors.textSecondary,
-  } as TextStyle,
-  metaValue: {
-    fontSize: 13,
-    fontWeight: '700',
+  statusLabel: {
+    fontSize: 14,
     color: colors.textPrimary,
+    fontWeight: '600',
   } as TextStyle,
-  cardHint: {
-    fontSize: 13,
+  stepText: {
+    fontSize: 14,
+    color: colors.textPrimary,
+    lineHeight: 20,
+  } as TextStyle,
+  deadlineRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  } as ViewStyle,
+  deadlineLabel: {
+    fontSize: 14,
     color: colors.textSecondary,
-    lineHeight: 19,
+    fontWeight: '600',
+  } as TextStyle,
+  deadlineValue: {
+    fontSize: 14,
+    color: colors.textPrimary,
+    fontWeight: '700',
   } as TextStyle,
   emptyCard: {
     backgroundColor: colors.noticeBg,
     borderRadius: 12,
     padding: 24,
-    gap: 10,
+    gap: 18,
     alignItems: 'center',
   } as ViewStyle,
   emptyText: {

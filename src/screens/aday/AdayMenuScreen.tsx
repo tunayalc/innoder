@@ -2,132 +2,163 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ViewStyle, TextStyle, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { RootStackNavigationProp } from '../../types';
-import { useAppTheme, useThemedStyles, type AppColors } from '../../theme';
-import { LanguageSwitcher, MenuItem, Pill } from '../../components';
+import { colors } from '../../theme';
+import { MenuItem, Pill } from '../../components';
 import { useAuth } from '../../hooks';
-import { getApplicationStatusLabel, useI18n } from '../../i18n';
 import { useAppSelector } from '../../store/hooks';
 import { selectApplications } from '../../store/selectors';
-import { isEuropassCvComplete } from '../../utils/europass';
+import { APPLICATION_STATUS_LABELS } from '../../constants';
+import { isEuropassCvComplete, isMotivationLetterComplete } from '../../utils/europass';
 
 export const AdayMenuScreen: React.FC = () => {
-  const { colors } = useAppTheme();
-  const styles = useThemedStyles(createStyles);
   const navigation = useNavigation<RootStackNavigationProp>();
   const { user } = useAuth();
-  const { language, t } = useI18n();
   const applications = useAppSelector(selectApplications);
 
-  const myPrograms = useMemo(
-    () =>
-      applications
-        .filter((app) => app.userId === user?.id)
-        .sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-        ),
+  const myApplication = useMemo(
+    () => applications.find((app) => app.userId === user?.id),
     [applications, user?.id],
   );
 
-  const latestProgram = myPrograms[0];
   const missingDocs = useMemo(() => {
-    if (!latestProgram) return 0;
-    return latestProgram.documents.filter((d) => d.status !== 'ok').length;
-  }, [latestProgram]);
+    if (!myApplication) return 0;
+    return myApplication.documents.filter((d) => d.status !== 'ok').length;
+  }, [myApplication]);
 
-  const totalDocs = latestProgram?.documents.length ?? 0;
+  const totalDocs = myApplication?.documents.length ?? 0;
   const completedDocs = totalDocs - missingDocs;
+  const progressFillStyle = useMemo(
+    () => ({
+      width: totalDocs > 0 ? `${(completedDocs / totalDocs) * 100}%` : '0%',
+    } as ViewStyle),
+    [completedDocs, totalDocs],
+  );
 
-  const cvReady = user?.europassCv ? isEuropassCvComplete(user.europassCv) : false;
+  const cvReady = isEuropassCvComplete(myApplication?.personalInfo.europassCv);
+  const motivationReady = isMotivationLetterComplete(
+    myApplication?.personalInfo.motivationLetter,
+  );
+  const dossierCompleted = Number(cvReady) + Number(motivationReady);
 
   return (
     <ScrollView contentContainerStyle={styles.section}>
-      <LanguageSwitcher />
-      <Text style={styles.greeting}>
-        {t('candidateMenu.greeting', { name: user?.name || t('candidateMenu.fallbackName') })}
-      </Text>
+      <Text style={styles.greeting}>Merhaba, {user?.name || 'Aday'}</Text>
 
-      <View style={styles.statusCard}>
-        <View style={styles.statusAccent} />
-        <View style={styles.statusContent}>
-          <View style={styles.statusRow}>
-            <Text style={styles.statusLabel}>{t('candidateMenu.profileSummary')}</Text>
-            <Pill
-              label={cvReady ? t('candidateMenu.cvReady') : t('candidateMenu.cvMissing')}
-              variant={cvReady ? 'ok' : 'warn'}
-            />
+      {myApplication && (
+        <View style={styles.statusCard}>
+          <View style={styles.statusAccent} />
+          <View style={styles.statusContent}>
+            <View style={styles.statusRow}>
+              <Text style={styles.statusLabel}>Başvuru</Text>
+              <Pill
+                label={APPLICATION_STATUS_LABELS[myApplication.status] || myApplication.status}
+                variant={
+                  myApplication.status === 'approved'
+                    ? 'ok'
+                    : myApplication.status === 'needs_fix'
+                      ? 'warn'
+                      : myApplication.status === 'rejected'
+                        ? 'err'
+                        : 'info'
+                }
+              />
+            </View>
+            <View style={styles.progressRow}>
+              <View style={styles.progressTrack}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    progressFillStyle,
+                  ]}
+                />
+              </View>
+              <Text style={styles.progressLabel}>
+                {completedDocs}/{totalDocs}
+              </Text>
+            </View>
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>CV + Mektup:</Text>
+              <Text style={styles.metaValue}>{dossierCompleted}/2</Text>
+            </View>
+            {missingDocs > 0 && (
+              <Text style={styles.statusHint}>{missingDocs} belge eksik veya hatalı</Text>
+            )}
           </View>
-          <View style={styles.metaRow}>
-            <Text style={styles.metaLabel}>{t('candidateMenu.programAssignments')}</Text>
-            <Text style={styles.metaValue}>{myPrograms.length}</Text>
-          </View>
-          {latestProgram ? (
-            <>
-              <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>{t('candidateMenu.latestProgram')}</Text>
-                <Text style={styles.metaValue}>{latestProgram.programName}</Text>
-              </View>
-              <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>{t('candidateMenu.status')}</Text>
-                <Text style={styles.metaValue}>
-                  {getApplicationStatusLabel(latestProgram.status, language)}
-                </Text>
-              </View>
-              <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>{t('candidateMenu.documentProgress')}</Text>
-                <Text style={styles.metaValue}>
-                  {completedDocs}/{totalDocs}
-                </Text>
-              </View>
-            </>
-          ) : (
-            <Text style={styles.statusHint}>{t('candidateMenu.waitingForAssignment')}</Text>
-          )}
         </View>
-      </View>
+      )}
 
-      <Text style={styles.sectionLabel}>{t('candidateMenu.mainBlock')}</Text>
+      <Text style={styles.sectionLabel}>BAŞVURU ADIMLARI</Text>
 
       <MenuItem
-        label={t('candidateMenu.personalInfo')}
-        subtitle={t('candidateMenu.personalInfoSubtitle')}
+        label="Kayıt Formu"
+        subtitle="Hesap ve iletişim bilgileri"
         iconName="account-edit-outline"
         iconColor={colors.primary}
         iconBg={colors.warning}
-        onPress={() => navigation.navigate('AdayKisisel')}
+        onPress={() => navigation.navigate('AdayKayit')}
       />
-
       <MenuItem
-        label={t('candidateMenu.myPrograms')}
-        subtitle={t('candidateMenu.myProgramsSubtitle')}
-        iconName="view-list-outline"
+        label="Eğitim Bilgilendirme"
+        subtitle="Program detayları ve kontrol listesi"
+        iconName="school-outline"
         iconColor={colors.teal}
         iconBg={colors.success}
         onPress={() => navigation.navigate('AdayEgitim')}
       />
-
       <MenuItem
-        label={t('candidateMenu.messages')}
-        subtitle={t('candidateMenu.messagesSubtitle')}
-        iconName="message-text-outline"
-        iconColor={colors.teal}
-        iconBg={colors.success}
-        onPress={() => navigation.navigate('AdayMesaj')}
+        label="Kişisel Bilgi Formu"
+        subtitle="TC, doğum tarihi ve program seçimi"
+        iconName="card-account-details-outline"
+        iconColor="#6366F1"
+        iconBg={colors.info}
+        onPress={() => navigation.navigate('AdayKisisel')}
       />
-
       <MenuItem
-        label={t('candidateMenu.europassCv')}
-        subtitle={cvReady ? t('candidateMenu.europassCvReady') : t('candidateMenu.europassCvMissing')}
+        label="Europass CV Oluştur"
+        subtitle={cvReady ? 'CV formatı tamamlandı' : 'CV formatını uygulama içinde doldurun'}
         iconName="file-account-outline"
         iconColor={colors.teal}
         iconBg={colors.success}
         onPress={() => navigation.navigate('AdayCvBuilder')}
       />
+      <MenuItem
+        label="Motivasyon Mektubu"
+        subtitle={
+          motivationReady
+            ? 'Mektup taslağı tamamlandı'
+            : 'Program için mektubunuzu oluşturun'
+        }
+        iconName="file-document-edit-outline"
+        iconColor={colors.primary}
+        iconBg={colors.warning}
+        onPress={() => navigation.navigate('AdayMotivation')}
+      />
+      <MenuItem
+        label="Belge Tarama / Yükleme"
+        subtitle="Belgelerinizi tarayıp yükleyin"
+        iconName="file-document-outline"
+        iconColor={colors.primary}
+        iconBg={colors.warning}
+        onPress={() => navigation.navigate('AdayBelge')}
+      />
+      <MenuItem
+        label="Mesajlaşma"
+        subtitle="Admin ile iletişim"
+        iconName="message-text-outline"
+        iconColor={colors.teal}
+        iconBg={colors.success}
+        onPress={() =>
+          navigation.navigate(
+            'AdayMesaj',
+            myApplication ? { applicationId: myApplication.id } : undefined,
+          )
+        }
+      />
     </ScrollView>
   );
 };
 
-const createStyles = (colors: AppColors) => StyleSheet.create({
+const styles = StyleSheet.create({
   section: {
     padding: 20,
     paddingTop: 20,
@@ -167,6 +198,30 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: colors.textPrimary,
+  } as TextStyle,
+  progressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  } as ViewStyle,
+  progressTrack: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.borderLight,
+    overflow: 'hidden',
+  } as ViewStyle,
+  progressFill: {
+    height: '100%',
+    borderRadius: 3,
+    backgroundColor: colors.teal,
+  } as ViewStyle,
+  progressLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textMuted,
+    minWidth: 28,
+    textAlign: 'right',
   } as TextStyle,
   metaRow: {
     flexDirection: 'row',

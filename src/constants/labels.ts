@@ -1,4 +1,4 @@
-﻿// Application Status Labels
+// Application Status Labels
 export const APPLICATION_STATUS_LABELS: Record<string, string> = {
   draft: 'Taslak',
   submitted: 'Gönderildi',
@@ -20,11 +20,11 @@ export const DOCUMENT_STATUS_LABELS: Record<string, string> = {
 export const DOCUMENT_TYPES = {
   identity: 'Kimlik Belgesi',
   form: 'Başvuru Formu',
-  extra: 'Ek Belge',
-  agreement: 'Anlaşma',
+  agreement: 'Anlaşma Belgesi',
   photo_activity_report: 'Fotoğraflı Faaliyet Raporu',
-  visa_payment_receipt_original: 'Vize Ödeme Dekontu (Aslı)',
-  boarding_pass: 'Boarding Pass',
+  visa_payment_receipt_original: 'Vize Ödeme Dekontu (Asıl)',
+  boarding_pass: 'Biniş Kartı',
+  extra: 'Ek Belge',
 } as const;
 
 // Audit Actions

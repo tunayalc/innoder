@@ -12,58 +12,47 @@ export const PROGRAM_CATALOG: ProgramInfo[] = [
     year: 2026,
     steps: [
       'Kayıt formunu tamamla',
-      'Katilim bilgilendirmesini oku ve checklisti takip et',
-      'Kisisel bilgi formunu doldur ve basvuruyu gonder',
-      'Belgeleri kamera ile tara ve yukle',
-      'Admin dogrulamasi ve mesajlara gore duzeltme yap',
+      'Katılım bilgilendirmesini oku ve kontrol listesini takip et',
+      'Kişisel bilgi formunu doldur ve başvuruyu gönder',
+      'Belgeleri kamera ile tara ve yükle',
+      'Admin doğrulaması ve mesajlara göre düzeltme yap',
     ],
     deadlines: [
-      { label: 'Basvuru kapanis', dateISO: '2026-03-15' },
-      { label: 'Belge yukleme son', dateISO: '2026-03-20' },
+      { label: 'Başvuru kapanış', dateISO: '2026-03-15' },
+      { label: 'Belge yükleme son', dateISO: '2026-03-20' },
     ],
     checklist: [
       {
         documentType: 'identity',
-        expectedFormat: 'JPG/PDF (net, tum koseler gorunur)',
-        description: 'Kimlik belgesi on ve arka yuz (gerekirse).',
-        exampleHint: 'Isigi iyi ayarla, yansima olmasin.',
+        expectedFormat: 'JPG/PDF (net, tüm köşeler görünür)',
+        description: 'Kimlik belgesi ön ve arka yüz (gerekirse).',
+        exampleHint: 'Işığı iyi ayarla, yansıma olmasın.',
       },
       {
         documentType: 'form',
-        expectedFormat: 'PDF (imzali)',
-        description: 'Basvuru formu ciktisi ve imza.',
-        exampleHint: 'Tek PDF icinde tum sayfalar.',
-      },
-      {
-        documentType: 'agreement',
-        expectedFormat: 'PDF (imzali)',
-        description: 'Anlasma belgesi.',
-        exampleHint: 'Imza gorunur olmali.',
-      },
-      {
-        documentType: 'photo_activity_report',
-        expectedFormat: 'JPG/PDF',
-        description: 'Fotolu faaliyet raporu.',
-        exampleHint: 'Fotolar okunur ve acik secik olmali.',
-      },
-      {
-        documentType: 'visa_payment_receipt_original',
-        expectedFormat: 'JPG/PDF',
-        description: 'Vize odeme dekontunun asli.',
-        exampleHint: 'Banka bilgileri ve tutar net gorunmeli.',
+        expectedFormat: 'PDF (imzalı)',
+        description: 'Başvuru formu çıktısı ve imza.',
+        exampleHint: 'Tek PDF içinde tüm sayfalar.',
       },
       {
         documentType: 'boarding_pass',
-        expectedFormat: 'JPG/PDF (QR/Barkod net)',
-        description: 'Boarding pass.',
-        exampleHint: 'QR/Barkod kadrajda ve okunur olmali.',
+        expectedFormat: 'PDF/JPG (QR/Barcode net görünür)',
+        description: 'Ulaşım belgesi / biniş kartı.',
+        exampleHint: 'PNR ve QR/Barcode alanı kadrajda olmalı.',
+      },
+      {
+        documentType: 'extra',
+        expectedFormat: 'JPG/PDF (varsa QR/Barcode)',
+        description: 'Ek belge (davetiye, sertifika, bilet vb.).',
+        exampleHint: 'QR/Barcode kadrajda ve net olmalı.',
       },
     ],
     commonMistakes: [
-      'Bulanik/karanlik fotograf (OKUNMADI)',
-      'PDF yerine fotograf (YANLIS FORMAT)',
-      'Eksik sayfa (EKSIK)',
-      'Yanlis belge turu secimi',
+      'Bulanık/karanlık fotoğraf (OKUNMADI)',
+      'PDF yerine fotoğraf (YANLIŞ FORMAT)',
+      'Eksik sayfa (EKSİK)',
+      'QR/Barcode alanının kadraj dışında kalması',
+      'Yanlış belge türü seçimi',
     ],
   },
   {
@@ -73,10 +62,10 @@ export const PROGRAM_CATALOG: ProgramInfo[] = [
     steps: [
       'Kayıt formunu tamamla',
       'Program B adımlarını incele',
-      'Kisisel bilgi formunu doldur ve basvuruyu gonder',
-      'Zorunlu belgeleri yukle',
+      'Kişisel bilgi formunu doldur ve başvuruyu gönder',
+      'Zorunlu belgeleri yükle',
     ],
-    deadlines: [{ label: 'Basvuru kapanis', dateISO: '2026-04-01' }],
+    deadlines: [{ label: 'Başvuru kapanış', dateISO: '2026-04-01' }],
     checklist: [
       {
         documentType: 'identity',
@@ -86,27 +75,11 @@ export const PROGRAM_CATALOG: ProgramInfo[] = [
         documentType: 'form',
         expectedFormat: 'PDF',
       },
-      {
-        documentType: 'agreement',
-        expectedFormat: 'PDF',
-      },
-      {
-        documentType: 'photo_activity_report',
-        expectedFormat: 'JPG/PDF',
-      },
-      {
-        documentType: 'visa_payment_receipt_original',
-        expectedFormat: 'JPG/PDF',
-      },
-      {
-        documentType: 'boarding_pass',
-        expectedFormat: 'JPG/PDF',
-      },
     ],
     commonMistakes: [
       'Eksik sayfa',
-      'Yanlis format',
-      'Dusuk kalite cekim',
+      'Yanlış format',
+      'Düşük kalite çekim',
     ],
   },
   {
@@ -116,12 +89,12 @@ export const PROGRAM_CATALOG: ProgramInfo[] = [
     steps: [
       'Kayıt formunu tamamla',
       'Program C bilgilendirmesini oku',
-      'Kisisel bilgi formunu doldur',
-      'Belgeleri yukle ve mesajlari takip et',
+      'Kişisel bilgi formunu doldur',
+      'Belgeleri yükle ve mesajları takip et',
     ],
     deadlines: [
-      { label: 'Basvuru kapanis', dateISO: '2026-05-10' },
-      { label: 'Belge guncelleme son', dateISO: '2026-05-15' },
+      { label: 'Başvuru kapanış', dateISO: '2026-05-10' },
+      { label: 'Belge güncelleme son', dateISO: '2026-05-15' },
     ],
     checklist: [
       {
@@ -133,22 +106,6 @@ export const PROGRAM_CATALOG: ProgramInfo[] = [
         expectedFormat: 'PDF',
       },
       {
-        documentType: 'agreement',
-        expectedFormat: 'PDF',
-      },
-      {
-        documentType: 'photo_activity_report',
-        expectedFormat: 'JPG/PDF',
-      },
-      {
-        documentType: 'visa_payment_receipt_original',
-        expectedFormat: 'JPG/PDF',
-      },
-      {
-        documentType: 'boarding_pass',
-        expectedFormat: 'JPG/PDF',
-      },
-      {
         documentType: 'extra',
         expectedFormat: 'JPG/PDF',
       },
@@ -156,7 +113,7 @@ export const PROGRAM_CATALOG: ProgramInfo[] = [
     commonMistakes: [
       'Eksik belge',
       'Okunmayan belge',
-      'Yanlis belge turu',
+      'Yanlış belge türü',
     ],
   },
 ];

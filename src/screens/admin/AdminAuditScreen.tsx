@@ -70,7 +70,7 @@ export const AdminAuditScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.h2}>Audit Log</Text>
+        <Text style={styles.h2}>Denetim Kaydı</Text>
         <Text style={styles.countText}>{logs.length} kayıt</Text>
       </View>
 
@@ -82,7 +82,7 @@ export const AdminAuditScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>Henüz audit log kaydı yok.</Text>
+            <Text style={styles.emptyText}>Henüz denetim kaydı yok.</Text>
           </View>
         }
       />

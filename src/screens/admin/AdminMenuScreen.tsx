@@ -26,7 +26,7 @@ export const AdminMenuScreen: React.FC = () => {
         onPress={() => navigation.navigate('AdminDogrulama', { applicationId: '1' })} 
       />
       <MenuItem 
-        label="Audit Log" 
+        label="Denetim Kaydı" 
         onPress={() => navigation.navigate('AdminAudit')} 
       />
     </View>
