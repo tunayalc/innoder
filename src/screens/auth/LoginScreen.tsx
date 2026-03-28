@@ -1,56 +1,40 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
+  View,
+  Text,
+  StyleSheet,
+  ViewStyle,
+  TextStyle,
+  TouchableOpacity,
   Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextStyle,
-  TouchableOpacity,
-  View,
-  ViewStyle,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  Button,
-  ContactLinksCard,
-  InputField,
-  LanguageSwitcher,
-  ThemeSwitcher,
-} from '../../components';
+import { useNavigation } from '@react-navigation/native';
+import { colors } from '../../theme';
+import { Button, InputField } from '../../components';
 import { useAuth } from '../../hooks';
-import { useI18n } from '../../i18n';
 import { useAppSelector } from '../../store/hooks';
-import { selectRememberMe, selectUserError, selectUserLoading } from '../../store/selectors';
-import { useAppTheme, useThemedStyles, type AppColors } from '../../theme';
+import { selectUserError, selectUserLoading } from '../../store/selectors';
 
 export const LoginScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
-  const { loginCandidate, loginDemoCandidate } = useAuth();
-  const { t } = useI18n();
-  const { colors } = useAppTheme();
+  const { loginCandidate } = useAuth();
   const isLoading = useAppSelector(selectUserLoading);
   const error = useAppSelector(selectUserError);
-  const rememberedPreference = useAppSelector(selectRememberMe);
-  const styles = useThemedStyles(createStyles);
-  const [email, setEmail] = React.useState('');
-  const [password, setPassword] = React.useState('');
-  const [rememberMe, setRememberMe] = React.useState(rememberedPreference);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
-  React.useEffect(() => {
-    setRememberMe(rememberedPreference);
-  }, [rememberedPreference]);
-
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert(t('common.errorTitle'), t('auth.fillEmailPassword'));
+      Alert.alert('Hata', 'Lütfen email ve şifrenizi girin.');
       return;
     }
-    loginCandidate({ email, password, rememberMe });
+
+    loginCandidate({ email, password });
   };
 
   return (
@@ -61,82 +45,65 @@ export const LoginScreen: React.FC = () => {
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingTop: insets.top + 48, paddingBottom: insets.bottom + 24 },
+          { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 24 },
         ]}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.headerControls}>
-          <ThemeSwitcher compact />
-          <LanguageSwitcher compact />
-        </View>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Text style={styles.backBtnLabel}>Geri</Text>
+        </TouchableOpacity>
 
         <View style={styles.header}>
-          <View style={styles.accentBar} />
-          <Text style={styles.title}>{t('auth.loginTitle')}</Text>
-          <Text style={styles.subtitle}>{t('auth.loginSubtitle')}</Text>
+          <Text style={styles.title}>Giriş Yap</Text>
+          <Text style={styles.subtitle}>
+            Devam etmek için hesap bilgilerinizle giriş yapın.
+          </Text>
         </View>
 
         <View style={styles.form}>
           <InputField
-            label={t('common.email')}
+            label="Email"
             value={email}
             onChangeText={setEmail}
-            placeholder={t('auth.emailPlaceholder')}
+            placeholder="ornek@email.com"
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
+            style={styles.formControl}
           />
+
+          <View style={styles.spacer20} />
 
           <InputField
-            label={t('common.password')}
+            label="Şifre"
             value={password}
             onChangeText={setPassword}
-            placeholder={t('auth.passwordPlaceholder')}
+            placeholder="Şifrenizi girin"
             secureTextEntry
+            style={styles.formControl}
           />
-
-          <View style={styles.rememberRow}>
-            <View style={styles.rememberTextWrap}>
-              <Text style={styles.rememberTitle}>{t('auth.rememberMe')}</Text>
-            </View>
-            <Switch
-              value={rememberMe}
-              onValueChange={setRememberMe}
-              trackColor={{ false: colors.muted, true: colors.teal }}
-              thumbColor={colors.white}
-            />
-          </View>
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-          <Button
-            label={isLoading ? t('auth.loginButtonLoading') : t('auth.loginButton')}
-            onPress={isLoading ? undefined : handleLogin}
-          />
+          <View style={styles.spacer16} />
 
           <Button
-            label={isLoading ? t('auth.demoButtonLoading') : t('auth.demoButton')}
-            variant="ghost"
-            onPress={isLoading ? undefined : () => loginDemoCandidate(rememberMe)}
+            label={isLoading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
+            onPress={handleLogin}
+            style={styles.formControlButton}
           />
-
-          <Text style={styles.helperText}>{t('auth.loginAllowedOnly')}</Text>
-
-          <ContactLinksCard
-            title={t('auth.contactTitle')}
-            subtitle={t('auth.contactSubtitle')}
-          />
-
-          <TouchableOpacity onPress={() => navigation.navigate('OnboardingIntro')}>
-            <Text style={styles.linkText}>
-              {t('auth.noAccount')} <Text style={styles.linkStrong}>{t('auth.watchVideosFirst')}</Text>
-            </Text>
-          </TouchableOpacity>
         </View>
 
         <View style={styles.footer}>
-          <TouchableOpacity onPress={() => navigation.navigate('AdminLogin')}>
-            <Text style={styles.footerText}>{t('auth.adminLoginLink')}</Text>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('AdminLogin')}
+            hitSlop={{ top: 12, bottom: 12, left: 20, right: 20 }}
+          >
+            <Text style={styles.adminText}>Yönetici girişi</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -144,83 +111,81 @@ export const LoginScreen: React.FC = () => {
   );
 };
 
-const createStyles = (colors: AppColors) =>
-  StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    } as ViewStyle,
-    scrollContent: {
-      flexGrow: 1,
-      paddingHorizontal: 24,
-      gap: 18,
-    } as ViewStyle,
-    headerControls: {
-      flexDirection: 'row',
-      gap: 8,
-      alignSelf: 'flex-start',
-    } as ViewStyle,
-    header: {
-      gap: 10,
-    } as ViewStyle,
-    accentBar: {
-      width: 28,
-      height: 3,
-      borderRadius: 2,
-      backgroundColor: colors.primary,
-    } as ViewStyle,
-    title: {
-      fontSize: 32,
-      fontWeight: '700',
-      color: colors.textPrimary,
-    } as TextStyle,
-    subtitle: {
-      fontSize: 16,
-      lineHeight: 22,
-      color: colors.textSecondary,
-    } as TextStyle,
-    form: {
-      gap: 16,
-    } as ViewStyle,
-    rememberRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 12,
-    } as ViewStyle,
-    rememberTextWrap: {
-      flex: 1,
-    } as ViewStyle,
-    rememberTitle: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.textPrimary,
-    } as TextStyle,
-    errorText: {
-      fontSize: 13,
-      color: colors.danger,
-    } as TextStyle,
-    helperText: {
-      fontSize: 12,
-      lineHeight: 18,
-      color: colors.textSecondary,
-    } as TextStyle,
-    linkText: {
-      fontSize: 14,
-      color: colors.textSecondary,
-    } as TextStyle,
-    linkStrong: {
-      color: colors.primary,
-      fontWeight: '700',
-    } as TextStyle,
-    footer: {
-      marginTop: 'auto' as any,
-      alignItems: 'center',
-      paddingTop: 24,
-    } as ViewStyle,
-    footerText: {
-      fontSize: 14,
-      color: colors.textMuted,
-    } as TextStyle,
-  });
-
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  } as ViewStyle,
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    justifyContent: 'flex-start',
+  } as ViewStyle,
+  backBtn: {
+    alignSelf: 'flex-start',
+    marginBottom: 26,
+    minHeight: 42,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 18,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+  } as ViewStyle,
+  backBtnLabel: {
+    fontSize: 14,
+    lineHeight: 18,
+    color: colors.white,
+    fontWeight: '700',
+  } as TextStyle,
+  header: {
+    marginBottom: 36,
+  } as ViewStyle,
+  title: {
+    fontSize: 34,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    letterSpacing: -0.5,
+    marginBottom: 10,
+  } as TextStyle,
+  subtitle: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    lineHeight: 23,
+  } as TextStyle,
+  form: {
+    paddingHorizontal: 0,
+  } as ViewStyle,
+  formControl: {
+    minHeight: 52,
+    borderRadius: 12,
+    paddingVertical: 12,
+    width: '100%',
+  } as TextStyle,
+  formControlButton: {
+    minHeight: 52,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    width: '100%',
+  } as ViewStyle,
+  spacer20: {
+    height: 20,
+  } as ViewStyle,
+  spacer16: {
+    height: 16,
+  } as ViewStyle,
+  errorText: {
+    fontSize: 13,
+    color: '#DC2626',
+    marginTop: 10,
+  } as TextStyle,
+  footer: {
+    marginTop: 'auto' as any,
+    paddingTop: 32,
+    alignItems: 'center',
+  } as ViewStyle,
+  adminText: {
+    fontSize: 14,
+    color: colors.textMuted,
+  } as TextStyle,
+});

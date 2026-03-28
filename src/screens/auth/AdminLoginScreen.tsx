@@ -1,41 +1,39 @@
-﻿import React from 'react';
+import React, { useState } from 'react';
 import {
+  View,
+  Text,
+  StyleSheet,
+  ViewStyle,
+  TextStyle,
+  TouchableOpacity,
   Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StyleSheet,
-  Text,
-  TextStyle,
-  TouchableOpacity,
-  View,
-  ViewStyle,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, InputField, LanguageSwitcher, ThemeSwitcher } from '../../components';
+import { useNavigation } from '@react-navigation/native';
+import { colors } from '../../theme';
+import { Button, InputField } from '../../components';
 import { useAuth } from '../../hooks';
-import { useI18n } from '../../i18n';
 import { useAppSelector } from '../../store/hooks';
 import { selectUserError, selectUserLoading } from '../../store/selectors';
-import { useThemedStyles, type AppColors } from '../../theme';
 
 export const AdminLoginScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const { loginAdmin } = useAuth();
-  const { t } = useI18n();
   const isLoading = useAppSelector(selectUserLoading);
   const error = useAppSelector(selectUserError);
-  const styles = useThemedStyles(createStyles);
-  const [username, setUsername] = React.useState('');
-  const [password, setPassword] = React.useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
 
   const handleAdminLogin = () => {
     if (!username.trim() || !password.trim()) {
-      Alert.alert('Hata', t('auth.fillUsernamePassword'));
+      Alert.alert('Hata', 'Lütfen kullanıcı adı ve şifrenizi girin.');
       return;
     }
+
     loginAdmin({ username, password });
   };
 
@@ -51,41 +49,51 @@ export const AdminLoginScreen: React.FC = () => {
         ]}
         keyboardShouldPersistTaps="handled"
       >
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backText}>{t('common.back')}</Text>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Text style={styles.backBtnLabel}>Geri</Text>
         </TouchableOpacity>
 
-        <View style={styles.headerControls}>
-          <ThemeSwitcher compact />
-          <LanguageSwitcher compact />
-        </View>
-
         <View style={styles.header}>
-          <View style={styles.accentBar} />
-          <Text style={styles.title}>{t('auth.adminTitle')}</Text>
-          <Text style={styles.subtitle}>{t('auth.adminSubtitle')}</Text>
+          <Text style={styles.title}>Yönetici Girişi</Text>
+          <Text style={styles.subtitle}>
+            Yönetim paneline erişmek için giriş yapın
+          </Text>
         </View>
 
         <View style={styles.form}>
           <InputField
-            label={t('auth.username')}
+            label="Kullanıcı Adı"
             value={username}
             onChangeText={setUsername}
-            placeholder={t('auth.usernamePlaceholder')}
+            placeholder="Kullanıcı adınız"
             autoCapitalize="none"
             autoCorrect={false}
+            style={styles.formControl}
           />
+
+          <View style={styles.spacer20} />
+
           <InputField
-            label={t('common.password')}
+            label="Şifre"
             value={password}
             onChangeText={setPassword}
-            placeholder={t('auth.passwordPlaceholder')}
+            placeholder="Şifrenizi girin"
             secureTextEntry
+            style={styles.formControl}
           />
+
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+          <View style={styles.spacer16} />
+
           <Button
-            label={isLoading ? t('auth.loginButtonLoading') : t('auth.loginButton')}
+            label={isLoading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
             onPress={handleAdminLogin}
+            style={styles.formControlButton}
           />
         </View>
       </ScrollView>
@@ -93,16 +101,71 @@ export const AdminLoginScreen: React.FC = () => {
   );
 };
 
-const createStyles = (colors: AppColors) =>
-  StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background } as ViewStyle,
-    scrollContent: { flexGrow: 1, paddingHorizontal: 24, gap: 18 } as ViewStyle,
-    backText: { color: colors.primary, fontSize: 16, fontWeight: '600' } as TextStyle,
-    headerControls: { flexDirection: 'row', gap: 8, alignSelf: 'flex-start' } as ViewStyle,
-    header: { gap: 10 } as ViewStyle,
-    accentBar: { width: 28, height: 3, borderRadius: 2, backgroundColor: colors.teal } as ViewStyle,
-    title: { fontSize: 32, fontWeight: '700', color: colors.textPrimary } as TextStyle,
-    subtitle: { fontSize: 15, lineHeight: 22, color: colors.textSecondary } as TextStyle,
-    form: { gap: 16 } as ViewStyle,
-    errorText: { fontSize: 13, color: colors.danger } as TextStyle,
-  });
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  } as ViewStyle,
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+  } as ViewStyle,
+  backBtn: {
+    alignSelf: 'flex-start',
+    marginBottom: 26,
+    minHeight: 42,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 18,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+  } as ViewStyle,
+  backBtnLabel: {
+    fontSize: 14,
+    lineHeight: 18,
+    color: colors.white,
+    fontWeight: '700',
+  } as TextStyle,
+  header: {
+    marginBottom: 36,
+  } as ViewStyle,
+  title: {
+    fontSize: 34,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    letterSpacing: -0.5,
+    marginBottom: 10,
+  } as TextStyle,
+  subtitle: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    lineHeight: 23,
+  } as TextStyle,
+  form: {
+    paddingHorizontal: 0,
+  } as ViewStyle,
+  formControl: {
+    minHeight: 52,
+    borderRadius: 12,
+    paddingVertical: 12,
+    width: '100%',
+  } as TextStyle,
+  formControlButton: {
+    minHeight: 52,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    width: '100%',
+  } as ViewStyle,
+  spacer20: {
+    height: 20,
+  } as ViewStyle,
+  spacer16: {
+    height: 16,
+  } as ViewStyle,
+  errorText: {
+    fontSize: 13,
+    color: '#DC2626',
+    marginTop: 10,
+  } as TextStyle,
+});
