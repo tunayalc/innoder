@@ -13,14 +13,35 @@ import {
   Alert,
 } from 'react-native';
 import Video from 'react-native-video';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { colors } from '../../theme';
 import { RootStackNavigationProp } from '../../types';
 import { appConfig } from '../../config/appConfig';
 
 const APP_LAUNCHER_IMAGE = require('../../assets/images/app-launcher.jpg');
 const ESC_INTRO_VIDEO = require('../../assets/videos/esc-intro.mp4');
+const expressive = {
+  background: '#FFF7FF',
+  surface: '#FFFFFF',
+  surfaceContainerLow: '#FBF0FF',
+  surfaceContainer: '#F7E9FF',
+  surfaceContainerHigh: '#F3E2FF',
+  surfaceContainerHighest: '#EFDBFF',
+  surfaceVariant: '#EFDBFF',
+  primary: '#6850A5',
+  primaryDim: '#5B4498',
+  primaryContainer: '#CAB6FF',
+  onPrimary: '#FDF7FF',
+  onPrimaryContainer: '#442C7F',
+  tertiaryContainer: '#C2FFA2',
+  onTertiaryContainer: '#1E5107',
+  textPrimary: '#3D2A51',
+  textSecondary: '#6B5681',
+  outline: '#88729E',
+  outlineVariant: '#C1A8D8',
+  muted: '#C8BDE0',
+  warningBg: '#F7DBE3',
+} as const;
 
 const REQUIRED_VIDEOS = [
   {
@@ -104,12 +125,15 @@ export const OnboardingIntroScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 24 }]}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={[styles.headerSection, { paddingTop: insets.top + 18 }]}>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
+      <View style={styles.container}>
+        <View pointerEvents="none" style={styles.topOrb} />
+        <View pointerEvents="none" style={styles.bottomOrb} />
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 24 }]}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={[styles.headerSection, { paddingTop: 18 }]}>
           <Text style={styles.title}>Bilgilendirme Alanı</Text>
           <Text style={styles.subtitle}>
             Uygulamaya girmeden önce videoları tamamlayın veya beyan onayını
@@ -196,7 +220,7 @@ export const OnboardingIntroScreen: React.FC = () => {
                     </View>
                     <View style={styles.videoControlRow}>
                       <Pressable
-                        style={styles.playButton}
+                        style={({ pressed }) => [styles.playButton, pressed && styles.pressedScale]}
                         onPress={() => setIsIntroVideoPlaying((prev) => !prev)}
                       >
                         <Text style={styles.playButtonText}>
@@ -208,8 +232,9 @@ export const OnboardingIntroScreen: React.FC = () => {
                 ) : null}
 
                 <Pressable
-                  style={[
+                  style={({ pressed }) => [
                     styles.videoActionButton,
+                    pressed && styles.pressedScale,
                     isButtonDone && styles.videoActionButtonDone,
                   ]}
                   onPress={() => handleWatchAction(video.id, isWatched)}
@@ -240,15 +265,20 @@ export const OnboardingIntroScreen: React.FC = () => {
             <Switch
               value={alreadyInformed}
               onValueChange={setAlreadyInformed}
-              trackColor={{ false: colors.muted, true: colors.teal }}
-              thumbColor={colors.white}
+              trackColor={{ false: expressive.muted, true: expressive.primary }}
+              thumbColor={expressive.surface}
             />
           </View>
         </View>
 
         <View style={styles.ctaSection}>
           <Pressable
-            style={[styles.loginButton, !canContinue && styles.loginButtonDisabled]}
+            style={({ pressed }) => [
+              styles.loginButton,
+              pressed && styles.pressedScale,
+              pressed && styles.pressedDim,
+              !canContinue && styles.loginButtonDisabled,
+            ]}
             disabled={!canContinue}
             onPress={() => navigation.navigate('Login')}
           >
@@ -268,86 +298,116 @@ export const OnboardingIntroScreen: React.FC = () => {
             </Text>
           ) : null}
         </View>
-      </ScrollView>
-    </View>
+        </ScrollView>
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: expressive.background,
+  } as ViewStyle,
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: expressive.background,
+  } as ViewStyle,
+  topOrb: {
+    position: 'absolute',
+    top: -120,
+    right: -40,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: 'rgba(202, 182, 255, 0.36)',
+  } as ViewStyle,
+  bottomOrb: {
+    position: 'absolute',
+    bottom: 80,
+    left: -70,
+    width: 210,
+    height: 210,
+    borderRadius: 105,
+    backgroundColor: 'rgba(194, 255, 162, 0.18)',
   } as ViewStyle,
   scrollContent: {
-    paddingHorizontal: 0,
-    gap: 0,
+    paddingHorizontal: 16,
+    gap: 14,
   } as ViewStyle,
   headerSection: {
     width: '100%',
-    backgroundColor: colors.cardBg,
-    paddingHorizontal: 18,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
+    backgroundColor: expressive.surfaceContainerLow,
+    paddingHorizontal: 20,
+    paddingBottom: 22,
+    borderRadius: 28,
+    shadowColor: expressive.primary,
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 5 },
   } as ViewStyle,
   title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    letterSpacing: -0.5,
+    fontSize: 34,
+    fontWeight: '800',
+    color: expressive.textPrimary,
+    letterSpacing: -0.6,
     marginBottom: 8,
   } as TextStyle,
   subtitle: {
     fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 21,
+    color: expressive.textSecondary,
+    lineHeight: 22,
   } as TextStyle,
   logoSection: {
     width: '100%',
-    backgroundColor: colors.cardBg,
-    paddingHorizontal: 18,
-    paddingVertical: 18,
+    backgroundColor: expressive.surface,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     gap: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
+    borderRadius: 24,
+    shadowColor: expressive.primary,
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
   } as ViewStyle,
   logoImage: {
     width: '100%',
     height: 170,
-    borderRadius: 8,
+    borderRadius: 18,
   } as ImageStyle,
   logoCaption: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: expressive.textSecondary,
   } as TextStyle,
   mockInfoSection: {
     width: '100%',
-    backgroundColor: colors.tealBg,
+    backgroundColor: expressive.tertiaryContainer,
     paddingHorizontal: 18,
     paddingVertical: 16,
     gap: 4,
-    borderBottomWidth: 1,
-    borderTopWidth: 1,
-    borderColor: colors.tealBorder,
+    borderRadius: 22,
   } as ViewStyle,
   mockInfoTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: colors.teal,
+    color: expressive.onTertiaryContainer,
     marginBottom: 2,
   } as TextStyle,
   mockInfoText: {
     fontSize: 13,
-    color: colors.textPrimary,
+    color: expressive.onTertiaryContainer,
   } as TextStyle,
   progressSection: {
     width: '100%',
-    backgroundColor: colors.cardBg,
+    backgroundColor: expressive.surface,
     paddingHorizontal: 18,
     paddingVertical: 18,
     gap: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
+    borderRadius: 24,
+    shadowColor: expressive.primary,
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
   } as ViewStyle,
   progressHeader: {
     flexDirection: 'row',
@@ -357,54 +417,55 @@ const styles = StyleSheet.create({
   } as ViewStyle,
   progressTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    color: colors.textPrimary,
+    fontWeight: '800',
+    color: expressive.textPrimary,
   } as TextStyle,
   progressBadge: {
     borderRadius: 999,
-    backgroundColor: colors.tealSoft,
-    borderWidth: 1,
-    borderColor: colors.tealBorder,
+    backgroundColor: expressive.primaryContainer,
     paddingHorizontal: 11,
     paddingVertical: 5,
   } as ViewStyle,
   progressBadgeText: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.teal,
+    color: expressive.onPrimaryContainer,
   } as TextStyle,
   progressTrack: {
-    height: 9,
+    height: 10,
     borderRadius: 999,
-    backgroundColor: colors.tealSoft,
+    backgroundColor: expressive.surfaceContainerHighest,
     overflow: 'hidden',
   } as ViewStyle,
   progressFill: {
     height: '100%',
     borderRadius: 999,
-    backgroundColor: colors.teal,
+    backgroundColor: expressive.primary,
   } as ViewStyle,
   progressCaption: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: expressive.textSecondary,
   } as TextStyle,
   videoListSection: {
     width: '100%',
-    backgroundColor: colors.background,
+    gap: 12,
   } as ViewStyle,
   videoBlock: {
     width: '100%',
     gap: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderRadius: 24,
+    shadowColor: expressive.primary,
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
   } as ViewStyle,
   videoBlockLight: {
-    backgroundColor: colors.background,
+    backgroundColor: expressive.surface,
   } as ViewStyle,
   videoBlockDark: {
-    backgroundColor: colors.rowBg,
+    backgroundColor: expressive.surface,
   } as ViewStyle,
   videoMetaRow: {
     flexDirection: 'row',
@@ -415,8 +476,8 @@ const styles = StyleSheet.create({
   videoMeta: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.textSecondary,
-    letterSpacing: 0.3,
+    color: expressive.textSecondary,
+    letterSpacing: 0.5,
   } as TextStyle,
   statusPill: {
     borderRadius: 999,
@@ -427,27 +488,28 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   } as TextStyle,
   statusPending: {
-    backgroundColor: colors.warning,
-    color: colors.primaryDark,
+    backgroundColor: expressive.warningBg,
+    color: expressive.onPrimaryContainer,
   } as TextStyle,
   statusDone: {
-    backgroundColor: colors.success,
-    color: colors.teal,
+    backgroundColor: expressive.tertiaryContainer,
+    color: expressive.onTertiaryContainer,
   } as TextStyle,
   videoTitle: {
-    fontSize: 19,
-    fontWeight: '700',
-    color: colors.textPrimary,
+    fontSize: 20,
+    fontWeight: '800',
+    color: expressive.textPrimary,
+    letterSpacing: -0.2,
   } as TextStyle,
   videoSummary: {
     fontSize: 13,
-    color: colors.textSecondary,
+    color: expressive.textSecondary,
     lineHeight: 20,
   } as TextStyle,
   videoFrame: {
     width: '100%',
     aspectRatio: 16 / 9,
-    borderRadius: 8,
+    borderRadius: 18,
     overflow: 'hidden',
     backgroundColor: '#000000',
   } as ViewStyle,
@@ -461,48 +523,46 @@ const styles = StyleSheet.create({
   } as ViewStyle,
   playButton: {
     flex: 1,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.tealBorder,
+    borderRadius: 16,
     paddingVertical: 12,
     paddingHorizontal: 14,
-    backgroundColor: colors.tealLight,
+    backgroundColor: expressive.surfaceContainerHigh,
     alignItems: 'center',
   } as ViewStyle,
   playButtonText: {
-    color: colors.teal,
+    color: expressive.onPrimaryContainer,
     fontSize: 14,
     fontWeight: '700',
   } as TextStyle,
   videoActionButton: {
     alignSelf: 'stretch',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.primary,
+    borderRadius: 16,
     paddingVertical: 12,
     paddingHorizontal: 14,
-    backgroundColor: colors.white,
+    backgroundColor: expressive.surface,
     alignItems: 'center',
   } as ViewStyle,
   videoActionButtonDone: {
-    borderColor: colors.tealBorder,
-    backgroundColor: colors.tealLight,
+    backgroundColor: expressive.tertiaryContainer,
   } as ViewStyle,
   videoActionText: {
-    color: colors.primaryDark,
+    color: expressive.onPrimaryContainer,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
   } as TextStyle,
   videoActionTextDone: {
-    color: colors.teal,
+    color: expressive.onTertiaryContainer,
   } as TextStyle,
   ackSection: {
     width: '100%',
-    backgroundColor: colors.cardBg,
+    backgroundColor: expressive.surface,
     paddingHorizontal: 18,
     paddingVertical: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
+    borderRadius: 24,
+    shadowColor: expressive.primary,
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
   } as ViewStyle,
   ackRow: {
     flexDirection: 'row',
@@ -515,49 +575,63 @@ const styles = StyleSheet.create({
   } as ViewStyle,
   ackTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    color: colors.textPrimary,
+    fontWeight: '800',
+    color: expressive.textPrimary,
     marginBottom: 5,
   } as TextStyle,
   ackDescription: {
     fontSize: 13,
-    color: colors.textSecondary,
+    color: expressive.textSecondary,
     lineHeight: 19,
   } as TextStyle,
   ctaSection: {
     width: '100%',
-    backgroundColor: colors.cardBg,
+    backgroundColor: expressive.surface,
     paddingHorizontal: 18,
     paddingTop: 18,
     paddingBottom: 12,
+    borderRadius: 24,
+    shadowColor: expressive.primary,
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
   } as ViewStyle,
   loginButton: {
     alignSelf: 'stretch',
-    borderRadius: 12,
-    backgroundColor: colors.primary,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    paddingVertical: 12,
+    borderRadius: 18,
+    backgroundColor: expressive.primary,
+    paddingVertical: 13,
     paddingHorizontal: 14,
     alignItems: 'center',
+    shadowColor: expressive.primary,
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
   } as ViewStyle,
   loginButtonDisabled: {
-    backgroundColor: colors.placeholder,
+    backgroundColor: expressive.muted,
+    shadowOpacity: 0,
   } as ViewStyle,
   loginButtonText: {
-    color: colors.white,
+    color: expressive.onPrimary,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
   } as TextStyle,
   loginButtonTextDisabled: {
-    color: colors.textMuted,
+    color: expressive.textSecondary,
   } as TextStyle,
   helperText: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: expressive.textSecondary,
     textAlign: 'center',
     lineHeight: 17,
     marginTop: 10,
     paddingHorizontal: 4,
   } as TextStyle,
+  pressedScale: {
+    transform: [{ scale: 0.98 }],
+  } as ViewStyle,
+  pressedDim: {
+    opacity: 0.88,
+  } as ViewStyle,
 });

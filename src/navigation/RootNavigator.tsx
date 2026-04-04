@@ -34,16 +34,32 @@ const Stack = createStackNavigator<RootStackParamList>();
 const renderLogoutButton = () => <LogoutButton />;
 
 const screenOptions = {
+  headerShadowVisible: false,
+  headerTitleAlign: 'center' as const,
   headerStyle: {
     backgroundColor: colors.background,
-    elevation: 0,
+    shadowColor: 'transparent',
     shadowOpacity: 0,
     borderBottomWidth: 0,
+    borderBottomColor: 'transparent',
+  },
+  headerTitleContainerStyle: {
+    paddingHorizontal: 16,
+    paddingRight: 28,
+    marginLeft: -10,
+  },
+  headerLeftContainerStyle: {
+    paddingLeft: 14,
+  },
+  headerRightContainerStyle: {
+    paddingRight: 20,
   },
   headerTintColor: colors.primaryDark,
   headerTitleStyle: {
     fontWeight: '700' as const,
     color: colors.textPrimary,
+    fontSize: 20,
+    letterSpacing: -0.2,
   },
   headerBackTitleVisible: false,
   headerLeft: (props: { canGoBack?: boolean; tintColor?: string }) =>

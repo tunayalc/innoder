@@ -26,7 +26,10 @@ export const MenuItem: React.FC<MenuItemProps> = ({
   const resolvedIconBg = iconBg || colors.warning;
 
   return (
-    <Pressable style={styles.menuItem} onPress={onPress}>
+    <Pressable
+      style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
+      onPress={onPress}
+    >
       {iconName && (
         <View style={[styles.iconWrap, { backgroundColor: resolvedIconBg }]}>
           <Icon name={iconName} size={20} color={resolvedIconColor} />
@@ -45,18 +48,19 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   menuItem: {
     paddingVertical: 14,
     paddingHorizontal: 16,
-    borderRadius: 14,
-    backgroundColor: colors.cardBg,
+    borderRadius: 18,
+    backgroundColor: colors.surfaceContainerLow,
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.borderLight,
     gap: 14,
   } as ViewStyle,
+  menuItemPressed: {
+    opacity: 0.88,
+  } as ViewStyle,
   iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   } as ViewStyle,
@@ -66,7 +70,7 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   } as ViewStyle,
   menuText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: colors.textPrimary,
   } as TextStyle,
   menuSubtext: {

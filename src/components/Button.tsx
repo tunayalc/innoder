@@ -8,6 +8,7 @@ interface ButtonProps {
   onPress?: () => void;
   variant?: ButtonVariant;
   style?: ViewStyle;
+  pressedOpacity?: number;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -15,12 +16,18 @@ export const Button: React.FC<ButtonProps> = ({
   onPress,
   variant = 'solid',
   style,
+  pressedOpacity,
 }) => {
   const styles = useThemedStyles(createStyles);
 
   return (
     <Pressable
-      style={[styles.button, variant === 'ghost' && styles.buttonGhost, style]}
+      style={({ pressed }) => [
+        styles.button,
+        variant === 'ghost' && styles.buttonGhost,
+        style,
+        pressed ? { opacity: pressedOpacity ?? 0.9 } : null,
+      ]}
       onPress={onPress}
     >
       <Text style={[styles.buttonText, variant === 'ghost' && styles.buttonTextGhost]}>
@@ -33,23 +40,22 @@ export const Button: React.FC<ButtonProps> = ({
 const createStyles = (colors: AppColors) =>
   StyleSheet.create({
     button: {
-      paddingVertical: 16,
+      paddingVertical: 14,
       paddingHorizontal: 24,
-      borderRadius: 12,
+      borderRadius: 18,
       backgroundColor: colors.primary,
       alignItems: 'center',
     } as ViewStyle,
     buttonGhost: {
-      backgroundColor: 'transparent',
-      borderWidth: 1.5,
-      borderColor: 'rgba(240, 103, 43, 0.35)',
+      backgroundColor: colors.surfaceContainerHigh,
+      borderWidth: 0,
     } as ViewStyle,
     buttonText: {
       color: colors.white,
-      fontWeight: '700',
-      fontSize: 16,
+      fontWeight: '800',
+      fontSize: 15,
     } as TextStyle,
     buttonTextGhost: {
-      color: colors.primaryDark,
+      color: colors.onPrimaryContainer,
     } as TextStyle,
   });

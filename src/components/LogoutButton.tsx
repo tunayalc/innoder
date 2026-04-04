@@ -24,25 +24,25 @@ export const LogoutButton: React.FC = () => {
 
   return (
     <Pressable
-      style={styles.container}
+      style={({ pressed }) => [styles.container, pressed && styles.pressed]}
       onPress={handleLogout}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
     >
-      <Icon name="logout" size={20} color={colors.textSecondary} />
+      <Icon name="logout-variant" size={22} color={colors.primary} />
     </Pressable>
   );
 };
 
 const createStyles = (colors: AppColors) => StyleSheet.create({
   container: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.borderMedium,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.surfaceContainerLow,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+  } as ViewStyle,
+  pressed: {
+    opacity: 0.86,
   } as ViewStyle,
 });

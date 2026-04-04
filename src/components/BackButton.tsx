@@ -24,14 +24,14 @@ export const BackButton: React.FC<BackButtonProps> = ({ onPress, tintColor }) =>
 
   return (
     <Pressable
-      style={styles.container}
+      style={({ pressed }) => [styles.container, pressed && styles.pressed]}
       onPress={handlePress}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
     >
       <Icon 
         name="chevron-left" 
-        size={24} 
-        color={tintColor || colors.textPrimary} 
+        size={24}
+        color={tintColor || colors.primary}
       />
     </Pressable>
   );
@@ -39,14 +39,14 @@ export const BackButton: React.FC<BackButtonProps> = ({ onPress, tintColor }) =>
 
 const createStyles = (colors: AppColors) => StyleSheet.create({
   container: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.borderMedium,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.surfaceContainerLow,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 12,
+  } as ViewStyle,
+  pressed: {
+    opacity: 0.86,
   } as ViewStyle,
 });

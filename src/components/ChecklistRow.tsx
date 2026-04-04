@@ -35,10 +35,10 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: colors.rowBg,
+    borderRadius: 16,
+    backgroundColor: colors.surfaceContainerHigh,
     gap: 12,
   } as ViewStyle,
   textWrap: {
@@ -48,6 +48,7 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   bodyText: {
     color: colors.textPrimary,
     fontSize: 15,
+    fontWeight: '600',
   } as TextStyle,
   hintText: {
     color: colors.textSecondary,

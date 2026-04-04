@@ -40,26 +40,28 @@ export const InputField: React.FC<InputFieldProps> = ({
 const createStyles = (colors: AppColors) =>
   StyleSheet.create({
     container: {
-      gap: 7,
+      gap: 8,
     } as ViewStyle,
     label: {
-      fontSize: 14,
-      fontWeight: '600',
+      fontSize: 12,
+      fontWeight: '700',
       color: colors.textSecondary,
-      marginLeft: 2,
+      marginLeft: 4,
+      letterSpacing: 0.6,
+      textTransform: 'uppercase',
     } as TextStyle,
     input: {
-      backgroundColor: colors.rowBg,
-      borderRadius: 10,
-      borderWidth: 1,
-      borderColor: colors.borderMedium,
+      backgroundColor: colors.surfaceContainerHigh,
+      borderRadius: 16,
+      borderWidth: 0,
       paddingHorizontal: 16,
-      paddingVertical: 15,
-      fontSize: 16,
+      paddingVertical: 14,
+      fontSize: 15,
       color: colors.textPrimary,
     } as TextStyle,
     inputError: {
       borderColor: colors.danger,
+      borderWidth: 1,
     } as ViewStyle,
     errorText: {
       fontSize: 13,

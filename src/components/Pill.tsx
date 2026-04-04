@@ -28,12 +28,13 @@ export const Pill: React.FC<PillProps> = ({ label, variant }) => {
 const createStyles = (colors: AppColors) => StyleSheet.create({
   pill: {
     paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingVertical: 6,
     borderRadius: 999,
   } as ViewStyle,
   pillText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: colors.textPrimary,
+    letterSpacing: 0.4,
   } as TextStyle,
 });

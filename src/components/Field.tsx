@@ -31,12 +31,11 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     letterSpacing: 1,
   } as TextStyle,
   inputFake: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.borderMedium,
+    borderRadius: 16,
+    borderWidth: 0,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: colors.inputBg,
+    backgroundColor: colors.surfaceContainerHigh,
   } as ViewStyle,
   bodyText: {
     color: colors.textPrimary,
