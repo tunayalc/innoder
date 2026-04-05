@@ -1,17 +1,19 @@
-﻿import React from 'react';
+import React from 'react';
 import {
   Alert,
+  Pressable,
   StyleSheet,
   Text,
   TextStyle,
+  TouchableOpacity,
   View,
   ViewStyle,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { CONTACT_LINKS } from '../constants';
 import { useI18n } from '../i18n';
 import { useThemedStyles, type AppColors } from '../theme';
 import { openExternalUrl, openMailto } from '../utils/contact';
-import { Button } from './Button';
 import { Card } from './Card';
 
 interface ContactLinksCardProps {
@@ -30,7 +32,7 @@ export const ContactLinksCard: React.FC<ContactLinksCardProps> = ({ title, subti
         subject: t('auth.contactMailSubject'),
       });
     } catch {
-      Alert.alert('Hata', t('auth.contactOpenError'));
+      Alert.alert(t('common.errorTitle'), t('auth.contactOpenError'));
     }
   };
 
@@ -38,7 +40,7 @@ export const ContactLinksCard: React.FC<ContactLinksCardProps> = ({ title, subti
     try {
       await openExternalUrl(CONTACT_LINKS.instagram);
     } catch {
-      Alert.alert('Hata', t('auth.contactOpenError'));
+      Alert.alert(t('common.errorTitle'), t('auth.contactOpenError'));
     }
   };
 
@@ -50,13 +52,16 @@ export const ContactLinksCard: React.FC<ContactLinksCardProps> = ({ title, subti
       </View>
 
       <View style={styles.infoBlock}>
-        <Text style={styles.infoLabel}>E-posta</Text>
-        <Text style={styles.infoValue}>{CONTACT_LINKS.email}</Text>
+        <Text style={styles.infoLabel}>{t('common.email')}</Text>
+        <Pressable onPress={handleEmail} hitSlop={8}>
+          <Text style={styles.infoValue}>{CONTACT_LINKS.email}</Text>
+        </Pressable>
       </View>
 
-      <View style={styles.buttonGroup}>
-        <Button label={t('auth.contactEmailButton')} variant="ghost" onPress={handleEmail} />
-        <Button label={t('auth.contactInstagramButton')} variant="ghost" onPress={handleInstagram} />
+      <View style={styles.actionsRow}>
+        <TouchableOpacity style={styles.instagramButton} onPress={handleInstagram}>
+          <Icon name="instagram" size={22} color="#E1306C" />
+        </TouchableOpacity>
       </View>
     </Card>
   );
@@ -91,11 +96,24 @@ const createStyles = (colors: AppColors) =>
     } as TextStyle,
     infoValue: {
       fontSize: 14,
-      color: colors.textPrimary,
-      fontWeight: '600',
+      color: colors.primary,
+      fontWeight: '700',
+      textDecorationLine: 'underline',
     } as TextStyle,
-    buttonGroup: {
-      gap: 10,
+    actionsRow: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      alignItems: 'center',
       marginTop: 4,
+    } as ViewStyle,
+    instagramButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surfaceContainerHigh,
+      borderWidth: 1,
+      borderColor: colors.borderLight,
     } as ViewStyle,
   });

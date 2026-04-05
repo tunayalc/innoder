@@ -11,9 +11,11 @@ import type {
 } from '../../../types';
 import { appConfig } from '../../../config/appConfig';
 import {
+  ACTIVE_DOCUMENT_TYPES,
   createProgramDraftInput,
   DEFAULT_REQUIRED_DOCUMENT_TYPES,
   materializeAssignedProgram,
+  normalizeDocumentTypes,
 } from '../../programFactory';
 import {
   createSeedApplications,
@@ -70,7 +72,8 @@ const seedIfEmpty = async (): Promise<void> => {
 
 const getRequiredDocTypesForProgram = (
   program: Application['program'],
-): Document['type'][] => program.checklist.map((item) => item.documentType);
+): Document['type'][] =>
+  normalizeDocumentTypes(program.checklist.map((item) => item.documentType));
 
 const createDraftApplication = (params: {
   userId: string;
@@ -115,7 +118,32 @@ const createDraftApplication = (params: {
 };
 
 const ensureProgramOnApplication = (app: Application): Application => {
-  if (app.program) return app;
+  if (app.program) {
+    const normalizedChecklist = app.program.checklist.filter((item) =>
+      ACTIVE_DOCUMENT_TYPES.includes(item.documentType),
+    );
+    const normalizedDocuments = app.documents.filter((document) =>
+      normalizeDocumentTypes(app.program.checklist.map((item) => item.documentType)).includes(
+        document.type,
+      ),
+    );
+
+    if (
+      normalizedChecklist.length === app.program.checklist.length &&
+      normalizedDocuments.length === app.documents.length
+    ) {
+      return app;
+    }
+
+    return {
+      ...app,
+      program: {
+        ...app.program,
+        checklist: normalizedChecklist,
+      },
+      documents: normalizedDocuments,
+    };
+  }
 
   const documentTypes = Array.from(new Set(app.documents.map((doc) => doc.type)));
   const input = createProgramDraftInput({
@@ -283,10 +311,9 @@ export const createMockBackend = (): InnoBackend => {
         documentTypes: [
           'identity',
           'form',
-          'agreement',
-          'photo_activity_report',
           'visa_payment_receipt_original',
           'boarding_pass',
+          'photo_activity_report',
           'extra',
         ],
       }),
@@ -333,28 +360,28 @@ export const createMockBackend = (): InnoBackend => {
             uploadedAt: ts,
             pageCount: 1,
           };
-        case 'agreement':
-          return {
-            ...doc,
-            fileName: 'demo_anlasma.pdf',
-            status: 'ok',
-            uploadedAt: ts,
-            pageCount: 2,
-          };
-        case 'photo_activity_report':
-          return {
-            ...doc,
-            fileName: 'demo_faaliyet_raporu.jpg',
-            status: 'unread',
-            uploadedAt: ts,
-            pageCount: 1,
-          };
         case 'boarding_pass':
           return {
             ...doc,
             fileName: 'demo_boarding_pass.jpg',
             status: 'ok',
             parseResult: 'QR_OK:DEMO12345',
+            uploadedAt: ts,
+            pageCount: 1,
+          };
+        case 'visa_payment_receipt_original':
+          return {
+            ...doc,
+            fileName: '',
+            status: 'missing',
+            uploadedAt: ts,
+            pageCount: 1,
+          };
+        case 'photo_activity_report':
+          return {
+            ...doc,
+            fileName: 'demo_faaliyet_raporu.jpg',
+            status: 'unread',
             uploadedAt: ts,
             pageCount: 1,
           };
@@ -475,6 +502,7 @@ export const createMockBackend = (): InnoBackend => {
             id: userId,
             email,
             name: params.fullName.trim(),
+            eventLink: params.eventLink?.trim() || undefined,
             role: 'candidate',
             kvkkAccepted: true,
             consentVersion: 'v1',
@@ -758,7 +786,19 @@ export const createMockBackend = (): InnoBackend => {
 
           const assigned = createDraftApplication({
             userId,
-            program,
+            program: {
+              ...program,
+              checklist: createProgramDraftInput({
+                name: program.name,
+                year: program.year,
+                documentTypes: normalizeDocumentTypes(
+                  (program.checklist || []).map((item) => item.documentType),
+                ),
+                steps: program.steps,
+                deadlines: program.deadlines,
+                commonMistakes: program.commonMistakes,
+              }).checklist,
+            },
             fullName,
             createdByUserId: 'admin-001',
           });

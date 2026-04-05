@@ -8,6 +8,7 @@ export { ListRow } from './ListRow';
 export { Card } from './Card';
 export { InputField } from './InputField';
 export { LogoutButton } from './LogoutButton';
+export { SettingsButton } from './SettingsButton';
 export { LanguageSwitcher } from './LanguageSwitcher';
 export { ThemeSwitcher } from './ThemeSwitcher';
 export { ContactLinksCard } from './ContactLinksCard';

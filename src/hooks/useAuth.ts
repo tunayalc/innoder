@@ -3,6 +3,7 @@ import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { selectUser, selectIsAuthenticated, selectUserRole } from '../store/selectors';
 import { User } from '../types';
 import {
+  loginUser as loginUserThunk,
   loginCandidate as loginCandidateThunk,
   loginDemoCandidate as loginDemoCandidateThunk,
   loginAdmin as loginAdminThunk,
@@ -17,6 +18,13 @@ export const useAuth = () => {
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
   const role = useAppSelector(selectUserRole);
 
+  const login = useCallback(
+    (params: { identifier: string; password: string; rememberMe?: boolean }) => {
+      dispatch(loginUserThunk(params));
+    },
+    [dispatch],
+  );
+
   const loginCandidate = useCallback(
     (params: { email: string; password: string; rememberMe?: boolean }) => {
       dispatch(loginCandidateThunk(params));
@@ -28,6 +36,7 @@ export const useAuth = () => {
     (params: {
       fullName: string;
       email: string;
+      eventLink?: string;
       kvkkAccepted: boolean;
     }) => {
       return dispatch(registerCandidateThunk(params));
@@ -40,7 +49,7 @@ export const useAuth = () => {
   }, [dispatch]);
 
   const loginAdmin = useCallback(
-    (params: { username: string; password: string }) => {
+    (params: { username: string; password: string; rememberMe?: boolean }) => {
       dispatch(loginAdminThunk(params));
     },
     [dispatch],
@@ -63,6 +72,7 @@ export const useAuth = () => {
     role,
     isAdmin: role === 'admin',
     isCandidate: role === 'candidate',
+    login,
     loginCandidate,
     loginDemoCandidate,
     registerCandidate,

@@ -1,4 +1,4 @@
-// Application Status Labels
+﻿// Application Status Labels
 export const APPLICATION_STATUS_LABELS: Record<string, string> = {
   draft: 'Taslak',
   submitted: 'Gönderildi',

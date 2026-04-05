@@ -1,4 +1,4 @@
-import type { AnyAction } from '@reduxjs/toolkit';
+﻿import type { AnyAction } from '@reduxjs/toolkit';
 import type { ThunkAction } from '@reduxjs/toolkit';
 
 import type { RootState } from '../index';
@@ -37,7 +37,7 @@ export const ensureDraftApplication =
         fullName: user.name,
       });
       const existingApps = getState().application.applications;
-      const hasExisting = existingApps.some((x) => x.id === app.id);
+      const hasExisting = existingApps.some((item) => item.id === app.id);
       if (hasExisting) {
         dispatch(updateApplication(app));
       } else {
@@ -60,7 +60,7 @@ export const assignProgramToCandidate =
     try {
       const app = await backend.applications.assignProgram(params);
       const existingApps = getState().application.applications;
-      const hasExisting = existingApps.some((x) => x.id === app.id);
+      const hasExisting = existingApps.some((item) => item.id === app.id);
       if (hasExisting) {
         dispatch(updateApplication(app));
       } else {
@@ -68,7 +68,7 @@ export const assignProgramToCandidate =
       }
       dispatch(reloadAuditLogs());
     } catch (err) {
-      dispatch(setApplicationError(getErrorMessage(err, 'Program atamasi yapilamadi.')));
+      dispatch(setApplicationError(getErrorMessage(err, 'Program ataması yapılamadı.')));
     } finally {
       dispatch(setApplicationLoading(false));
     }

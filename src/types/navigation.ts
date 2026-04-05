@@ -7,26 +7,28 @@ export type RootStackParamList = {
   OnboardingIntro: undefined;
   Login: undefined;
   Register: { videosCompleted: boolean } | undefined;
-  AdminLogin: undefined;
   Splash: undefined;
   Auth: undefined;
   Main: { screen: keyof MainTabParamList } | undefined;
   AdayMenu: undefined;
-  AdayKayit: undefined;
   AdayEgitim: undefined;
   AdayProgramDetay: { applicationId: string };
   AdayKisisel: undefined;
-  AdayCvBuilder: undefined;
+  AdayCvBuilder: { applicationId: string } | undefined;
   AdayMotivation: { applicationId: string } | undefined;
   AdayBelge: { applicationId: string; capturedPhotoUri?: string } | undefined;
   BelgeCamera: { docType: string; applicationId: string };
   AdayMesaj: { applicationId: string } | undefined;
+  AdminMenu: undefined;
   AdminListe: undefined;
+  AdminPasswordRequests: undefined;
+  AdminProgramManagement: undefined;
   AdminDetay: { applicationId: string };
   AdminDogrulama: { applicationId: string; documentId?: string };
   AdminAudit: undefined;
   DocumentViewer: { applicationId: string; documentId?: string };
   DataModel: undefined;
+  Settings: undefined;
 };
 
 // Main Tab Parameters
@@ -62,7 +64,6 @@ export type ScreenId =
   | 'aday-menu'
   | 'admin-menu'
   | 'data-model'
-  | 'aday-kayit'
   | 'aday-egitim'
   | 'aday-kisisel'
   | 'aday-belge'

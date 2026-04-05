@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+﻿import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -10,8 +10,8 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { colors } from '../../theme';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { useThemedStyles, type AppColors } from '../../theme';
 import { Button, Card, InputField, Pill } from '../../components';
 import { useAuth } from '../../hooks';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
@@ -20,8 +20,9 @@ import {
   selectApplicationLoading,
   selectApplications,
 } from '../../store/selectors';
-import { RootStackNavigationProp, MotivationLetterDraft } from '../../types';
+import { RootStackNavigationProp, RootStackParamList, MotivationLetterDraft } from '../../types';
 import { updatePersonalInfoDraft } from '../../store/thunks/applicationThunks';
+import { getProgramById } from '../../services/programCatalog';
 import {
   createEmptyMotivationLetter,
   isMotivationLetterComplete,
@@ -29,7 +30,9 @@ import {
 } from '../../utils/europass';
 
 export const AdayMotivationScreen: React.FC = () => {
+  const styles = useThemedStyles(createStyles);
   const navigation = useNavigation<RootStackNavigationProp>();
+  const route = useRoute<RouteProp<RootStackParamList, 'AdayMotivation'>>();
   const { user } = useAuth();
   const dispatch = useAppDispatch();
   const applications = useAppSelector(selectApplications);
@@ -37,8 +40,15 @@ export const AdayMotivationScreen: React.FC = () => {
   const error = useAppSelector(selectApplicationError);
 
   const myApplication = useMemo(
-    () => applications.find((app) => app.userId === user?.id),
-    [applications, user?.id],
+    () =>
+      route.params?.applicationId
+        ? applications.find((app) => app.id === route.params?.applicationId)
+        : applications.find((app) => app.userId === user?.id),
+    [applications, route.params?.applicationId, user?.id],
+  );
+  const program = useMemo(
+    () => (myApplication ? getProgramById(myApplication.programId) : null),
+    [myApplication],
   );
 
   const [letter, setLetter] = useState<MotivationLetterDraft>(
@@ -77,9 +87,9 @@ export const AdayMotivationScreen: React.FC = () => {
         </View>
         <Card>
           <Text style={styles.emptyText}>
-            Bu adıma geçmeden önce Kayıt Formu ekranından taslak başvuru oluşturun.
+            Motivasyon mektubu düzenlemek için önce Programlarım ekranından bir programa geçin.
           </Text>
-          <Button label="Kayıt Formuna Git" onPress={() => navigation.navigate('AdayKayit')} />
+          <Button label="Programlarıma Git" onPress={() => navigation.navigate('AdayEgitim')} />
         </Card>
       </View>
     );
@@ -104,12 +114,32 @@ export const AdayMotivationScreen: React.FC = () => {
           </View>
         </View>
 
-        <Card title="European Youth Portal Tarzı Mektup Yapısı">
+        <Card title="Mektup Yapısı">
           <Text style={styles.hintRow}>• Hitap ve konu</Text>
-          <Text style={styles.hintRow}>• Açılış (kimsiniz + neden yazıyorsunuz)</Text>
-          <Text style={styles.hintRow}>• Motivasyon (neden bu program)</Text>
-          <Text style={styles.hintRow}>• Katkı (ne katacaksınız)</Text>
-          <Text style={styles.hintRow}>• Kapanış (uygunluk ve teşekkür)</Text>
+          <Text style={styles.hintRow}>• Açılış: kimsiniz ve neden yazıyorsunuz</Text>
+          <Text style={styles.hintRow}>• Motivasyon: neden bu program</Text>
+          <Text style={styles.hintRow}>• Katkı: programa ne katacaksınız</Text>
+          <Text style={styles.hintRow}>• Kapanış: uygunluk, sorumluluk ve teşekkür</Text>
+        </Card>
+
+        <Card title="Bu Program İçin Şartlar">
+          <Text style={styles.hintRow}>
+            • Mektubunuzda neden özellikle {myApplication.programName} programına başvurduğunuzu açıkça yazın.
+          </Text>
+          <Text style={styles.hintRow}>
+            • Programa hangi deneyim, beceri ve katkılarla dahil olacağınızı somut biçimde belirtin.
+          </Text>
+          <Text style={styles.hintRow}>
+            • Katılım adımlarına, takvime ve sorumluluklara uyacağınızı net biçimde ifade edin.
+          </Text>
+          <Text style={styles.hintRow}>
+            • Genel ve kopya bir metin yerine bu programa özel gerekçeler kullanın.
+          </Text>
+          {program?.steps?.length ? (
+            <Text style={styles.programHint}>
+              Program odağı: {program.steps.slice(0, 2).join(' / ')}
+            </Text>
+          ) : null}
         </Card>
 
         <Text style={styles.sectionLabel}>BAŞLIK</Text>
@@ -181,7 +211,7 @@ export const AdayMotivationScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   flex: {
     flex: 1,
   } as ViewStyle,
@@ -238,6 +268,13 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: 20,
   } as TextStyle,
+  programHint: {
+    fontSize: 13,
+    color: colors.textPrimary,
+    fontWeight: '600',
+    lineHeight: 20,
+    marginTop: 4,
+  } as TextStyle,
   textArea: {
     minHeight: 110,
     textAlignVertical: 'top',
@@ -260,7 +297,10 @@ const styles = StyleSheet.create({
   } as TextStyle,
   errorText: {
     fontSize: 13,
-    color: '#DC2626',
+    color: colors.danger,
     textAlign: 'center',
   } as TextStyle,
 });
+
+
+

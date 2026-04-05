@@ -56,6 +56,6 @@ const createStyles = (colors: AppColors) =>
       fontSize: 15,
     } as TextStyle,
     buttonTextGhost: {
-      color: colors.onPrimaryContainer,
+      color: colors.textPrimary,
     } as TextStyle,
   });

@@ -38,6 +38,7 @@ export interface AuthBackend {
   registerCandidate(params: {
     fullName: string;
     email: string;
+    eventLink?: string;
     kvkkAccepted: boolean;
   }): Promise<User>;
   requestCandidatePassword(params: {

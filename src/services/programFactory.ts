@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   AssignedProgram,
   DocumentType,
   ProgramChecklistItem,
@@ -8,6 +8,15 @@ import type {
 import { DOCUMENT_TYPES } from '../constants';
 
 const DEFAULT_YEAR = new Date().getFullYear();
+
+export const ACTIVE_DOCUMENT_TYPES: DocumentType[] = [
+  'identity',
+  'form',
+  'visa_payment_receipt_original',
+  'boarding_pass',
+  'photo_activity_report',
+  'extra',
+];
 
 export const DOCUMENT_PRESETS: Record<DocumentType, Omit<ProgramChecklistItem, 'documentType'>> = {
   identity: {
@@ -37,13 +46,13 @@ export const DOCUMENT_PRESETS: Record<DocumentType, Omit<ProgramChecklistItem, '
   },
   boarding_pass: {
     expectedFormat: 'JPG/PDF (QR/Barkod net)',
-    description: 'Boarding pass.',
-    exampleHint: 'QR/Barkod kadrajda ve okunur olmalı.',
+    description: 'Biniş kartı veya ulaşım belgesi.',
+    exampleHint: 'QR/Barkod alanı net ve kadraj içinde olmalı.',
   },
   extra: {
     expectedFormat: 'JPG/PDF',
-    description: 'Ek belge.',
-    exampleHint: 'Gerekliyse tüm sayfaları ekleyin.',
+    description: 'Programa özel ek belge.',
+    exampleHint: 'Gerekli tüm sayfaları birlikte ekleyin.',
   },
 };
 
@@ -62,17 +71,23 @@ export const DEFAULT_COMMON_MISTAKES = [
 
 export const DEFAULT_REQUIRED_DOCUMENT_TYPES: DocumentType[] = ['identity', 'form'];
 
-export const DOCUMENT_TYPE_OPTIONS = (
-  Object.keys(DOCUMENT_TYPES) as DocumentType[]
-).map((key) => ({
+export const DOCUMENT_TYPE_OPTIONS = ACTIVE_DOCUMENT_TYPES.map((key) => ({
   key,
   label: DOCUMENT_TYPES[key],
 }));
 
+export const normalizeDocumentTypes = (documentTypes: DocumentType[]): DocumentType[] => {
+  const seen = new Set<DocumentType>();
+  const normalized = documentTypes.filter(
+    (documentType) => ACTIVE_DOCUMENT_TYPES.includes(documentType) && !seen.has(documentType) && seen.add(documentType),
+  );
+  return normalized.length > 0 ? normalized : [...DEFAULT_REQUIRED_DOCUMENT_TYPES];
+};
+
 export const createChecklistFromDocumentTypes = (
   documentTypes: DocumentType[],
 ): ProgramChecklistItem[] =>
-  documentTypes.map((documentType) => ({
+  normalizeDocumentTypes(documentTypes).map((documentType) => ({
     documentType,
     ...DOCUMENT_PRESETS[documentType],
   }));
@@ -110,7 +125,7 @@ export const materializeAssignedProgram = (params: {
   year: params.input.year,
   steps: [...(params.input.steps || DEFAULT_PROGRAM_STEPS)],
   deadlines: (params.input.deadlines || []).map((deadline) => ({ ...deadline })),
-  checklist: (params.input.checklist || []).map((item) => ({ ...item })),
+  checklist: (params.input.checklist || createChecklistFromDocumentTypes(DEFAULT_REQUIRED_DOCUMENT_TYPES)).map((item) => ({ ...item })),
   commonMistakes: [...(params.input.commonMistakes || DEFAULT_COMMON_MISTAKES)],
   createdAt: params.createdAt,
   updatedAt: params.createdAt,

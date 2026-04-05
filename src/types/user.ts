@@ -6,6 +6,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  eventLink?: string;
   phone?: string;
   country?: string;
   city?: string;

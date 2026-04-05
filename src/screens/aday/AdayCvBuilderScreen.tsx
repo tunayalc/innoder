@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+﻿import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -11,8 +11,8 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { colors } from '../../theme';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { useThemedStyles, type AppColors } from '../../theme';
 import { Button, Card, InputField, Pill } from '../../components';
 import { useAuth } from '../../hooks';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
@@ -21,7 +21,7 @@ import {
   selectApplicationLoading,
   selectApplications,
 } from '../../store/selectors';
-import { RootStackNavigationProp, EuropassCvProfile } from '../../types';
+import { RootStackNavigationProp, RootStackParamList, EuropassCvProfile } from '../../types';
 import { updatePersonalInfoDraft } from '../../store/thunks/applicationThunks';
 import {
   CEFR_LEVELS,
@@ -38,7 +38,9 @@ const sectionHints = [
 ];
 
 export const AdayCvBuilderScreen: React.FC = () => {
+  const styles = useThemedStyles(createStyles);
   const navigation = useNavigation<RootStackNavigationProp>();
+  const route = useRoute<RouteProp<RootStackParamList, 'AdayCvBuilder'>>();
   const { user } = useAuth();
   const dispatch = useAppDispatch();
   const applications = useAppSelector(selectApplications);
@@ -46,8 +48,11 @@ export const AdayCvBuilderScreen: React.FC = () => {
   const error = useAppSelector(selectApplicationError);
 
   const myApplication = useMemo(
-    () => applications.find((app) => app.userId === user?.id),
-    [applications, user?.id],
+    () =>
+      route.params?.applicationId
+        ? applications.find((app) => app.id === route.params?.applicationId)
+        : applications.find((app) => app.userId === user?.id),
+    [applications, route.params?.applicationId, user?.id],
   );
 
   const [cv, setCv] = useState<EuropassCvProfile>(
@@ -183,9 +188,9 @@ export const AdayCvBuilderScreen: React.FC = () => {
         </View>
         <Card>
           <Text style={styles.emptyText}>
-            Bu adıma geçmeden önce Kayıt Formu ekranından taslak başvuru oluşturun.
+            CV düzenlemek için önce Programlarım ekranından bir programa geçin.
           </Text>
-          <Button label="Kayıt Formuna Git" onPress={() => navigation.navigate('AdayKayit')} />
+          <Button label="Programlarıma Git" onPress={() => navigation.navigate('AdayEgitim')} />
         </Card>
       </View>
     );
@@ -404,7 +409,7 @@ export const AdayCvBuilderScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppColors) => StyleSheet.create({
   flex: {
     flex: 1,
   } as ViewStyle,
@@ -499,13 +504,13 @@ const styles = StyleSheet.create({
   removeButton: {
     alignSelf: 'flex-start',
     borderWidth: 1,
-    borderColor: '#DC2626',
+    borderColor: colors.danger,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 7,
   } as ViewStyle,
   removeButtonText: {
-    color: '#DC2626',
+    color: colors.danger,
     fontSize: 12,
     fontWeight: '700',
   } as TextStyle,
@@ -517,7 +522,11 @@ const styles = StyleSheet.create({
   } as TextStyle,
   errorText: {
     fontSize: 13,
-    color: '#DC2626',
+    color: colors.danger,
     textAlign: 'center',
   } as TextStyle,
 });
+
+
+
+

@@ -1,21 +1,31 @@
 import React from 'react';
-import { View, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  TextStyle,
+  View,
+  ViewStyle,
+} from 'react-native';
 import { useThemedStyles, type AppColors } from '../theme';
 
 interface FieldProps {
   label: string;
   value: string;
+  onPress?: () => void;
+  isLink?: boolean;
 }
 
-export const Field: React.FC<FieldProps> = ({ label, value }) => {
+export const Field: React.FC<FieldProps> = ({ label, value, onPress, isLink }) => {
   const styles = useThemedStyles(createStyles);
+  const Wrapper = onPress ? Pressable : View;
 
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
-      <View style={styles.inputFake}>
-        <Text style={styles.bodyText}>{value}</Text>
-      </View>
+      <Wrapper style={styles.inputFake} onPress={onPress}>
+        <Text style={[styles.bodyText, isLink && styles.bodyTextLink]}>{value}</Text>
+      </Wrapper>
     </View>
   );
 };
@@ -40,5 +50,10 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   bodyText: {
     color: colors.textPrimary,
     fontSize: 13,
+  } as TextStyle,
+  bodyTextLink: {
+    color: colors.primary,
+    textDecorationLine: 'underline',
+    fontWeight: '700',
   } as TextStyle,
 });

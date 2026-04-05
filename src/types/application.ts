@@ -130,6 +130,7 @@ export interface PersonalInfo {
   fullName: string;
   birthDate?: string;
   identityNumber?: string;
+  passportNumber?: string;
   pnrNumber?: string;
   programSelection?: string;
   europassCv?: EuropassCvProfile;

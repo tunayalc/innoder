@@ -28,6 +28,38 @@ const DEMO_CANDIDATE_CREDENTIALS = {
   password: '123123',
 } as const;
 
+const finalizeLogin = async (
+  dispatch: (action: unknown) => void,
+  user: User,
+  rememberMe = false,
+) => {
+  dispatch(setRememberMe(Boolean(rememberMe)));
+  dispatch(setUser(user));
+  dispatch(hydrateSession(user));
+};
+
+export const loginUser =
+  (params: { identifier: string; password: string; rememberMe?: boolean }): AppThunk =>
+  async (dispatch) => {
+    const backend = getBackend();
+    const identifier = params.identifier.trim();
+
+    dispatch(setLoading(true));
+    dispatch(setError(null));
+
+    try {
+      const user = identifier.includes('@')
+        ? await backend.auth.loginCandidate({ email: identifier, password: params.password })
+        : await backend.auth.loginAdmin({ username: identifier, password: params.password });
+
+      await finalizeLogin(dispatch, user, params.rememberMe);
+    } catch (err) {
+      dispatch(setError(getErrorMessage(err, 'Giriş yapılamadı.')));
+    } finally {
+      dispatch(setLoading(false));
+    }
+  };
+
 export const loginCandidate =
   (params: { email: string; password: string; rememberMe?: boolean }): AppThunk =>
   async (dispatch) => {
@@ -38,9 +70,7 @@ export const loginCandidate =
 
     try {
       const user = await backend.auth.loginCandidate(params);
-      dispatch(setRememberMe(Boolean(params.rememberMe)));
-      dispatch(setUser(user));
-      dispatch(hydrateSession(user));
+      await finalizeLogin(dispatch, user, params.rememberMe);
     } catch (err) {
       dispatch(setError(getErrorMessage(err, 'Giriş yapılamadı.')));
     } finally {
@@ -52,6 +82,7 @@ export const registerCandidate =
   (params: {
     fullName: string;
     email: string;
+    eventLink?: string;
     kvkkAccepted: boolean;
   }): AppThunk<Promise<RegisterCandidateResult>> =>
   async (dispatch) => {
@@ -87,7 +118,7 @@ export const loginDemoCandidate =
 };
 
 export const loginAdmin =
-  (params: { username: string; password: string }): AppThunk =>
+  (params: { username: string; password: string; rememberMe?: boolean }): AppThunk =>
   async (dispatch) => {
     const backend = getBackend();
 
@@ -96,9 +127,7 @@ export const loginAdmin =
 
     try {
       const user = await backend.auth.loginAdmin(params);
-      dispatch(setRememberMe(false));
-      dispatch(setUser(user));
-      dispatch(hydrateSession(user));
+      await finalizeLogin(dispatch, user, params.rememberMe);
     } catch (err) {
       dispatch(setError(getErrorMessage(err, 'Admin girişi yapılamadı.')));
     } finally {
