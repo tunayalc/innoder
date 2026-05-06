@@ -168,6 +168,70 @@ export const createSeedApplications = (): Application[] => {
         birthDate: '1997-01-10',
         identityNumber: '55566677788',
         programSelection: programA.id,
+        motivationLetter: {
+          addressee: 'Inno Derneği Seçim Ekibi',
+          subject: 'Program A Başvuru Motivasyon Mektubu',
+          openingParagraph: 'Merhaba, ben Selin Bora. İnşaat Mühendisliği son sınıf öğrencisiyim ve gençlik projelerinde aktif olarak yer almaktayım. Program A\'ya başvurmama sebep olan temel motivasyonum, Avrupa\'da sürdürülebilir mimari ve çevre dostu yapı teknolojilerini öğrenmek ve bu alanda kendimi geliştirmek istemem.',
+          motivationParagraph: 'Program A\'yı seçmemin başlıca nedenleri arasında çevre mühendisliği ve sürdürülebilir kalkınma alanlarında sunduğu eğitim fırsatları yer alıyor. Özellikle Avrupa Birliği\'nin yeşil dönüşüm politikalarını yerinde öğrenme ve bu konularda projeler geliştirme imkanı beni çok heyecanlandırıyor. Ayrıca kültürlerarası deneyim kazanarak hem kişisel hem de profesyonel anlamda büyümeyi hedefliyorum.',
+          contributionParagraph: 'Programa katacağım değerler açısından düşündüğümde; üniversitede çevre kulübünde aktif görev almam, TÜBİTAK projesinde yer almam ve yerel belediye ile sürdürülebilir şehircilik üzerine gönüllü çalışmalarım bulunuyor. Bu deneyimlerim sayesinde proje yönetimi, ekip çalışması ve problem çözme becerilerim gelişti. Programa hem Türkiye perspektifi katacağım hem de diğer katılımcılarla bilgi alışverişinde bulunarak ortak projeler üreteceğim.',
+          closingParagraph: 'Programa katılımım konusunda tam bir kararlılık ve sorumluluk bilinci taşıdığımı belirtmek isterim. Belirlenen takvime uyacağımı, tüm aktivitelere aktif katılım sağlayacağımı ve program sonunda edindiğim bilgileri ülkemde yaygınlaştırmak için çalışacağımı taahhüt ediyorum. Bu değerli fırsat için şimdiden teşekkür ederim.'
+        },
+        europassCv: {
+          profileTitle: 'İnşaat Mühendisi & Sürdürülebilir Kalkınma Uzmanı',
+          summary: 'İnşaat Mühendisliği son sınıf öğrencisi olarak çevre dostu yapı teknolojileri ve sürdürülebilir şehircilik alanlarında uzmanlaşmaya odaklanıyorum. Aktif gençlik çalışmaları ve proje deneyimlerimle Avrupa gençlik programlarında yer almaya hazırım.',
+          keySkills: 'Proje yönetimi, AutoCAD, sürdürülebilir mimari tasarım, çevre mühendisliği, ekip liderliği, araştırma ve analiz, sunum yapma, Avrupa Birliği politikaları, kültürlerarası iletişim',
+          digitalSkills: 'AutoCAD, SketchUp, Microsoft Office Suite, Canva, Adobe Photoshop, Google Workspace, Zoom, Teams, LinkedIn',
+          workExperiences: [
+            {
+              role: 'Proje Gönüllüsü',
+              organization: 'Ankara Büyükşehir Belediyesi',
+              startDate: '2024-06',
+              endDate: 'Devam ediyor',
+              responsibilities: 'Sürdürülebilir şehircilik projesinde veri toplama, analiz ve raporlama görevlerinde bulundum. Kent planlaması üzerine araştırmalar yaptım.'
+            },
+            {
+              role: 'Stajyer Mühendis',
+              organization: 'Yeşil Yapı İnşaat Ltd.',
+              startDate: '2024-07',
+              endDate: '2024-08',
+              responsibilities: 'LEED sertifikası sürecinde yer aldım, çevre dostu malzeme araştırmaları yaptım ve enerji verimliliği analizlerinde görev aldım.'
+            }
+          ],
+          educationEntries: [
+            {
+              qualification: 'Lisans: İnşaat Mühendisliği',
+              institution: 'Orta Doğu Teknik Üniversitesi',
+              startDate: '2020-09',
+              endDate: '2025-06',
+              description: 'GPA: 3.45/4.0. Çevre Mühendisliği yan dalı. TÜBİTAK projesine katılım. Çevre kulübü başkan yardımcısı.'
+            },
+            {
+              qualification: 'Lise Diploması',
+              institution: 'Ankara Fen Lisesi',
+              startDate: '2016-09',
+              endDate: '2020-06',
+              description: 'Matematik-Fen bölümü mezunu. Bilim olimpiyatları ve çevre projelerinde aktif katılım.'
+            }
+          ],
+          languageSkills: [
+            {
+              language: 'İngilizce',
+              listening: 'B2',
+              reading: 'B2',
+              spokenInteraction: 'B2',
+              spokenProduction: 'B2',
+              writing: 'B2'
+            },
+            {
+              language: 'Almanca',
+              listening: 'A2',
+              reading: 'A2',
+              spokenInteraction: 'A2',
+              spokenProduction: 'A1',
+              writing: 'A2'
+            }
+          ]
+        }
       },
       documents: [
         {

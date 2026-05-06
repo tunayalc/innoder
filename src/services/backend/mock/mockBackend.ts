@@ -51,23 +51,11 @@ const createAudit = (
 });
 
 const seedIfEmpty = async (): Promise<void> => {
-  const applications = await readJson<Application[]>(MOCK_STORAGE_KEYS.applications, []);
-  const users = await readJson<User[]>(MOCK_STORAGE_KEYS.users, []);
-  const messages = await readJson<Message[]>(MOCK_STORAGE_KEYS.messages, []);
-  const auditLogs = await readJson<AuditLog[]>(MOCK_STORAGE_KEYS.auditLogs, []);
-
-  if (users.length === 0) {
-    await writeJson(MOCK_STORAGE_KEYS.users, createSeedUsers());
-  }
-  if (applications.length === 0) {
-    await writeJson(MOCK_STORAGE_KEYS.applications, createSeedApplications());
-  }
-  if (messages.length === 0) {
-    await writeJson(MOCK_STORAGE_KEYS.messages, createSeedMessages());
-  }
-  if (auditLogs.length === 0) {
-    await writeJson(MOCK_STORAGE_KEYS.auditLogs, createSeedAuditLogs());
-  }
+  // Force fresh seed data for this version - always reload
+  await writeJson(MOCK_STORAGE_KEYS.users, createSeedUsers());
+  await writeJson(MOCK_STORAGE_KEYS.applications, createSeedApplications());
+  await writeJson(MOCK_STORAGE_KEYS.messages, createSeedMessages());
+  await writeJson(MOCK_STORAGE_KEYS.auditLogs, createSeedAuditLogs());
 };
 
 const getRequiredDocTypesForProgram = (

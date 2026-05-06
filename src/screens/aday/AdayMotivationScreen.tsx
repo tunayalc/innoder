@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -9,10 +9,8 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  Share,
 } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
-import { generatePDF } from 'react-native-html-to-pdf';
 import { useThemedStyles, type AppColors } from '../../theme';
 import { Button, Card, InputField, Pill } from '../../components';
 import { useAuth } from '../../hooks';
@@ -30,15 +28,6 @@ import {
   isMotivationLetterComplete,
   wordCount,
 } from '../../utils/europass';
-import {
-  A4_PAGE_HEIGHT,
-  A4_PAGE_WIDTH,
-  MOTIVATION_LETTER_PDF_MAX_WORDS,
-  buildMotivationLetterPdfHtml,
-  createMotivationLetterPdfFileName,
-  getMotivationLetterPdfWordCount,
-  hasMotivationLetterPdfContent,
-} from '../../utils/motivationLetterPdf';
 
 export const AdayMotivationScreen: React.FC = () => {
   const styles = useThemedStyles(createStyles);
@@ -62,13 +51,19 @@ export const AdayMotivationScreen: React.FC = () => {
     [myApplication],
   );
 
-  const [letter, setLetter] = useState<MotivationLetterDraft>(
-    myApplication?.personalInfo.motivationLetter ?? createEmptyMotivationLetter(),
-  );
-  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const savedLetter = myApplication?.personalInfo.motivationLetter ?? createEmptyMotivationLetter();
+  const applicationId = myApplication?.id;
+
+  const [letter, setLetter] = useState<MotivationLetterDraft>(savedLetter);
+
+  // Re-sync local state when navigating to a different application
+  const prevApplicationIdRef = React.useRef(applicationId);
+  if (prevApplicationIdRef.current !== applicationId) {
+    prevApplicationIdRef.current = applicationId;
+    setLetter(savedLetter);
+  }
 
   const completion = useMemo(() => isMotivationLetterComplete(letter), [letter]);
-  const pdfWordCount = useMemo(() => getMotivationLetterPdfWordCount(letter), [letter]);
 
   const updateField = (key: keyof MotivationLetterDraft, value: string) => {
     setLetter((prev) => ({ ...prev, [key]: value }));
@@ -88,72 +83,6 @@ export const AdayMotivationScreen: React.FC = () => {
     Alert.alert('Mektup Kaydedildi', 'Motivasyon mektubu taslağı kaydedildi.');
   };
 
-  const exportLetterPdf = async () => {
-    if (!myApplication || isExportingPdf) return;
-
-    if (!hasMotivationLetterPdfContent(letter)) {
-      Alert.alert('PDF Oluşturulamadı', 'PDF için önce motivasyon mektubu alanlarını doldurun.');
-      return;
-    }
-
-    if (pdfWordCount > MOTIVATION_LETTER_PDF_MAX_WORDS) {
-      Alert.alert(
-        'PDF Çok Uzun',
-        `Tek sayfa A4 PDF için mektubu ${MOTIVATION_LETTER_PDF_MAX_WORDS} kelime altında tutun. Şu an ${pdfWordCount} kelime var.`,
-      );
-      return;
-    }
-
-    setIsExportingPdf(true);
-
-    try {
-      const fileName = createMotivationLetterPdfFileName(
-        myApplication.personalInfo.fullName,
-        myApplication.programName,
-      );
-      const html = buildMotivationLetterPdfHtml({
-        letter,
-        applicantName: myApplication.personalInfo.fullName,
-        programName: myApplication.programName,
-      });
-      
-      console.log('PDF oluşturuluyor:', fileName);
-      
-      const pdf = await generatePDF({
-        html,
-        fileName: fileName,
-        directory: Platform.OS === 'ios' ? 'Documents' : 'Downloads',
-        width: A4_PAGE_WIDTH,
-        height: A4_PAGE_HEIGHT,
-        padding: 0,
-        bgColor: '#FFFFFF',
-        shouldPrintBackgrounds: true,
-      });
-
-      console.log('PDF oluşturuldu:', pdf);
-
-      if (!pdf?.filePath) {
-        throw new Error('PDF dosyası oluşturulamadı - dosya yolu bulunamadı');
-      }
-
-      console.log('PDF oluşturuldu:', pdf.filePath);
-
-      // React Native built-in Share API kullan
-      await Share.share({
-        title: 'Motivasyon Mektubu PDF',
-        message: `${myApplication.programName} motivasyon mektubu`,
-        url: `file://${pdf.filePath}`,
-      });
-
-      console.log('PDF başarıyla paylaşıldı');
-    } catch (pdfError) {
-      console.error('PDF hatası:', pdfError);
-      const message = pdfError instanceof Error ? pdfError.message : 'PDF oluşturulurken hata oluştu.';
-      Alert.alert('PDF Oluşturulamadı', message);
-    } finally {
-      setIsExportingPdf(false);
-    }
-  };
 
   if (!myApplication) {
     return (
@@ -280,26 +209,6 @@ export const AdayMotivationScreen: React.FC = () => {
           </Text>
         </View>
 
-        <Card title="PDF Olarak Dışa Aktar">
-          <View style={styles.exportMetaRow}>
-            <View style={styles.exportMetaItem}>
-              <Text style={styles.exportMetaValue}>{pdfWordCount}</Text>
-              <Text style={styles.exportMetaLabel}>Kelime</Text>
-            </View>
-            <View style={styles.exportMetaItem}>
-              <Text style={styles.exportMetaValue}>A4</Text>
-              <Text style={styles.exportMetaLabel}>1 sayfa</Text>
-            </View>
-          </View>
-          <Text style={styles.exportText}>
-            Mektup tek sayfalık temiz bir A4 PDF düzenine aktarılır.
-          </Text>
-          <Button
-            label={isExportingPdf ? 'PDF Hazırlanıyor...' : 'PDF Olarak Dışa Aktar'}
-            onPress={exportLetterPdf}
-            disabled={isExportingPdf}
-          />
-        </Card>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 

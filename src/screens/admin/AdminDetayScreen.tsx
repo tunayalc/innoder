@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   ScrollView,
@@ -10,6 +10,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
+import Share from 'react-native-share';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Button, ChecklistRow, Field, Pill } from '../../components';
 import {
@@ -36,6 +37,16 @@ import {
 } from '../../types';
 import { formatDateShort, getRelativeTime } from '../../utils/date';
 import { openExternalUrl, openMailto } from '../../utils/contact';
+import { generatePDF } from 'react-native-html-to-pdf';
+import { 
+  buildMotivationLetterPdfHtml, 
+  createMotivationLetterPdfFileName,
+  getMotivationLetterPdfWordCount,
+  buildEuropassCvPdfHtml,
+  createEuropassCvPdfFileName,
+  isMotivationLetterComplete,
+  isEuropassCvComplete
+} from '../../utils';
 
 const statusToVariant = (status: DocumentStatus) => {
   switch (status) {
@@ -68,6 +79,8 @@ export const AdminDetayScreen: React.FC = () => {
   const [candidateUser, setCandidateUser] = useState<User | null>(null);
   const [candidateUserError, setCandidateUserError] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [isExportingMotivationPdf, setIsExportingMotivationPdf] = useState(false);
+  const [isExportingCvPdf, setIsExportingCvPdf] = useState(false);
 
   const initials = useMemo(() => {
     if (!application) return '';
@@ -78,6 +91,100 @@ export const AdminDetayScreen: React.FC = () => {
       .slice(0, 2)
       .toUpperCase();
   }, [application]);
+
+  const exportMotivationLetterPdf = async () => {
+    if (!application?.personalInfo.motivationLetter) {
+      Alert.alert('Uyarı', 'Motivasyon mektubu bulunamadı.');
+      return;
+    }
+
+    setIsExportingMotivationPdf(true);
+
+    try {
+      const htmlContent = buildMotivationLetterPdfHtml({
+        letter: application.personalInfo.motivationLetter,
+        applicantName: application.personalInfo.fullName,
+        programName: application.programName,
+      });
+
+      const fileName = createMotivationLetterPdfFileName(
+        application.personalInfo.fullName,
+        application.programName
+      );
+
+      const pdf = await generatePDF({
+        html: htmlContent,
+        fileName: fileName,
+      });
+
+      if (!pdf?.filePath) {
+        throw new Error('PDF oluşturulamadı');
+      }
+
+      const fileUrl = pdf.filePath.startsWith('file://')
+        ? pdf.filePath
+        : `file://${pdf.filePath}`;
+
+      await Share.open({
+        title: `${application.personalInfo.fullName} - Motivasyon Mektubu`,
+        url: fileUrl,
+        type: 'application/pdf',
+        filename: `${fileName}.pdf`,
+        failOnCancel: false,
+      });
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message?.includes('User did not share')) return;
+      console.error('PDF export error:', err);
+      Alert.alert('Hata', 'PDF oluşturulurken hata oluştu.');
+    } finally {
+      setIsExportingMotivationPdf(false);
+    }
+  };
+
+  const exportCvPdf = async () => {
+    if (!application?.personalInfo.europassCv) {
+      Alert.alert('Uyarı', 'Europass CV bulunamadı.');
+      return;
+    }
+
+    setIsExportingCvPdf(true);
+
+    try {
+      const htmlContent = buildEuropassCvPdfHtml({
+        cv: application.personalInfo.europassCv,
+        applicantName: application.personalInfo.fullName,
+      });
+
+      const fileName = createEuropassCvPdfFileName(application.personalInfo.fullName);
+
+      const pdf = await generatePDF({
+        html: htmlContent,
+        fileName: fileName,
+      });
+
+      if (!pdf?.filePath) {
+        throw new Error('PDF oluşturulamadı');
+      }
+
+      const fileUrl = pdf.filePath.startsWith('file://')
+        ? pdf.filePath
+        : `file://${pdf.filePath}`;
+
+      await Share.open({
+        title: `${application.personalInfo.fullName} - Europass CV`,
+        url: fileUrl,
+        type: 'application/pdf',
+        filename: `${fileName}.pdf`,
+        failOnCancel: false,
+      });
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message?.includes('User did not share')) return;
+      console.error('PDF export error:', err);
+      Alert.alert('Hata', 'PDF oluşturulurken hata oluştu.');
+    } finally {
+      setIsExportingCvPdf(false);
+    }
+  };
 
   useEffect(() => {
     if (!application) return;
@@ -196,6 +303,60 @@ export const AdminDetayScreen: React.FC = () => {
           </TouchableOpacity>
         ))}
       </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Motivasyon Mektubu PDF</Text>
+        <View style={styles.exportMetaRow}>
+          <View style={styles.exportMetaItem}>
+            <Text style={styles.exportMetaValue}>
+              {application.personalInfo.motivationLetter
+                ? getMotivationLetterPdfWordCount(application.personalInfo.motivationLetter)
+                : 0}
+            </Text>
+            <Text style={styles.exportMetaLabel}>Kelime</Text>
+          </View>
+          <View style={styles.exportMetaItem}>
+            <Text style={styles.exportMetaValue}>
+              {application.personalInfo.motivationLetter
+                ? (isMotivationLetterComplete(application.personalInfo.motivationLetter) ? 'Hazır' : 'Eksik')
+                : 'Boş'}
+            </Text>
+            <Text style={styles.exportMetaLabel}>Durum</Text>
+          </View>
+        </View>
+        <Text style={styles.exportText}>
+          Adayın motivasyon mektubunu profesyonel PDF formatında dışa aktarın.
+        </Text>
+        <Button
+          label={isExportingMotivationPdf ? 'PDF Hazırlanıyor...' : 'Motivasyon Mektubu PDF'}
+          onPress={exportMotivationLetterPdf}
+          disabled={isExportingMotivationPdf}
+        />
+      </View>
+
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Europass CV PDF</Text>
+        <View style={styles.exportMetaRow}>
+          <View style={styles.exportMetaItem}>
+            <Text style={styles.exportMetaValue}>
+              {application.personalInfo.europassCv
+                ? (isEuropassCvComplete(application.personalInfo.europassCv) ? 'Hazır' : 'Eksik')
+                : 'Boş'}
+            </Text>
+            <Text style={styles.exportMetaLabel}>Durum</Text>
+          </View>
+        </View>
+        <Text style={styles.exportText}>
+          Adayın Europass CV'sini profesyonel PDF formatında dışa aktarın.
+        </Text>
+        <Button
+          label={isExportingCvPdf ? 'PDF Hazırlanıyor...' : 'Europass CV PDF'}
+          onPress={exportCvPdf}
+          disabled={isExportingCvPdf}
+        />
+      </View>
+
 
       {messages.length > 0 ? (
         <View style={styles.card}>
@@ -402,5 +563,33 @@ const createStyles = (colors: AppColors) =>
       color: colors.textPrimary,
       minHeight: 80,
       backgroundColor: colors.cardBg,
+    } as TextStyle,
+    exportMetaRow: {
+      flexDirection: 'row',
+      gap: 10,
+    } as ViewStyle,
+    exportMetaItem: {
+      flex: 1,
+      backgroundColor: colors.inputBg,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+      padding: 12,
+    } as ViewStyle,
+    exportMetaValue: {
+      color: colors.textPrimary,
+      fontSize: 18,
+      fontWeight: '800',
+    } as TextStyle,
+    exportMetaLabel: {
+      color: colors.textMuted,
+      fontSize: 12,
+      fontWeight: '700',
+      marginTop: 2,
+    } as TextStyle,
+    exportText: {
+      color: colors.textSecondary,
+      fontSize: 13,
+      lineHeight: 19,
     } as TextStyle,
   });
