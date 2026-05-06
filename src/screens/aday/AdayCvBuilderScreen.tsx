@@ -10,8 +10,10 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Share,
 } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { generatePDF } from 'react-native-html-to-pdf';
 import { useThemedStyles, type AppColors } from '../../theme';
 import { Button, Card, InputField, Pill } from '../../components';
 import { useAuth } from '../../hooks';
@@ -28,6 +30,13 @@ import {
   createEmptyEuropassCv,
   isEuropassCvComplete,
 } from '../../utils/europass';
+import {
+  A4_CV_PAGE_WIDTH,
+  A4_CV_PAGE_HEIGHT,
+  buildEuropassCvPdfHtml,
+  createEuropassCvPdfFileName,
+  hasEuropassCvPdfContent,
+} from '../../utils/europassCvPdf';
 
 const sectionHints = [
   '1) Kişisel profil ve özet',
@@ -58,6 +67,7 @@ export const AdayCvBuilderScreen: React.FC = () => {
   const [cv, setCv] = useState<EuropassCvProfile>(
     myApplication?.personalInfo.europassCv ?? createEmptyEuropassCv(),
   );
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   const isComplete = useMemo(() => isEuropassCvComplete(cv), [cv]);
 
@@ -174,6 +184,61 @@ export const AdayCvBuilderScreen: React.FC = () => {
       }),
     );
     Alert.alert('CV Kaydedildi', 'Europass formatındaki CV taslağı kaydedildi.');
+  };
+
+  const exportCvPdf = async () => {
+    if (!myApplication || isExportingPdf) return;
+
+    if (!hasEuropassCvPdfContent(cv)) {
+      Alert.alert('PDF Oluşturulamadı', 'PDF için önce CV alanlarını doldurun.');
+      return;
+    }
+
+    setIsExportingPdf(true);
+
+    try {
+      const fileName = createEuropassCvPdfFileName(myApplication.personalInfo.fullName);
+      const html = buildEuropassCvPdfHtml({
+        cv,
+        applicantName: myApplication.personalInfo.fullName,
+      });
+      
+      console.log('Europass CV PDF oluşturuluyor:', fileName);
+      
+      const pdf = await generatePDF({
+        html,
+        fileName: fileName,
+        directory: Platform.OS === 'ios' ? 'Documents' : 'Downloads',
+        width: A4_CV_PAGE_WIDTH,
+        height: A4_CV_PAGE_HEIGHT,
+        padding: 0,
+        bgColor: '#FFFFFF',
+        shouldPrintBackgrounds: true,
+      });
+
+      console.log('CV PDF oluşturuldu:', pdf);
+
+      if (!pdf?.filePath) {
+        throw new Error('PDF dosyası oluşturulamadı - dosya yolu bulunamadı');
+      }
+
+      console.log('CV PDF oluşturuldu:', pdf.filePath);
+
+      // React Native built-in Share API kullan
+      await Share.share({
+        title: 'Europass CV PDF',
+        message: `${myApplication.programName} için Europass CV`,
+        url: `file://${pdf.filePath}`,
+      });
+
+      console.log('CV PDF başarıyla paylaşıldı');
+    } catch (pdfError) {
+      console.error('CV PDF hatası:', pdfError);
+      const message = pdfError instanceof Error ? pdfError.message : 'PDF oluşturulurken hata oluştu.';
+      Alert.alert('PDF Oluşturulamadı', message);
+    } finally {
+      setIsExportingPdf(false);
+    }
   };
 
   if (!myApplication) {
@@ -397,6 +462,17 @@ export const AdayCvBuilderScreen: React.FC = () => {
           </Card>
         ))}
         <Button label="Dil Ekle" variant="ghost" onPress={addLanguage} />
+
+        <Card title="PDF Olarak Dışa Aktar">
+          <Text style={styles.hintRow}>
+            CV'nizi profesyonel Europass formatında PDF olarak dışa aktarın.
+          </Text>
+          <Button
+            label={isExportingPdf ? 'PDF Hazırlanıyor...' : 'PDF Olarak Dışa Aktar'}
+            onPress={exportCvPdf}
+            disabled={isExportingPdf}
+          />
+        </Card>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
