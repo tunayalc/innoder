@@ -21,6 +21,59 @@ compose() {
 env_value() {
   sed -n "s/^${1}=//p" "$ENV_FILE" | tail -n 1
 }
+# Replace or append KEY=VALUE in place, keeping the file's owner and mode.
+set_env_value() {
+  local tmp
+  tmp="$(mktemp)"
+  awk -v k="$1" -v v="$2" '
+    index($0, k "=") == 1 { if (!done) print k "=" v; done = 1; next }
+    { print }
+    END { if (!done) print k "=" v }
+  ' "$ENV_FILE" > "$tmp"
+  cat "$tmp" > "$ENV_FILE"
+  rm -f "$tmp"
+}
+configure_smtp() {
+  local to="${1:-}" host port user password backup
+  if [[ ! "$to" =~ ^[^[:space:]@\<\>,\;]+@[^[:space:]@\<\>,\;]+\.[^[:space:]@\<\>,\;]+$ ]]; then
+    echo "Usage: innoctl smtp TEST_RECIPIENT_EMAIL" >&2
+    return 1
+  fi
+  read -r -p "SMTP host [smtp.gmail.com]: " host
+  host="${host:-smtp.gmail.com}"
+  read -r -p "SMTP port [587]: " port
+  port="${port:-587}"
+  read -r -p "SMTP username (full e-mail address): " user
+  read -r -s -p "SMTP password / Gmail app password (hidden): " password
+  echo
+  # Gmail displays 16-character app passwords in groups of four.
+  [[ "$host" == "smtp.gmail.com" ]] && password="${password// /}"
+  if [[ ! "$host" =~ ^[A-Za-z0-9.-]+$ || ! "$port" =~ ^[0-9]+$ \
+    || ! "$user" =~ ^[^[:space:]@\\\<\>,\;]+@[^[:space:]@\\\<\>,\;]+$ || -z "$password" ]]; then
+    echo "Invalid SMTP settings; nothing was changed." >&2
+    return 1
+  fi
+  backup="$(mktemp)"
+  cp -p "$ENV_FILE" "$backup"
+  set_env_value SMTP_HOST "$host"
+  set_env_value SMTP_PORT "$port"
+  set_env_value SMTP_USER "$user"
+  set_env_value SMTP_PASSWORD ""
+  set_env_value SMTP_PASSWORD_BASE64 "$(printf '%s' "$password" | openssl base64 -A)"
+  set_env_value SMTP_FROM "Inno Derneği <$user>"
+  password=""
+  if compose up -d --no-deps --wait --wait-timeout 120 server \
+    && compose exec -T server node --input-type=module - "$to" < "$DEPLOY_DIR/scripts/check-mail.mjs"; then
+    rm -f "$backup"
+    echo "SMTP saved. Check that the test message arrived at $to."
+  else
+    cat "$backup" > "$ENV_FILE"
+    rm -f "$backup"
+    compose up -d --no-deps --wait --wait-timeout 120 server || true
+    echo "SMTP test failed; previous settings were restored." >&2
+    return 1
+  fi
+}
 deploy_release() {
   bash "$DEPLOY_DIR/scripts/validate-env.sh" "$ENV_FILE"
   compose config --quiet
@@ -77,6 +130,7 @@ Usage: innoctl COMMAND
   update                 Backup, pull main, rebuild and deploy
   release                Backup and deploy already uploaded sources, API before web
   admin-reset            Generate a one-time super admin password
+  smtp EMAIL             Set SMTP (prompts; password hidden) and send a test mail
   start                  Start production services
   stop                   Stop application services without deleting data
 EOF
@@ -138,6 +192,9 @@ case "$command_name" in
     ;;
   release)
     deploy_release
+    ;;
+  smtp)
+    configure_smtp "${1:-}"
     ;;
   admin-reset)
     email="$(env_value SUPER_ADMIN_EMAIL)"
