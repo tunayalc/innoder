@@ -105,7 +105,10 @@ test(
         assert.equal((await api.inject({ method: 'POST', url: '/api/auth/register', payload: registration })).statusCode, 409);
         assert.equal((await api.inject({ method: 'POST', url: '/api/auth/register', payload: { ...registration, email: 'missing-consent@test.invalid', consentAccepted: false } })).statusCode, 400);
         const temporaryPassword = 'LifecycleTemporary123';
-        const approved = await api.inject({ method: 'POST', url: `/api/admin/candidates/${id}/temporary-password`, headers, payload: { password: temporaryPassword } });
+        const unapproved = await api.inject({ method: 'POST', url: `/api/admin/candidates/${id}/temporary-password`, headers, payload: { password: temporaryPassword, eventLinkApproved: false } });
+        assert.equal(unapproved.statusCode, 400, unapproved.body);
+        assert.equal((await db!.query('SELECT status FROM users WHERE id = $1', [id])).rows[0].status, 'pending');
+        const approved = await api.inject({ method: 'POST', url: `/api/admin/candidates/${id}/temporary-password`, headers, payload: { password: temporaryPassword, eventLinkApproved: true } });
         assert.equal(approved.statusCode, 200, approved.body);
         assert.equal(approved.json().user.mustChangePassword, true);
         assert.equal(JSON.stringify(approved.json()).includes(temporaryPassword), false);

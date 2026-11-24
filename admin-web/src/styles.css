@@ -1653,3 +1653,9 @@ dialog::backdrop {
   font-size: 14px;
   color: var(--secondary);
 }
+.approval-box {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-low);
+}

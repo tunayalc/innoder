@@ -576,10 +576,18 @@ export const api = {
     download(`/api/program-templates/${id}/download`, name),
   admins: () => request<User[]>('/api/admin/admins'),
   audit: () => request<AuditLog[]>('/api/admin/audit?limit=200'),
-  setTemporaryPassword: (id: string, password: string) =>
+  setTemporaryPassword: (
+    id: string,
+    password: string,
+    eventLinkApproved?: boolean,
+  ) =>
     request(`/api/admin/candidates/${id}/temporary-password`, {
       method: 'POST',
-      body: JSON.stringify({ password }),
+      body: JSON.stringify(
+        eventLinkApproved === undefined
+          ? { password }
+          : { password, eventLinkApproved },
+      ),
     }),
   setStage: (id: string, stage: string, revision?: number) =>
     request<Application>(`/api/applications/${id}/stage`, {

@@ -208,7 +208,18 @@ export const registerUserRoutes = (
     { preHandler: guard.authorize('admin', 'super_admin') },
     async (request, reply) => {
       const params = z.object({ id: z.uuid() }).safeParse(request.params);
-      const body = z.object({ password: z.string() }).safeParse(request.body);
+      const body = z
+        .object({
+          password: z.string(),
+          // Sent by the web panel once the admin has checked the event link.
+          // Older clients (the store-reviewed mobile app) omit it.
+          eventLinkApproved: z.boolean().optional(),
+        })
+        .safeParse(request.body);
+      if (body.success && body.data.eventLinkApproved === false)
+        return reply.code(400).send({
+          message: 'Etkinlik bağlantısı onaylanmadan hesap etkinleştirilemez.',
+        });
       if (
         !params.success ||
         !body.success ||
@@ -239,6 +250,10 @@ export const registerUserRoutes = (
         action: 'candidate_temporary_password_set',
         entityType: 'user',
         entityId: params.data.id,
+        metadata: {
+          eventLinkApproved: body.data.eventLinkApproved === true,
+          eventLink: result.rows[0].event_link ?? null,
+        },
       });
       return { user: mapUser(result.rows[0]), mustChangePassword: true };
     },

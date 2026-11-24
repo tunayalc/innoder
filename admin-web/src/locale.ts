@@ -1,5 +1,9 @@
 // Only authored UI copy is translated. Never send applicant data to a translator.
 const english: Record<string, string> = {
+  'Önce etkinlik bağlantısını kontrol edip onaylayın.': 'Check and approve the event link first.',
+  'Aday etkinlik bağlantısı paylaşmadığı için hesap etkinleştirilemez.': 'The account cannot be activated because the candidate did not share an event link.',
+  'Bağlantıyı açıp kontrol ettim; aday bu etkinliğe katılıyor.': 'I opened and checked the link; the candidate is taking part in this event.',
+  'Onayla ve şifreyi kaydet': 'Approve and save password',
   'E-posta gönder': 'Send email',
   'Şifre talebi': 'Password request',
   'Hazır mesajlar': 'Quick messages',

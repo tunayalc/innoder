@@ -202,7 +202,14 @@ export const CandidatesView = () => {
         <TemporaryPassword
           user={candidate}
           onClose={() => setCandidate(undefined)}
-          onSave={password => api.setTemporaryPassword(candidate.id, password)}
+          requireEventLinkApproval={candidate.status === 'pending'}
+          onSave={password =>
+            api.setTemporaryPassword(
+              candidate.id,
+              password,
+              candidate.status === 'pending' ? true : undefined,
+            )
+          }
           onSaved={() => {
             setCandidate(undefined);
             setSuccess(
@@ -395,18 +402,33 @@ const TemporaryPassword = ({
   onClose,
   onSave,
   onSaved,
+  requireEventLinkApproval = false,
 }: {
   user: User;
   onClose: () => void;
   onSave: (value: string) => Promise<unknown>;
   onSaved: () => void;
+  requireEventLinkApproval?: boolean;
 }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [approved, setApproved] = useState(false);
+  const hasLink = Boolean(user.eventLink);
+  const blocked = requireEventLinkApproval && (!hasLink || !approved);
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setError('');
+    if (blocked) {
+      setError(
+        hasLink
+          ? tr('Önce etkinlik bağlantısını kontrol edip onaylayın.')
+          : tr(
+              'Aday etkinlik bağlantısı paylaşmadığı için hesap etkinleştirilemez.',
+            ),
+      );
+      return;
+    }
     if (!validPassword(password)) {
       setError(passwordHint);
       return;
@@ -441,6 +463,31 @@ const TemporaryPassword = ({
             'Mevcut oturumlar kapatılacak. İlk girişte yeni şifre belirlenmesi gerekecek.',
           )}
         </p>
+        {requireEventLinkApproval && (
+          <section className="approval-box stack">
+            <strong>{tr('Etkinlik bağlantısı')}</strong>
+            <EventLink value={user.eventLink} />
+            {hasLink ? (
+              <label className="check-row">
+                <input
+                  type="checkbox"
+                  checked={approved}
+                  disabled={busy}
+                  onChange={e => setApproved(e.target.checked)}
+                />
+                {tr(
+                  'Bağlantıyı açıp kontrol ettim; aday bu etkinliğe katılıyor.',
+                )}
+              </label>
+            ) : (
+              <p className="form-note">
+                {tr(
+                  'Aday etkinlik bağlantısı paylaşmadığı için hesap etkinleştirilemez.',
+                )}
+              </p>
+            )}
+          </section>
+        )}
         <Feedback error={error} />
         <input autoComplete="username" value={user.email} readOnly hidden />
         <PasswordField
@@ -462,13 +509,17 @@ const TemporaryPassword = ({
           >
             {tr('Vazgeç')}
           </button>
-          <button className="primary" disabled={busy}>
+          <button className="primary" disabled={busy || blocked}>
             {busy ? (
               <LoaderCircle className="spin" size={17} />
             ) : (
               <KeyRound size={17} />
             )}
-            {busy ? tr('Kaydediliyor…') : tr('Şifreyi kaydet')}
+            {busy
+              ? tr('Kaydediliyor…')
+              : requireEventLinkApproval
+              ? tr('Onayla ve şifreyi kaydet')
+              : tr('Şifreyi kaydet')}
           </button>
         </footer>
       </form>
