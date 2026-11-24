@@ -1,6 +1,6 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
-import { ActivityIndicator, Platform, StyleSheet, View, ViewStyle } from 'react-native';
+import { ActivityIndicator, Image, ImageStyle, Platform, StyleSheet, View, ViewStyle } from 'react-native';
 import { RootStackParamList } from '../types';
 import { LogoutButton, SettingsButton } from '../components';
 import { useAuth } from '../hooks';
@@ -25,10 +25,7 @@ import {
   ChangePasswordScreen,
   ForgotPasswordScreen,
 } from '../screens/auth';
-import { HomeScreen } from '../screens/home';
 import {
-  AdayMenuScreen,
-  AdayEgitimScreen,
   AdayProgramDetayScreen,
   AdayKisiselScreen,
   AdayCvBuilderScreen,
@@ -38,19 +35,17 @@ import {
   BelgeCameraScreen,
 } from '../screens/aday';
 import {
-  AdminMenuScreen,
-  AdminListeScreen,
   AdminDetayScreen,
   AdminDogrulamaScreen,
   AdminAuditScreen,
-  AdminPasswordRequestsScreen,
   AdminProgramManagementScreen,
   AdminManagementScreen,
   DocumentViewerScreen,
 } from '../screens/admin';
-import { DataModelScreen } from '../screens/data';
 import { SettingsScreen } from '../screens/settings/SettingsScreen';
 import { AdminOperationsScreen } from '../screens/admin/AdminOperationsScreen';
+import { CandidateTabs } from './CandidateTabs';
+import { AdminTabs } from './AdminTabs';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -127,8 +122,14 @@ export const RootNavigator: React.FC = () => {
   if (restoring)
     return (
       <View style={styles.restoring}>
+        <Image
+          source={require('../assets/images/inno-wordmark-white.png')}
+          accessibilityLabel="Inno Derneği"
+          resizeMode="contain"
+          style={styles.splashLogo}
+        />
         <ActivityIndicator
-          color={colors.primary}
+          color={colors.white}
           accessibilityLabel="Oturum kontrol ediliyor"
         />
       </View>
@@ -138,6 +139,7 @@ export const RootNavigator: React.FC = () => {
     <Stack.Navigator
       screenOptions={{
         headerShadowVisible: false,
+        headerBackButtonDisplayMode: 'minimal',
         headerStyle: {
           backgroundColor: colors.background,
         },
@@ -185,12 +187,9 @@ export const RootNavigator: React.FC = () => {
       ) : isAdmin ? (
         <>
           <Stack.Screen
-            name="AdminMenu"
-            component={AdminMenuScreen}
-            options={{
-              title: t('common.appName'),
-              headerRight: renderAuthenticatedHeaderRight,
-            }}
+            name="AdminTabs"
+            component={AdminTabs}
+            options={{ headerShown: false, title: t('common.appName') }}
           />
           <Stack.Screen
             name="AdminOperations"
@@ -200,23 +199,13 @@ export const RootNavigator: React.FC = () => {
                 route.params.section === 'messages'
                   ? 'Mesajlar'
                   : 'Hesap Silme Talepleri',
-              headerRight: renderAuthenticatedHeaderRight,
             })}
-          />
-          <Stack.Screen
-            name="AdminPasswordRequests"
-            component={AdminPasswordRequestsScreen}
-            options={{
-              title: 'Şifre Talepleri',
-              headerRight: renderAuthenticatedHeaderRight,
-            }}
           />
           <Stack.Screen
             name="AdminProgramManagement"
             component={AdminProgramManagementScreen}
             options={{
               title: 'Program Yönetimi',
-              headerRight: renderAuthenticatedHeaderRight,
             }}
           />
           <Stack.Screen
@@ -224,15 +213,6 @@ export const RootNavigator: React.FC = () => {
             component={AdminManagementScreen}
             options={{
               title: 'Admin Yönetimi',
-              headerRight: renderAuthenticatedHeaderRight,
-            }}
-          />
-          <Stack.Screen
-            name="AdminListe"
-            component={AdminListeScreen}
-            options={{
-              title: t('adminList.title'),
-              headerRight: renderAuthenticatedHeaderRight,
             }}
           />
           <Stack.Screen
@@ -240,7 +220,6 @@ export const RootNavigator: React.FC = () => {
             component={AdminDetayScreen}
             options={{
               title: t('nav.applicationDetail'),
-              headerRight: renderAuthenticatedHeaderRight,
             }}
           />
           <Stack.Screen
@@ -248,7 +227,6 @@ export const RootNavigator: React.FC = () => {
             component={AdminDogrulamaScreen}
             options={{
               title: t('nav.verificationDecision'),
-              headerRight: renderAuthenticatedHeaderRight,
             }}
           />
           <Stack.Screen
@@ -256,7 +234,6 @@ export const RootNavigator: React.FC = () => {
             component={AdminAuditScreen}
             options={{
               title: t('common.auditLog'),
-              headerRight: renderAuthenticatedHeaderRight,
             }}
           />
           <Stack.Screen
@@ -264,7 +241,6 @@ export const RootNavigator: React.FC = () => {
             component={DocumentViewerScreen}
             options={{
               title: t('nav.documentViewer'),
-              headerRight: renderAuthenticatedHeaderRight,
             }}
           />
           <Stack.Screen
@@ -272,23 +248,6 @@ export const RootNavigator: React.FC = () => {
             component={AdayMesajScreen}
             options={{
               title: t('nav.messaging'),
-              headerRight: renderAuthenticatedHeaderRight,
-            }}
-          />
-          <Stack.Screen
-            name="Main"
-            component={HomeScreen}
-            options={{
-              title: t('common.appName'),
-              headerRight: renderAuthenticatedHeaderRight,
-            }}
-          />
-          <Stack.Screen
-            name="DataModel"
-            component={DataModelScreen}
-            options={{
-              title: t('nav.dataModel'),
-              headerRight: renderAuthenticatedHeaderRight,
             }}
           />
           <Stack.Screen
@@ -296,34 +255,21 @@ export const RootNavigator: React.FC = () => {
             component={ChangePasswordScreen}
             options={{
               title: 'Şifre Değişikliği',
-              headerRight: renderAuthenticatedHeaderRight,
             }}
           />
         </>
       ) : (
         <>
           <Stack.Screen
-            name="AdayMenu"
-            component={AdayMenuScreen}
-            options={{
-              title: t('common.appName'),
-              headerRight: renderAuthenticatedHeaderRight,
-            }}
-          />
-          <Stack.Screen
-            name="AdayEgitim"
-            component={AdayEgitimScreen}
-            options={{
-              title: t('nav.myPrograms'),
-              headerRight: renderAuthenticatedHeaderRight,
-            }}
+            name="AdayTabs"
+            component={CandidateTabs}
+            options={{ headerShown: false, title: t('common.appName') }}
           />
           <Stack.Screen
             name="AdayProgramDetay"
             component={AdayProgramDetayScreen}
             options={{
               title: t('nav.programDetail'),
-              headerRight: renderAuthenticatedHeaderRight,
             }}
           />
           <Stack.Screen
@@ -331,7 +277,6 @@ export const RootNavigator: React.FC = () => {
             component={AdayKisiselScreen}
             options={{
               title: t('nav.personalInfo'),
-              headerRight: renderAuthenticatedHeaderRight,
             }}
           />
           <Stack.Screen
@@ -339,7 +284,6 @@ export const RootNavigator: React.FC = () => {
             component={AdayCvBuilderScreen}
             options={{
               title: t('nav.europassCv'),
-              headerRight: renderAuthenticatedHeaderRight,
             }}
           />
           <Stack.Screen
@@ -347,7 +291,6 @@ export const RootNavigator: React.FC = () => {
             component={AdayMotivationScreen}
             options={{
               title: t('nav.motivationLetter'),
-              headerRight: renderAuthenticatedHeaderRight,
             }}
           />
           <Stack.Screen
@@ -355,7 +298,6 @@ export const RootNavigator: React.FC = () => {
             component={AdayBelgeScreen}
             options={{
               title: t('nav.documentScan'),
-              headerRight: renderAuthenticatedHeaderRight,
             }}
           />
           <Stack.Screen
@@ -368,7 +310,6 @@ export const RootNavigator: React.FC = () => {
             component={AdayMesajScreen}
             options={{
               title: t('nav.messaging'),
-              headerRight: renderAuthenticatedHeaderRight,
             }}
           />
           <Stack.Screen
@@ -376,23 +317,6 @@ export const RootNavigator: React.FC = () => {
             component={DocumentViewerScreen}
             options={{
               title: t('nav.documentViewer'),
-              headerRight: renderAuthenticatedHeaderRight,
-            }}
-          />
-          <Stack.Screen
-            name="Main"
-            component={HomeScreen}
-            options={{
-              title: t('common.appName'),
-              headerRight: renderAuthenticatedHeaderRight,
-            }}
-          />
-          <Stack.Screen
-            name="DataModel"
-            component={DataModelScreen}
-            options={{
-              title: t('nav.dataModel'),
-              headerRight: renderAuthenticatedHeaderRight,
             }}
           />
           <Stack.Screen
@@ -400,7 +324,6 @@ export const RootNavigator: React.FC = () => {
             component={ChangePasswordScreen}
             options={{
               title: 'Şifre Değişikliği',
-              headerRight: renderAuthenticatedHeaderRight,
             }}
           />
         </>
@@ -416,7 +339,8 @@ export const RootNavigator: React.FC = () => {
 
 const createStyles = (colors: AppColors) =>
   StyleSheet.create({
-    restoring:{flex:1,justifyContent:'center',backgroundColor:colors.background} as ViewStyle,
+    restoring: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 28, backgroundColor: colors.brandRed } as ViewStyle,
+    splashLogo: { width: 200, height: 76 } as ImageStyle,
     headerActions: {
       flexDirection: 'row',
       alignItems: 'center',

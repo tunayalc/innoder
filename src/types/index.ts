@@ -6,4 +6,4 @@ export * from './audit';
 
 export type PillVariant = 'ok' | 'warn' | 'err' | 'info';
 
-export type ButtonVariant = 'solid' | 'ghost';
+export type ButtonVariant = 'solid' | 'ghost' | 'outline' | 'onHero';

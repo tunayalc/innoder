@@ -45,8 +45,8 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   container: {
     width: 44,
     height: 44,
-    borderRadius: 6,
-    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: 22,
+    backgroundColor: colors.surfaceContainerHigh,
     alignItems: 'center',
     justifyContent: 'center',
   } as ViewStyle,

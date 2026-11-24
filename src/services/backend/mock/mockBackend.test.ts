@@ -126,10 +126,20 @@ describe('mock backend', () => {
     });
     expect(generalThread[generalThread.length - 1]?.content).toContain('şifre talep ediyorum');
 
+    await expect(
+      backend.auth.sendCandidatePassword({
+        candidateUserId: candidate.id,
+        password: 'InnoTemporary2026',
+        adminUserId: 'admin-001',
+        eventLinkApproved: false,
+      }),
+    ).rejects.toThrow('Etkinlik bağlantısı onaylanmadan');
+
     const updated = await backend.auth.sendCandidatePassword({
       candidateUserId: candidate.id,
       password: 'InnoTemporary2026',
       adminUserId: 'admin-001',
+      eventLinkApproved: true,
     });
 
     expect(updated.credentialRequestPending).toBe(false);

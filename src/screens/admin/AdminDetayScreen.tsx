@@ -243,22 +243,49 @@ export const AdminDetayScreen: React.FC = () => {
 
   return (
     <ScreenScrollView contentContainerStyle={styles.section}>
-      <Text style={styles.h2}>Başvuru Detayı</Text>
-
-      <View style={styles.profileRow}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{initials}</Text>
-        </View>
-        <View style={styles.profileInfo}>
-          <Text style={styles.profileName}>{application.personalInfo.fullName}</Text>
-          <Text style={styles.subtitle}>
-            {application.programName} · {formatDateShort(application.createdAt)}
-          </Text>
+      <View style={styles.hero}>
+        <View style={styles.profileRow}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{initials}</Text>
+          </View>
+          <View style={styles.profileInfo}>
+            <Text accessibilityRole="header" style={styles.profileName}>{application.personalInfo.fullName}</Text>
+            <Text style={styles.subtitle}>
+              {application.programName} · {formatDateShort(application.createdAt)}
+            </Text>
+          </View>
         </View>
         <Pill
-          label={APPLICATION_STATUS_LABELS[application.status] || application.status}
+          label={application.decisionStatus === 'rejected' ? 'Reddedildi' : APPLICATION_STATUS_LABELS[application.status] || application.status}
           variant={appStatusVariant}
         />
+        <View style={styles.heroActions}>
+          <Button
+            label="Belge doğrulama"
+            size="sm"
+            variant="onHero"
+            icon="file-check-outline"
+            onPress={() => navigation.navigate('AdminDogrulama', { applicationId })}
+          />
+          <Button
+            label="Program sohbeti"
+            size="sm"
+            variant="onHero"
+            icon="message-text-outline"
+            onPress={() => navigation.navigate('AdayMesaj', { applicationId })}
+          />
+          <Button
+            label="Genel sohbet"
+            size="sm"
+            variant="onHero"
+            icon="account-voice"
+            onPress={() =>
+              navigation.navigate('AdayMesaj', {
+                applicationId: createGeneralChatThreadId(application.userId),
+              })
+            }
+          />
+        </View>
       </View>
 
       <View style={styles.card}>
@@ -406,25 +433,6 @@ export const AdminDetayScreen: React.FC = () => {
         </View>
       ) : null}
 
-      <Button
-        label="Belge Doğrulama"
-        onPress={() => navigation.navigate('AdminDogrulama', { applicationId })}
-      />
-      <Button
-        label="Program Sohbeti"
-        variant="ghost"
-        onPress={() => navigation.navigate('AdayMesaj', { applicationId })}
-      />
-      <Button
-        label="Genel Sohbet"
-        variant="ghost"
-        onPress={() =>
-          navigation.navigate('AdayMesaj', {
-            applicationId: createGeneralChatThreadId(application.userId),
-          })
-        }
-      />
-
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Başvuru Aşaması ve Kararı</Text>
         <Text style={styles.cardHint}>
@@ -498,7 +506,7 @@ const createStyles = (colors: AppColors) =>
   StyleSheet.create({
     section: {
       paddingTop: 16,
-      gap: 12,
+      gap: 14,
       padding: 20,
       paddingBottom: 40,
     } as ViewStyle,
@@ -518,42 +526,59 @@ const createStyles = (colors: AppColors) =>
       gap: 12,
       alignItems: 'center',
     } as ViewStyle,
+    hero: {
+      backgroundColor: colors.heroBg,
+      borderRadius: 18,
+      padding: 18,
+      gap: 14,
+    } as ViewStyle,
+    heroActions: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    } as ViewStyle,
     avatar: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      backgroundColor: colors.info,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: colors.primary,
       alignItems: 'center',
       justifyContent: 'center',
     } as ViewStyle,
     avatarText: {
-      color: colors.onInfo,
+      color: colors.white,
       fontWeight: '700',
-      fontSize: 16,
+      fontSize: 20,
     } as TextStyle,
     profileInfo: {
       flex: 1,
     } as ViewStyle,
     profileName: {
-      fontSize: 16,
+      fontSize: 22,
+      lineHeight: 28,
       fontWeight: '700',
-      color: colors.textPrimary,
+      color: colors.heroText,
     } as TextStyle,
     subtitle: {
-      color: colors.textSecondary,
-      fontSize: 12,
+      color: colors.heroMuted,
+      fontSize: 14,
       marginTop: 2,
     } as TextStyle,
     card: {
       backgroundColor: colors.cardBg,
-      borderRadius: 8,
-      borderWidth: 1,
+      borderRadius: 16,
+      borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.borderLight,
       padding: 16,
       gap: 10,
+      shadowColor: colors.shadow,
+      shadowOpacity: 0.06,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 2,
     } as ViewStyle,
     cardTitle: {
-      fontSize: 14,
+      fontSize: 18,
       fontWeight: '700',
       color: colors.textPrimary,
       marginBottom: 4,
@@ -596,7 +621,7 @@ const createStyles = (colors: AppColors) =>
       marginTop: 4,
     } as TextStyle,
     textArea: {
-      borderRadius: 6,
+      borderRadius: 10,
       borderWidth: 1,
       borderColor: colors.outline,
       padding: 12,
@@ -611,8 +636,8 @@ const createStyles = (colors: AppColors) =>
     } as ViewStyle,
     exportMetaItem: {
       flex: 1,
-      backgroundColor: colors.inputBg,
-      borderRadius: 6,
+      backgroundColor: colors.surfaceContainerHigh,
+      borderRadius: 12,
       borderWidth: 1,
       borderColor: colors.borderLight,
       padding: 12,

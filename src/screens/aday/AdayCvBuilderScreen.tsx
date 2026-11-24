@@ -219,7 +219,7 @@ export const AdayCvBuilderScreen: React.FC = () => {
           </Text>
           <Button
             label="Programlarıma Git"
-            onPress={() => navigation.navigate('AdayEgitim')}
+            onPress={() => navigation.navigate('AdayTabs', { screen: 'AdayEgitim' })}
           />
         </Card>
       </View>

@@ -230,7 +230,7 @@ const createStyles = (colors: AppColors) =>
     } as TextStyle,
     card: {
       backgroundColor: colors.cardBg,
-      borderRadius: 8,
+      borderRadius: 12,
       borderWidth: 1,
       borderColor: colors.borderLight,
       padding: 16,
@@ -251,7 +251,7 @@ const createStyles = (colors: AppColors) =>
     } as ViewStyle,
     page: {
       height: 260,
-      borderRadius: 8,
+      borderRadius: 12,
       borderWidth: 1,
       borderColor: colors.borderLight,
       backgroundColor: colors.placeholder,

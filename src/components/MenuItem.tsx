@@ -22,8 +22,8 @@ export const MenuItem: React.FC<MenuItemProps> = ({
 }) => {
   const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
-  const resolvedIconColor = iconColor || colors.textSecondary;
-  const resolvedIconBg = iconBg || colors.surfaceContainerHigh;
+  const resolvedIconColor = iconColor || colors.primaryText;
+  const resolvedIconBg = iconBg || colors.primarySoft;
 
   return (
     <Pressable

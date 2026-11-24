@@ -21,17 +21,22 @@ export const Card: React.FC<CardProps> = ({ title, children, style }) => {
 
 const createStyles = (colors: AppColors) => StyleSheet.create({
   card: {
-    backgroundColor: colors.surfaceContainerLow,
-    borderRadius: 8,
-    borderWidth: 1,
+    backgroundColor: colors.cardBg,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.borderLight,
     padding: 16,
     gap: 10,
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   } as ViewStyle,
   cardTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
-    lineHeight: 23,
+    lineHeight: 24,
     color: colors.textPrimary,
   } as TextStyle,
 });

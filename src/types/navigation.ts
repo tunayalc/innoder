@@ -1,5 +1,5 @@
 import type { StackNavigationProp } from '@react-navigation/stack';
-import type { CompositeNavigationProp, RouteProp } from '@react-navigation/native';
+import type { CompositeNavigationProp, NavigatorScreenParams, RouteProp } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 
 // Root Stack Parameters
@@ -11,19 +11,15 @@ export type RootStackParamList = {
   ForgotPassword: undefined;
   Splash: undefined;
   Auth: undefined;
-  Main: { screen: keyof MainTabParamList } | undefined;
-  AdayMenu: undefined;
-  AdayEgitim: undefined;
+  AdayTabs: NavigatorScreenParams<CandidateTabParamList> | undefined;
   AdayProgramDetay: { applicationId: string };
   AdayKisisel: undefined;
   AdayCvBuilder: { applicationId: string } | undefined;
   AdayMotivation: { applicationId: string } | undefined;
-  AdayBelge: { applicationId: string; capturedPhotoUri?: string } | undefined;
+  AdayBelge: { applicationId: string; capturedPhotoUri?: string; docType?: import('./application').DocumentType } | undefined;
   BelgeCamera: { docType: string; applicationId: string };
   AdayMesaj: { applicationId: string } | undefined;
-  AdminMenu: undefined;
-  AdminListe: undefined;
-  AdminPasswordRequests: undefined;
+  AdminTabs: NavigatorScreenParams<AdminTabParamList> | undefined;
   AdminProgramManagement: undefined;
   AdminManagement: undefined;
   AdminOperations: {section:'messages'|'deletions'};
@@ -31,8 +27,23 @@ export type RootStackParamList = {
   AdminDogrulama: { applicationId: string; documentId?: string };
   AdminAudit: undefined;
   DocumentViewer: { applicationId: string; documentId?: string };
-  DataModel: undefined;
   Settings: undefined;
+};
+
+// Candidate bottom tabs
+export type CandidateTabParamList = {
+  AdayMenu: undefined;
+  AdayEgitim: undefined;
+  AdayMesajlar: undefined;
+  AdayProfil: undefined;
+};
+
+// Admin bottom tabs
+export type AdminTabParamList = {
+  AdminHome: undefined;
+  AdminListe: { issues?: boolean } | undefined;
+  AdminOnaylar: undefined;
+  AdminYonetim: undefined;
 };
 
 // Main Tab Parameters

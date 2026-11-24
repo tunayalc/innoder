@@ -164,7 +164,7 @@ export const AdminDocumentUpload = ({ application }: { application: Application 
 const createStyles = (colors: AppColors) => StyleSheet.create({
   form: { gap: 8, borderTopWidth: 1, borderTopColor: colors.borderLight, paddingTop: 12 },
   choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  choice: { borderWidth: 1, borderColor: colors.borderLight, borderRadius: 6, padding: 10, maxWidth: '100%' },
+  choice: { borderWidth: 1, borderColor: colors.borderLight, borderRadius: 12, padding: 10, maxWidth: '100%' },
   selected: { borderColor: colors.primary, backgroundColor: colors.surfaceContainerHigh },
   label: { color: colors.textPrimary, fontSize: 14, fontWeight: '600' },
   text: { color: colors.textPrimary, fontSize: 14 },

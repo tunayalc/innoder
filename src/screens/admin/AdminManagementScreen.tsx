@@ -79,9 +79,9 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   title: { color: colors.textPrimary, fontSize: 24, fontWeight: '700' } as TextStyle,
   subtitle: { color: colors.textSecondary, fontSize: 13, lineHeight: 19 } as TextStyle,
   notice: { color: colors.noticeText, backgroundColor: colors.noticeBg, padding: 16, borderRadius: 8 } as TextStyle,
-  section: { gap: 12, padding: 16, borderWidth: 1, borderColor: colors.borderLight, borderRadius: 8, backgroundColor: colors.cardBg } as ViewStyle,
+  section: { gap: 12, padding: 16, borderWidth: 1, borderColor: colors.borderLight, borderRadius: 12, backgroundColor: colors.cardBg } as ViewStyle,
   sectionTitle: { color: colors.textPrimary, fontSize: 15, fontWeight: '700' } as TextStyle,
-  adminRow: { gap: 8, padding: 16, borderWidth: 1, borderColor: colors.borderLight, borderRadius: 8, backgroundColor: colors.cardBg } as ViewStyle,
+  adminRow: { gap: 8, padding: 16, borderWidth: 1, borderColor: colors.borderLight, borderRadius: 12, backgroundColor: colors.cardBg } as ViewStyle,
   adminHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' } as ViewStyle,
   adminName: { color: colors.textPrimary, fontSize: 16, fontWeight: '700' } as TextStyle,
 });

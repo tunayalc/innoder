@@ -54,6 +54,8 @@ it.each([
   ['dark solid', darkColors, 'solid'],
   ['light secondary', lightColors, 'ghost'],
   ['dark secondary', darkColors, 'ghost'],
+  ['light outline', lightColors, 'outline'],
+  ['dark outline', darkColors, 'outline'],
 ] as const)('retains readable labels and stable geometry for %s pressed buttons', (_name, colors, variant) => {
   mockColors = colors;
   const root = render(<Button label="Continue" variant={variant} onPress={jest.fn()} />);
@@ -62,10 +64,10 @@ it.each([
   const pressed = StyleSheet.flatten(button.props.style({ pressed: true }));
   expect(resting.minHeight).toBeGreaterThanOrEqual(48);
   expect(pressed.minHeight).toBe(resting.minHeight);
-  expect(pressed.borderRadius).toBe(8);
-  expect(pressed.backgroundColor).toBe(variant === 'ghost' ? colors.surfaceContainerHigh : colors.primaryPressed);
+  expect(pressed.borderRadius).toBe(10);
+  expect(pressed.backgroundColor).toBe({ ghost: colors.surfaceContainerHigh, outline: colors.primarySoft, solid: colors.primaryPressed }[variant]);
   expect(StyleSheet.flatten(root.findByType(Text).props.style)).toMatchObject({ fontFamily: 'Inter-SemiBold', fontSize: 16 });
-  expect(StyleSheet.flatten(root.findByType(Text).props.style).color).toBe(variant === 'ghost' ? colors.textPrimary : colors.white);
+  expect(StyleSheet.flatten(root.findByType(Text).props.style).color).toBe({ ghost: colors.textPrimary, outline: colors.primaryText, solid: colors.white }[variant]);
 });
 
 it('preserves the original wordmark on an opaque nameplate in dark mode', () => {

@@ -9,8 +9,9 @@ import {
   FlatList,
   TouchableOpacity,
   TextInput,
+  ScrollView,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {
@@ -30,6 +31,7 @@ import {
   Application,
   ApplicationStatus,
   RootStackNavigationProp,
+  AdminTabParamList,
 } from '../../types';
 import { PROGRAM_CATALOG } from '../../services/programCatalog';
 import { loadAdminApplications } from '../../store/thunks/applicationThunks';
@@ -72,7 +74,11 @@ export const AdminListeScreen: React.FC = () => {
   );
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [programFilter, setProgramFilter] = useState<ProgramFilter>('all');
+  const route = useRoute<RouteProp<AdminTabParamList, 'AdminListe'>>();
   const [issuesFilter, setIssuesFilter] = useState<IssuesFilter>('all');
+  useEffect(() => {
+    if (route.params?.issues) setIssuesFilter('issues');
+  }, [route.params?.issues]);
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [query, setQuery] = useState('');
   const hasFilters =
@@ -213,25 +219,34 @@ export const AdminListeScreen: React.FC = () => {
         }
         activeOpacity={0.7}
       >
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>
+            {(item.personalInfo.fullName || '?')
+              .split(/\s+/)
+              .filter(Boolean)
+              .slice(0, 2)
+              .map(part => part[0]?.toLocaleUpperCase('tr-TR'))
+              .join('')}
+          </Text>
+        </View>
         <View style={styles.rowContent}>
           <Text style={styles.rowName}>{item.personalInfo.fullName}</Text>
           <Text style={styles.rowSubtitle}>
             {item.programName} · {getSubtitle(item)}
           </Text>
           <Pill
-            subtle
             label={getApplicationStatusLabel(item.status, language)}
-            variant={statusToVariant(item.status)}
+            variant={item.decisionStatus === 'rejected' ? 'err' : statusToVariant(item.status)}
           />
         </View>
-        <Icon name="chevron-right" size={20} color={colors.textMuted} />
+        <Icon name="chevron-right" size={22} color={colors.textMuted} />
       </TouchableOpacity>
     ),
     [navigation, getSubtitle, styles, language, colors.textMuted],
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <FlatList
         data={filteredApps}
         initialNumToRender={10}
@@ -253,7 +268,7 @@ export const AdminListeScreen: React.FC = () => {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[
           styles.listContainer,
-          { paddingBottom: insets.bottom + 24 },
+          { paddingBottom: 24 },
         ]}
         refreshing={isLoading}
         onRefresh={() => dispatch(loadAdminApplications())}
@@ -272,18 +287,21 @@ export const AdminListeScreen: React.FC = () => {
             </View>
 
             <View style={styles.searchWrap}>
-              <TextInput
-                style={styles.searchInput}
-                value={query}
-                onChangeText={setQuery}
-                placeholder={t('adminList.searchPlaceholder')}
-                placeholderTextColor={colors.textMuted}
-                accessibilityLabel={t('adminList.searchPlaceholder')}
-                accessibilityRole="search"
-                autoCapitalize="none"
-                autoCorrect={false}
-                returnKeyType="search"
-              />
+              <View style={styles.searchBox}>
+                <Icon name="magnify" size={22} color={colors.textMuted} />
+                <TextInput
+                  style={styles.searchInput}
+                  value={query}
+                  onChangeText={setQuery}
+                  placeholder={t('adminList.searchPlaceholder')}
+                  placeholderTextColor={colors.textMuted}
+                  accessibilityLabel={t('adminList.searchPlaceholder')}
+                  accessibilityRole="search"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="search"
+                />
+              </View>
               <TouchableOpacity
                 style={styles.refreshBtn}
                 accessibilityRole="button"
@@ -300,103 +318,69 @@ export const AdminListeScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.filterRow}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterRow}>
               {filters.map(f => (
                 <TouchableOpacity
                   key={f.key}
                   accessibilityRole="radio"
                   accessibilityState={{ checked: activeFilter === f.key }}
-                  style={[
-                    styles.filterChip,
-                    activeFilter === f.key && styles.filterChipActive,
-                  ]}
+                  style={[styles.filterChip, activeFilter === f.key && styles.filterChipActive]}
                   onPress={() => setActiveFilter(f.key)}
                 >
-                  <Text
-                    style={[
-                      styles.filterText,
-                      activeFilter === f.key && styles.filterTextActive,
-                    ]}
-                  >
+                  <Text style={[styles.filterText, activeFilter === f.key && styles.filterTextActive]}>
                     {f.label}
                   </Text>
                 </TouchableOpacity>
               ))}
-            </View>
+            </ScrollView>
 
-            <View style={styles.filterRow}>
-              {programs.map(p => (
+            {programs.length ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterRow}>
+                {programs.map(p => (
                 <TouchableOpacity
                   key={p.id}
                   accessibilityRole="checkbox"
                   accessibilityState={{ checked: programFilter === p.id }}
-                  style={[
-                    styles.filterChip,
-                    programFilter === p.id && styles.filterChipActive,
-                  ]}
-                  onPress={() =>
-                    setProgramFilter(programFilter === p.id ? 'all' : p.id)
-                  }
+                  style={[styles.filterChip, programFilter === p.id && styles.filterChipActive]}
+                  onPress={() => setProgramFilter(programFilter === p.id ? 'all' : p.id)}
                 >
-                  <Text
-                    style={[
-                      styles.filterText,
-                      programFilter === p.id && styles.filterTextActive,
-                    ]}
-                  >
+                  <Text style={[styles.filterText, programFilter === p.id && styles.filterTextActive]}>
                     {p.name}
                   </Text>
                 </TouchableOpacity>
-              ))}
-            </View>
+                ))}
+              </ScrollView>
+            ) : null}
 
-            <View style={styles.filterRow}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterRow}>
               {issueFilters.map(f => (
                 <TouchableOpacity
                   key={f.key}
                   accessibilityRole="radio"
                   accessibilityState={{ checked: issuesFilter === f.key }}
-                  style={[
-                    styles.filterChip,
-                    issuesFilter === f.key && styles.filterChipActive,
-                  ]}
+                  style={[styles.filterChip, issuesFilter === f.key && styles.filterChipActive]}
                   onPress={() => setIssuesFilter(f.key)}
                 >
-                  <Text
-                    style={[
-                      styles.filterText,
-                      issuesFilter === f.key && styles.filterTextActive,
-                    ]}
-                  >
+                  <Text style={[styles.filterText, issuesFilter === f.key && styles.filterTextActive]}>
                     {f.label}
                   </Text>
                 </TouchableOpacity>
               ))}
-            </View>
-
-            <View style={styles.filterRow}>
+              <View style={styles.filterGap} />
               {dateFilters.map(f => (
                 <TouchableOpacity
                   key={f.key}
                   accessibilityRole="radio"
                   accessibilityState={{ checked: dateFilter === f.key }}
-                  style={[
-                    styles.filterChip,
-                    dateFilter === f.key && styles.filterChipActive,
-                  ]}
+                  style={[styles.filterChip, dateFilter === f.key && styles.filterChipActive]}
                   onPress={() => setDateFilter(f.key)}
                 >
-                  <Text
-                    style={[
-                      styles.filterText,
-                      dateFilter === f.key && styles.filterTextActive,
-                    ]}
-                  >
+                  <Text style={[styles.filterText, dateFilter === f.key && styles.filterTextActive]}>
                     {f.label}
                   </Text>
                 </TouchableOpacity>
               ))}
-            </View>
+            </ScrollView>
 
             {hasFilters ? (
               <Button
@@ -424,15 +408,6 @@ export const AdminListeScreen: React.FC = () => {
             onAction={() => dispatch(loadAdminApplications())}
           />
         }
-        ListFooterComponent={
-          <View style={styles.footer}>
-            <Button
-              label={t('adminMenu.auditLog')}
-              variant="ghost"
-              onPress={() => navigation.navigate('AdminAudit')}
-            />
-          </View>
-        }
       />
     </View>
   );
@@ -440,57 +415,25 @@ export const AdminListeScreen: React.FC = () => {
 
 const createStyles = (colors: AppColors) =>
   StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    } as ViewStyle,
-    header: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 8,
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingTop: 16,
-    } as ViewStyle,
-    h2: {
-      fontSize: 20,
-      fontWeight: '700',
-      color: colors.textPrimary,
-    } as TextStyle,
-    countText: {
-      fontSize: 12,
-      color: colors.textMuted,
-    } as TextStyle,
-    filterRow: {
-      flexDirection: 'row',
-      paddingVertical: 12,
-      gap: 8,
-      flexWrap: 'wrap',
-    } as ViewStyle,
+    container: { flex: 1, backgroundColor: colors.background } as ViewStyle,
+    header: { gap: 4, paddingTop: 20 } as ViewStyle,
+    h2: { fontSize: 28, lineHeight: 34, fontWeight: '700', color: colors.textPrimary } as TextStyle,
+    countText: { fontSize: 14, color: colors.textSecondary } as TextStyle,
+    filterScroll: { marginHorizontal: -20, flexGrow: 0 } as ViewStyle,
+    filterRow: { flexDirection: 'row', paddingVertical: 6, paddingHorizontal: 20, gap: 8 } as ViewStyle,
+    filterGap: { width: 1, backgroundColor: colors.borderLight, marginHorizontal: 4 } as ViewStyle,
     filterChip: {
-      minHeight: 44,
+      minHeight: 40,
       justifyContent: 'center',
-      maxWidth: '100%',
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 8,
+      paddingHorizontal: 14,
+      borderRadius: 999,
       backgroundColor: colors.cardBg,
       borderWidth: 1,
       borderColor: colors.borderLight,
     } as ViewStyle,
-    filterChipActive: {
-      backgroundColor: colors.tealBg,
-      borderColor: colors.onSuccess,
-    } as ViewStyle,
-    filterText: {
-      fontSize: 13,
-      lineHeight: 19,
-      color: colors.textSecondary,
-      fontWeight: '600',
-    } as TextStyle,
-    filterTextActive: {
-      color: colors.onSuccess,
-    } as TextStyle,
+    filterChipActive: { backgroundColor: colors.primarySoft, borderColor: colors.primaryText } as ViewStyle,
+    filterText: { fontSize: 14, color: colors.textSecondary, fontWeight: '600' } as TextStyle,
+    filterTextActive: { color: colors.primaryText } as TextStyle,
     listContainer: {
       width: '100%',
       maxWidth: layout.contentMaxWidth,
@@ -502,58 +445,50 @@ const createStyles = (colors: AppColors) =>
     listRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 14,
-      paddingHorizontal: 4,
-      borderRadius: 0,
+      padding: 14,
+      borderRadius: 16,
       backgroundColor: colors.cardBg,
-      borderBottomWidth: 1,
+      borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.borderLight,
-      gap: 12,
+      gap: 14,
+      shadowColor: colors.shadow,
+      shadowOpacity: 0.06,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 2,
     } as ViewStyle,
-    rowContent: {
+    avatar: {
+      width: 46,
+      height: 46,
+      borderRadius: 23,
+      backgroundColor: colors.primarySoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+    } as ViewStyle,
+    avatarText: { fontSize: 16, fontWeight: '700', color: colors.primaryText } as TextStyle,
+    rowContent: { flex: 1, gap: 4 } as ViewStyle,
+    rowName: { fontSize: 16, fontWeight: '600', color: colors.textPrimary } as TextStyle,
+    rowSubtitle: { fontSize: 14, lineHeight: 19, color: colors.textSecondary } as TextStyle,
+    searchWrap: { flexDirection: 'row', alignItems: 'center', paddingTop: 14, paddingBottom: 4, gap: 10 } as ViewStyle,
+    searchBox: {
       flex: 1,
-      gap: 6,
-    } as ViewStyle,
-    rowName: {
-      fontSize: 15,
-      fontWeight: '500',
-      color: colors.textPrimary,
-    } as TextStyle,
-    rowSubtitle: {
-      fontSize: 13,
-      lineHeight: 19,
-      color: colors.textSecondary,
-      marginTop: 2,
-    } as TextStyle,
-    footer: {
-      paddingTop: 16,
-    } as ViewStyle,
-    searchWrap: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingTop: 12,
-      gap: 10,
-    } as ViewStyle,
-    searchInput: {
-      flex: 1,
-      backgroundColor: colors.cardBg,
-      borderWidth: 1,
-      borderColor: colors.outline,
-      borderRadius: 8,
+      gap: 8,
       minHeight: 48,
       paddingHorizontal: 14,
-      paddingVertical: 10,
-      fontSize: 16,
-      color: colors.textPrimary,
-    } as TextStyle,
+      borderRadius: 24,
+      borderWidth: 1,
+      borderColor: colors.outline,
+      backgroundColor: colors.cardBg,
+    } as ViewStyle,
+    searchInput: { flex: 1, paddingVertical: 10, fontSize: 16, color: colors.textPrimary } as TextStyle,
     refreshBtn: {
       width: 48,
       height: 48,
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: 8,
-      backgroundColor: colors.cardBg,
-      borderWidth: 1,
-      borderColor: colors.borderLight,
+      borderRadius: 24,
+      backgroundColor: colors.surfaceContainerHigh,
     } as ViewStyle,
   });

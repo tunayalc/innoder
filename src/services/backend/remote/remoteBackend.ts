@@ -59,10 +59,10 @@ export const createRemoteBackend = (): InnoBackend => ({
       const response = await apiClient.get<any[]>('/admin/candidates');
       return requireData(response);
     },
-    async sendCandidatePassword({ candidateUserId, password }) {
+    async sendCandidatePassword({ candidateUserId, password, eventLinkApproved }) {
       const response = await apiClient.post<any>(
         `/admin/candidates/${candidateUserId}/temporary-password`,
-        { password },
+        { password, eventLinkApproved },
       );
       if (!response.data)
         throw new BackendError(

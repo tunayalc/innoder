@@ -3,8 +3,11 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
+  CalendarClock,
   Download,
   Eye,
+  FileCheck,
+  FolderKanban,
   KeyRound,
   Mail,
   MessageSquare,
@@ -90,14 +93,16 @@ export function MemberView({
 }) {
   if (view === 'profile') return <ProfileForm user={user} onSaved={setUser} />;
   if (view === 'messages') return <MemberMessages userId={user.id} />;
-  return <MyPrograms goProfile={goProfile} userId={user.id} />;
+  return <MyPrograms goProfile={goProfile} userId={user.id} name={user.name} />;
 }
 function MyPrograms({
   goProfile,
   userId,
+  name,
 }: {
   goProfile: () => void;
   userId: string;
+  name?: string;
 }) {
   const [page, setPage] = useState(0),
     [selected, select] = useState(''),
@@ -146,72 +151,146 @@ function MyPrograms({
         goProfile={goProfile}
       />
     );
+  const unreadCount = unread.items[0]?.unread ?? 0;
+  const hour = new Date().getHours();
+  const greeting =
+    hour < 12 ? tr('Günaydın') : hour < 18 ? tr('İyi günler') : tr('İyi akşamlar');
+  const lead = list.items[0];
+  const approvedOf = (item: Application) =>
+    requiredTypes(item).filter(type =>
+      item.documents.some(
+        d => d.type === type && d.isCurrent !== false && d.status === 'ok',
+      ),
+    ).length;
+  const percent = (value: number, total: number) =>
+    `${total ? Math.round((value / total) * 100) : 0}%`;
   return (
     <>
+      <header className="member-greeting">
+        <span className="brand-eyebrow">inno derneği</span>
+        <h1>
+          {greeting}, {(name || tr('Aday')).split(' ')[0]}
+        </h1>
+      </header>
       <Feedback error={unread.error} />
-      {(unread.items[0]?.unread ?? 0) > 0 && (
-        <button className="secondary" onClick={() => setGeneral(true)}>
-          <MessageSquare size={16} /> {tr('Okunmamış mesajlar:')}{' '}
-          {unread.items[0].unread}
-        </button>
-      )}
       {list.loading ? (
         <EmptyState loading />
       ) : list.error ? (
         <EmptyState title={tr('Programlar alınamadı')} onRetry={list.load}>
           {list.error}
         </EmptyState>
-      ) : !list.items.length ? (
-        <EmptyState title={tr('Henüz atanmış programınız yok')}>
-          {tr('Programınız atandığında burada görünecek.')}
-        </EmptyState>
+      ) : !list.items.length || !lead ? (
+        <section className="hero-card">
+          <span className="hero-eyebrow">{tr('Hoş geldin')}</span>
+          <h2>{tr('Henüz atanmış programınız yok')}</h2>
+          <p>{tr('Programınız atandığında burada görünecek.')}</p>
+          <div className="hero-actions">
+            <button className="hero-button" onClick={() => setGeneral(true)}>
+              <MessageSquare size={17} /> {tr('Derneğe yaz')}
+            </button>
+          </div>
+        </section>
       ) : (
         <>
-          <div className="member-list">
-            {list.items.map(item => (
-              <button
-                key={item.id}
-                className="member-row"
-                onClick={() => select(item.id)}
-              >
-                <span>
-                  <strong>{item.programName}</strong>
-                  <small>
-                    {STAGES[item.status]} ·{' '}
-                    {item.decisionStatus === 'rejected'
-                      ? tr('Reddedildi')
-                      : item.submittedAt
-                      ? tr('Başvuru gönderildi')
-                      : tr('Aktif')}
-                  </small>
-                  {item.decisionStatus !== 'rejected' && (
-                    <small>
-                      {tr('Zorunlu belgeler')}:{' '}
-                      {
-                        requiredTypes(item).filter(type => validDoc(item, type))
-                          .length
-                      }{' '}
-                      / {requiredTypes(item).length}
-                    </small>
-                  )}
-                  {item.program?.deadlines
-                    .filter(d => {
-                      const days =
-                        (Date.parse(d.dateISO) - Date.now()) / 86400000;
-                      return days >= -7 && days <= 30;
-                    })
-                    .map((d, i) => (
-                      <small key={i}>
-                        {d.label} · {formatDate(d.dateISO)}
-                      </small>
-                    ))}
-                </span>
-                <ArrowRight size={18} />
+          <section className="hero-card" aria-labelledby="lead-program">
+            <span className="hero-eyebrow">{tr('Başvurum')}</span>
+            <h2 id="lead-program">{lead.programName}</h2>
+            <div
+              className="hero-track"
+              role="progressbar"
+              aria-label={tr('Zorunlu belgeler')}
+              aria-valuemin={0}
+              aria-valuemax={requiredTypes(lead).length || 1}
+              aria-valuenow={approvedOf(lead)}
+            >
+              <span
+                style={{
+                  width: percent(approvedOf(lead), requiredTypes(lead).length),
+                }}
+              />
+            </div>
+            <p>
+              {requiredTypes(lead).length
+                ? `${approvedOf(lead)}/${requiredTypes(lead).length} ${tr(
+                    'belge onaylandı',
+                  )}`
+                : tr('Bu aşamada istenen belge yok')}
+            </p>
+            <div className="hero-actions">
+              <button className="hero-button" onClick={() => select(lead.id)}>
+                {tr('Başvuruyu aç')} <ArrowRight size={17} />
               </button>
-            ))}
+              <button className="hero-link" onClick={() => setGeneral(true)}>
+                {tr('Derneğe yaz')}
+              </button>
+            </div>
+          </section>
+
+          <div className="section-row">
+            <h2>{tr('Programlarım')}</h2>
+          </div>
+          <div className="program-grid">
+            {list.items.map(item => {
+              const total = requiredTypes(item).length;
+              const approved = approvedOf(item);
+              const next = item.program?.deadlines
+                .filter(d => Date.parse(d.dateISO) >= Date.now() - 86400000)
+                .sort((a, b) => Date.parse(a.dateISO) - Date.parse(b.dateISO))[0];
+              return (
+                <button
+                  key={item.id}
+                  className="program-card"
+                  onClick={() => select(item.id)}
+                >
+                  <span className="program-cover" aria-hidden="true">
+                    <span className="program-mark">
+                      <FolderKanban size={26} />
+                    </span>
+                    <b>{item.program?.year}</b>
+                  </span>
+                  <span className="program-body">
+                    <span
+                      className={`status-chip ${
+                        item.decisionStatus === 'rejected'
+                          ? 'rejected'
+                          : item.status
+                      }`}
+                    >
+                      {item.decisionStatus === 'rejected'
+                        ? tr('Reddedildi')
+                        : STAGES[item.status]}
+                    </span>
+                    <strong>{item.programName}</strong>
+                    <small>
+                      <FileCheck size={16} /> {approved}/{total}{' '}
+                      {tr('belge onaylandı')}
+                      {item.submittedAt ? ` · ${tr('Başvuru gönderildi')}` : ''}
+                    </small>
+                    {next && (
+                      <small>
+                        <CalendarClock size={16} /> {next.label} ·{' '}
+                        {formatDate(next.dateISO)}
+                      </small>
+                    )}
+                    <span className="program-progress" aria-hidden="true">
+                      <span style={{ width: percent(approved, total) }} />
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
           </div>
           <Pagination page={page} total={list.total} onChange={setPage} />
         </>
+      )}
+      {unreadCount > 0 && (
+        <button className="member-toast" onClick={() => setGeneral(true)}>
+          <MessageSquare size={18} />
+          <span>
+            {unreadCount} {tr('okunmamış mesajın var')}
+          </span>
+          <ArrowRight size={18} />
+        </button>
       )}
     </>
   );

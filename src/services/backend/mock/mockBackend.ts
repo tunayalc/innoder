@@ -436,9 +436,13 @@ export const createMockBackend = (): InnoBackend => {
                 new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
             );
         }),
-      sendCandidatePassword: ({ candidateUserId, password, adminUserId }) =>
+      sendCandidatePassword: ({ candidateUserId, password, adminUserId, eventLinkApproved }) =>
         withMockDelay(async () => {
           await seedIfEmpty();
+
+          if (eventLinkApproved === false) {
+            throw new BackendError('VALIDATION', 'Etkinlik bağlantısı onaylanmadan hesap etkinleştirilemez.');
+          }
 
           if (!password.trim()) {
             throw new BackendError('VALIDATION', 'Gönderilecek şifre zorunludur.');

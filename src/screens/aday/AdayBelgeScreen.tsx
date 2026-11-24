@@ -141,6 +141,15 @@ export const AdayBelgeScreen: React.FC = () => {
     [],
   );
 
+  const requestedDocType = route.params?.docType;
+  useEffect(() => {
+    if (
+      requestedDocType &&
+      checklistItems.some(item => item.documentType === requestedDocType)
+    )
+      setSelectedDocType(requestedDocType);
+  }, [checklistItems, requestedDocType]);
+
   useEffect(() => {
     if (checklistItems.length === 0) return;
     if (
@@ -361,7 +370,7 @@ export const AdayBelgeScreen: React.FC = () => {
         <View style={styles.emptyCard}>
           <Button
             label="Programlarıma Git"
-            onPress={() => navigation.navigate('AdayEgitim')}
+            onPress={() => navigation.navigate('AdayTabs', { screen: 'AdayEgitim' })}
           />
         </View>
       </View>

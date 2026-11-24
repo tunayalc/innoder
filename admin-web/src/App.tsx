@@ -14,9 +14,10 @@ import {
 } from 'lucide-react';
 import { api, memberPortal, SESSION_EXPIRED_EVENT } from './api';
 import { MemberView, AccountSettings } from './member';
-import { ContactRound, Settings } from 'lucide-react';
+import { ContactRound, House, Settings } from 'lucide-react';
 import { lockBodyScroll } from './scrollLock';
 import { ApplicationsView } from './applications';
+import { AdminOverview } from './AdminOverview';
 import { AuthScreen, ChangePasswordForm } from './auth';
 import { AdminsView, AuditView, CandidatesView } from './management';
 import {
@@ -67,9 +68,9 @@ const navigation: Array<{
   { id: 'settings', label: tr('Ayarlar'), icon: Settings },
 ];
 const memberNavigation: typeof navigation = [
-  { id: 'applications', label: tr('Programlarım'), icon: FolderKanban },
-  { id: 'profile', label: tr('Kişisel bilgilerim'), icon: ContactRound },
-  { id: 'messages', label: tr('Mesajlarım'), icon: MessageSquare },
+  { id: 'applications', label: tr('Ana sayfa'), icon: House },
+  { id: 'profile', label: tr('Profilim'), icon: ContactRound },
+  { id: 'messages', label: tr('Mesajlar'), icon: MessageSquare },
   { id: 'settings', label: tr('Ayarlar'), icon: Settings },
 ];
 
@@ -239,7 +240,7 @@ export const App = () => {
     ? tr('Süper yönetici')
     : tr('Yönetici');
   return (
-    <div className={`shell${sidebarOpen ? ' menu-open' : ''}`}>
+    <div className={`shell${isMember ? ' member-shell' : ''}${sidebarOpen ? ' menu-open' : ''}`}>
       <a className="skip-link" href="#main-content">
         {tr('İçeriğe geç')}
       </a>
@@ -351,10 +352,12 @@ export const App = () => {
           </div>
         </header>
         <div id="main-content" className="content" tabIndex={-1}>
-          <header className="page-heading">
-            <span className="section-eyebrow">Inno Derneği</span>
-            <h1>{activeView.label}</h1>
-          </header>
+          {view !== 'applications' && (
+            <header className="page-heading">
+              <span className="section-eyebrow">Inno Derneği</span>
+              <h1>{activeView.label}</h1>
+            </header>
+          )}
           {view === 'settings' ? (
             <AccountSettings
               user={user}
@@ -377,7 +380,18 @@ export const App = () => {
             />
           ) : (
             <>
-              {view === 'applications' && <ApplicationsView />}
+              {view === 'applications' && (
+                <>
+                  <AdminOverview
+                    name={user.name || tr('Yönetici')}
+                    open={target => {
+                      if (target !== view && !confirmLeave()) return;
+                      setView(target);
+                    }}
+                  />
+                  <ApplicationsView />
+                </>
+              )}
               {view === 'candidates' && <CandidatesView />}
               {view === 'admins' && user.role === 'super_admin' && (
                 <AdminsView currentUserId={user.id} />
@@ -390,6 +404,24 @@ export const App = () => {
           )}
         </div>
       </main>
+      {isMember && (
+        <nav className="member-tabbar" aria-label={tr('Üye menüsü')}>
+          {items.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              className={view === id ? 'active' : undefined}
+              aria-current={view === id ? 'page' : undefined}
+              onClick={() => {
+                if (view !== id && !confirmLeave()) return;
+                setView(id);
+              }}
+            >
+              <Icon size={22} />
+              <span>{label}</span>
+            </button>
+          ))}
+        </nav>
+      )}
       {passwordOpen && (
         <Modal
           title={tr('Şifre değiştir')}

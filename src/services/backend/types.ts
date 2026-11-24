@@ -72,6 +72,8 @@ export interface AuthBackend {
     candidateUserId: string;
     password: string;
     adminUserId: string;
+    // Admin confirmed the candidate's event link; activation is refused when false.
+    eventLinkApproved?: boolean;
   }): Promise<User>;
 }
 

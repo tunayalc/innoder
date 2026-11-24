@@ -650,7 +650,7 @@ const createStyles = (colors: AppColors) =>
     } as TextStyle,
     card: {
       backgroundColor: colors.cardBg,
-      borderRadius: 8,
+      borderRadius: 12,
       padding: 16,
       gap: 10,
       borderWidth: 1,
@@ -669,7 +669,7 @@ const createStyles = (colors: AppColors) =>
     candidateChip: {
       paddingHorizontal: 12,
       paddingVertical: 8,
-      borderRadius: 6,
+      borderRadius: 12,
       minHeight: 44,
       justifyContent: 'center',
       borderWidth: 1,
@@ -696,7 +696,7 @@ const createStyles = (colors: AppColors) =>
     documentChip: {
       paddingHorizontal: 12,
       paddingVertical: 8,
-      borderRadius: 6,
+      borderRadius: 12,
       minHeight: 44,
       justifyContent: 'center',
       borderWidth: 1,

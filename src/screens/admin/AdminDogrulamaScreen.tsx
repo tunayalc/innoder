@@ -304,7 +304,7 @@ const createStyles = (colors: AppColors) =>
       justifyContent: 'space-between',
       alignItems: 'center',
       padding: 12,
-      borderRadius: 8,
+      borderRadius: 12,
       backgroundColor: colors.cardBg,
       borderWidth: 1,
       borderColor: colors.borderLight,
@@ -320,7 +320,7 @@ const createStyles = (colors: AppColors) =>
     } as TextStyle,
     previewBox: {
       height: 120,
-      borderRadius: 8,
+      borderRadius: 12,
       backgroundColor: colors.placeholder,
       alignItems: 'center',
       justifyContent: 'center',
@@ -335,7 +335,7 @@ const createStyles = (colors: AppColors) =>
       gap: 8,
     } as ViewStyle,
     pillButton: {
-      borderRadius: 6,
+      borderRadius: 12,
       minHeight: 44,
       justifyContent: 'center',
       borderWidth: 2,
@@ -346,7 +346,7 @@ const createStyles = (colors: AppColors) =>
       borderColor: colors.teal,
     } as ViewStyle,
     textArea: {
-      borderRadius: 6,
+      borderRadius: 12,
       borderWidth: 1,
       borderColor: colors.outline,
       padding: 12,
@@ -364,7 +364,7 @@ const createStyles = (colors: AppColors) =>
     checkbox: {
       width: 22,
       height: 22,
-      borderRadius: 6,
+      borderRadius: 12,
       borderWidth: 2,
       borderColor: colors.borderMedium,
       alignItems: 'center',

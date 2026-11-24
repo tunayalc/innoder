@@ -30,9 +30,9 @@ export const Pill: React.FC<PillProps> = ({ label, variant, subtle = false }) =>
 
 const createStyles = (colors: AppColors) => StyleSheet.create({
   pill: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 999,
     maxWidth: '100%',
     flexShrink: 1,
     alignSelf: 'flex-start',

@@ -7,3 +7,5 @@ export { AdayMesajScreen } from './AdayMesajScreen';
 export { AdayCvBuilderScreen } from './AdayCvBuilderScreen';
 export { AdayMotivationScreen } from './AdayMotivationScreen';
 export { BelgeCameraScreen } from './BelgeCameraScreen';
+export { AdayMesajlarScreen } from './AdayMesajlarScreen';
+export { AdayProfilScreen } from './AdayProfilScreen';

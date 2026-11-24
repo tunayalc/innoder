@@ -15,19 +15,26 @@
   font-optical-sizing: none;
   letter-spacing: 0;
   color-scheme: light;
-  --bg: #f8f8fa;
+  --bg: #ffffff;
   --surface: #ffffff;
-  --surface-low: #f8f8fa;
-  --surface-high: #f0eff4;
-  --text: #252540;
-  --secondary: #4f5a63;
-  --muted: #606c75;
-  --border: #dfdfea;
-  --border-strong: #7c858b;
-  --primary: #2b2b5e;
-  --primary-hover: #202048;
-  --on-accent: #22556a;
-  --accent-bg: #e6f7f9;
+  --surface-low: #fafafb;
+  --surface-high: #f5f5f7;
+  --text: #1d1d2c;
+  --secondary: #4d5059;
+  --muted: #6b6e78;
+  --border: #e6e6eb;
+  --border-strong: #7c7f88;
+  --primary: #c72c35;
+  --primary-hover: #a9232b;
+  --on-accent: #b3262f;
+  --accent-bg: #fdecec;
+  --hero: #24244f;
+  --hero-text: #ffffff;
+  --hero-muted: #c9c9de;
+  --hero-track: #4a4a78;
+  --info: #1f5670;
+  --info-bg: #e6f4fa;
+  --shadow: 0 6px 18px rgb(29 29 44 / 8%);
   --green: #1c6a45;
   --green-bg: #e8f3ec;
   --rose: #aa3242;
@@ -40,19 +47,26 @@
 }
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --bg: #17191b;
-  --surface: #202326;
-  --surface-low: #202326;
-  --surface-high: #2a2e31;
-  --text: #f2f4f5;
-  --secondary: #c3cbd0;
-  --muted: #abb6be;
-  --border: #3a4146;
-  --border-strong: #89949b;
-  --primary: #2b2b5e;
-  --primary-hover: #202048;
-  --on-accent: #80e1eb;
-  --accent-bg: #1b3940;
+  --bg: #141518;
+  --surface: #1e1f23;
+  --surface-low: #1e1f23;
+  --surface-high: #28292e;
+  --text: #f3f3f5;
+  --secondary: #c6c7cd;
+  --muted: #a9abb3;
+  --border: #33343a;
+  --border-strong: #8d8f98;
+  --primary: #c72c35;
+  --primary-hover: #a9232b;
+  --on-accent: #ff9aa0;
+  --accent-bg: #3d2226;
+  --hero: #23234a;
+  --hero-text: #ffffff;
+  --hero-muted: #c9c9de;
+  --hero-track: #4a4a78;
+  --info: #8fd3ec;
+  --info-bg: #1b3440;
+  --shadow: 0 6px 18px rgb(0 0 0 / 35%);
   --green: #a0d7b6;
   --green-bg: #243d30;
   --rose: #f1abb5;
@@ -156,7 +170,7 @@ textarea {
   min-width: 0;
   min-height: 48px;
   border: 1px solid var(--border-strong);
-  border-radius: 8px;
+  border-radius: 10px;
   color: var(--text);
   background: var(--surface);
   padding: 12px 16px;
@@ -259,7 +273,7 @@ nav {
   min-height: 40px;
   padding: 9px 12px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 10px;
   text-align: left;
   color: var(--secondary);
   background: transparent;
@@ -270,7 +284,7 @@ nav {
   background: var(--surface-high);
 }
 .nav-item.active {
-  box-shadow: inset 3px 0 #00cde5;
+  box-shadow: inset 3px 0 var(--primary);
   background: var(--accent-bg);
   color: var(--on-accent);
   font-weight: 600;
@@ -498,7 +512,7 @@ main {
   min-width: 25px;
   min-height: 24px;
   padding: 2px 7px;
-  border-radius: 6px;
+  border-radius: 10px;
   color: var(--secondary);
   background: var(--surface-high);
   font-size: 12px;
@@ -524,7 +538,7 @@ main {
   min-height: 48px;
   padding: 0 16px;
   border: 1px solid var(--border-strong);
-  border-radius: 6px;
+  border-radius: 10px;
   background: var(--surface);
   color: var(--muted);
 }
@@ -558,7 +572,7 @@ main {
   max-width: 100%;
   padding: 9px 16px;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 10px;
   font-size: 14px;
   line-height: 1.4;
   font-weight: 600;
@@ -603,7 +617,7 @@ main {
   place-items: center;
   width: 40px;
   height: 40px;
-  border-radius: 6px;
+  border-radius: 10px;
   border: 1px solid transparent;
   background: transparent;
   color: var(--secondary);
@@ -662,7 +676,7 @@ main {
   overflow-x: auto;
   overscroll-behavior-x: contain;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 10px;
   background: var(--surface);
 }
 table {
@@ -872,7 +886,7 @@ td small {
   align-items: flex-start;
   gap: 9px;
   padding: 12px 14px;
-  border-radius: 6px;
+  border-radius: 10px;
   margin: 12px 0;
   font-size: 14px;
   line-height: 1.5;
@@ -1103,7 +1117,7 @@ dialog::backdrop {
   flex: none;
   width: 38px;
   height: 42px;
-  border-radius: 6px;
+  border-radius: 10px;
   display: grid;
   place-items: center;
   background: var(--accent-bg);
@@ -1175,7 +1189,7 @@ dialog::backdrop {
   padding: 16px;
 }
 .auth-layout {
-  border-top: 4px solid #00cde5;
+  border-top: 4px solid var(--primary);
   min-height: 100dvh;
   display: grid;
   grid-template-rows: auto 1fr;
@@ -1254,7 +1268,7 @@ dialog::backdrop {
   top: -100px;
   z-index: 50;
   padding: 12px;
-  border-radius: 6px;
+  border-radius: 10px;
   background: var(--primary);
   color: #fff;
 }

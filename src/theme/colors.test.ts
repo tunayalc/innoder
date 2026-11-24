@@ -31,6 +31,11 @@ describe.each([['light', lightColors], ['dark', darkColors]] as const)('%s theme
       [colors.white, colors.primary],
       [colors.white, colors.primaryPressed],
       [colors.placeholder, colors.inputBg],
+      [colors.heroText, colors.heroBg],
+      [colors.heroMuted, colors.heroBg],
+      [colors.primaryText, colors.primarySoft],
+      [colors.primaryText, colors.tabBarBg],
+      [colors.textMuted, colors.tabBarBg],
     ]) {
       expect(contrast(text, background)).toBeGreaterThanOrEqual(4.5);
     }

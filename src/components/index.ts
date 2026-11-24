@@ -15,3 +15,15 @@ export { ThemeSwitcher } from './ThemeSwitcher';
 export { ContactLinksCard } from './ContactLinksCard';
 export { ScreenScrollView } from './ScreenScrollView';
 export { StateMessage } from './StateMessage';
+export {
+  SectionHeader,
+  InfoChip,
+  ChipRow,
+  Carousel,
+  SegmentedTabs,
+  ProgressBar,
+  HeroCard,
+  FeatureRow,
+  TaskCard,
+  IconCircleButton,
+} from './Blocks';

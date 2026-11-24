@@ -1,1 +1,0 @@
-export { DataModelScreen } from './DataModelScreen';
