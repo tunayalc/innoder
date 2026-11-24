@@ -44,7 +44,7 @@ export function AdminOverview({ name, open }: { name: string; open: (view: Targe
       </div>
       <div className="stat-grid">
         {cards.map(({ key, label, hint, icon: Icon, target, tone }) => (
-          <button key={key} className={`stat-card ${tone}`} onClick={() => open(target)}>
+          <button key={key} className={`stat-card tone-${tone}`} onClick={() => open(target)}>
             <span className="stat-icon" aria-hidden="true">
               <Icon size={22} />
             </span>
