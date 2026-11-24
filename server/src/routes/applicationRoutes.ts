@@ -45,7 +45,8 @@ const physicalTypes = new Set([
 ]);
 const appSelect = `SELECT a.*, a.program_snapshot->>'name' AS program_name, a.program_snapshot AS program,
   (SELECT u.email FROM users u WHERE u.id=a.user_id) AS candidate_email,
-  (SELECT u.phone FROM users u WHERE u.id=a.user_id) AS candidate_phone FROM applications a`;
+  (SELECT u.phone FROM users u WHERE u.id=a.user_id) AS candidate_phone,
+  (SELECT u.event_link FROM users u WHERE u.id=a.user_id) AS candidate_event_link FROM applications a`;
 const canAccess = (request: FastifyRequest, owner: string) =>
   authUser(request).role !== 'candidate' || authUser(request).id === owner;
 const idParam = (params: unknown) => {

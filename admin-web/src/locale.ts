@@ -1,5 +1,18 @@
 // Only authored UI copy is translated. Never send applicant data to a translator.
 const english: Record<string, string> = {
+  'E-posta gönder': 'Send email',
+  'Şifre talebi': 'Password request',
+  'Hazır mesajlar': 'Quick messages',
+  'Yanlış format': 'Wrong format',
+  'Okunamıyor': 'Unreadable',
+  'Adaya başvuru mesajı olarak gönder': 'Send to the candidate as an application message',
+  'İnceleme kaydedildi ancak mesaj gönderilemedi. Mesajlar bölümünden tekrar deneyin.': 'Review saved, but the message could not be sent. Try again from Messages.',
+  'Belgeniz onaylandı.': 'Your document has been approved.',
+  'Belge eksik. Lütfen gerekli belgeyi yükleyin.': 'The document is missing. Please upload the required document.',
+  'Yüklenen dosya beklenen formatta değil. Lütfen doğru formatta yükleyin.': 'The uploaded file is not in the expected format. Please upload the correct format.',
+  'Yüklenen görüntü bulanık/okunamıyor. Lütfen daha net bir görüntü çekin.': 'The uploaded image is blurry/unreadable. Please take a clearer image.',
+  'Beni hatırla': 'Remember me',
+  'İletişim': 'Contact',
   kayıt: 'records',
   başvuru: 'applications',
   'başvurusunu seç': 'select application',

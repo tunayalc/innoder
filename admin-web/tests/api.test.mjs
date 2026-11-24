@@ -42,6 +42,7 @@ const setup = async (
   { access = 'access-old', refresh = 'refresh-old', navigator = {}, pathname = '/' } = {},
 ) => {
   const storage = new Map();
+  const persistent = new Map();
   if (access) storage.set('inno_access_token', access);
   if (refresh) storage.set('inno_refresh_token', refresh);
   const anchors = [];
@@ -55,6 +56,11 @@ const setup = async (
       getItem: key => storage.get(key) ?? null,
       setItem: (key, value) => storage.set(key, value),
       removeItem: key => storage.delete(key),
+    },
+    localStorage: {
+      getItem: key => persistent.get(key) ?? null,
+      setItem: (key, value) => persistent.set(key, value),
+      removeItem: key => persistent.delete(key),
     },
     window: target,
     navigator,
@@ -118,6 +124,7 @@ const setup = async (
     api,
     SESSION_EXPIRED_EVENT,
     storage,
+    persistent,
     fetch,
     anchors,
     blobs,
@@ -417,6 +424,32 @@ test('member entry accepts candidates and isolates member tokens from admin toke
   h.api.clearSession();
   assert.equal(h.storage.has('inno_member_refresh_token'),false);
   assert.equal(h.storage.get('inno_refresh_token'),'refresh-old');
+});
+test('remember me keeps member tokens in localStorage only and clears them on logout', async t => {
+  const h=await setup(t,{pathname:'/uye',access:null,refresh:null});
+  assert.equal(h.api.canRemember(),true);
+  h.fetch.mock.mockImplementationOnce(async()=>json(session('member','candidate')));
+  await h.api.login('member','pw',true);
+  assert.equal(h.persistent.get('inno_member_refresh_token'),'refresh-member');
+  assert.equal(h.storage.has('inno_member_refresh_token'),false);
+  h.api.clearSession();
+  assert.equal(h.persistent.size,0);
+  assert.equal(h.storage.size,0);
+});
+test('member login without remember me uses sessionStorage only', async t => {
+  const h=await setup(t,{pathname:'/uye',access:null,refresh:null});
+  h.fetch.mock.mockImplementationOnce(async()=>json(session('member','candidate')));
+  await h.api.login('member','pw',false);
+  assert.equal(h.storage.get('inno_member_refresh_token'),'refresh-member');
+  assert.equal(h.persistent.size,0);
+});
+test('admin sessions are never persisted even if remember is requested', async t => {
+  const h=await setup(t,{access:null,refresh:null});
+  assert.equal(h.api.canRemember(),false);
+  h.fetch.mock.mockImplementationOnce(async()=>json(session('admin','admin')));
+  await h.api.login('admin','pw',true);
+  assert.equal(h.storage.get('inno_refresh_token'),'refresh-admin');
+  assert.equal(h.persistent.size,0);
 });
 test('member entry rejects a management account', async t => {
   const h=await setup(t,{pathname:'/uye'});

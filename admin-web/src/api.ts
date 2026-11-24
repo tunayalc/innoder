@@ -27,18 +27,58 @@ const INVALID_RESPONSE_MESSAGE =
 export const memberPortal = /^\/uye\/?$/.test(window.location?.pathname ?? '/');
 const tokenKey = (name: string) =>
   `inno_${memberPortal ? 'member_' : ''}${name}_token`;
-let accessToken = sessionStorage.getItem(tokenKey('access'));
-let refreshToken = sessionStorage.getItem(tokenKey('refresh'));
+/**
+ * "Remember me" is offered only in the member portal. Admin sessions stay in
+ * sessionStorage so they end when the browser tab closes.
+ */
+const persistentStore = (): Pick<
+  Storage,
+  'getItem' | 'setItem' | 'removeItem'
+> | null => {
+  if (!memberPortal) return null;
+  try {
+    return globalThis.localStorage ?? null;
+  } catch {
+    return null;
+  }
+};
+const readToken = (name: string) => {
+  const key = tokenKey(name);
+  const fromSession = sessionStorage.getItem(key);
+  if (fromSession) return fromSession;
+  try {
+    return persistentStore()?.getItem(key) ?? null;
+  } catch {
+    return null;
+  }
+};
+let rememberSession = Boolean(
+  !sessionStorage.getItem(tokenKey('refresh')) && readToken('refresh'),
+);
+let accessToken = readToken('access');
+let refreshToken = readToken('refresh');
 let sessionVersion = 0;
 let pendingRefresh: { version: number; promise: Promise<void> } | undefined;
 
+const writeToken = (name: string, value: string | null) => {
+  const key = tokenKey(name);
+  const persistent = persistentStore();
+  const target = rememberSession && persistent ? persistent : sessionStorage;
+  try {
+    if (value) target.setItem(key, value);
+    else target.removeItem(key);
+    // Never leave a copy in the storage that is not in use.
+    if (target !== sessionStorage) sessionStorage.removeItem(key);
+    else persistent?.removeItem(key);
+  } catch {
+    // Storage may be unavailable (private mode); the in-memory token still works.
+  }
+};
 const saveTokens = (access: string | null, refresh: string | null) => {
   accessToken = access;
   refreshToken = refresh;
-  if (access) sessionStorage.setItem(tokenKey('access'), access);
-  else sessionStorage.removeItem(tokenKey('access'));
-  if (refresh) sessionStorage.setItem(tokenKey('refresh'), refresh);
-  else sessionStorage.removeItem(tokenKey('refresh'));
+  writeToken('access', access);
+  writeToken('refresh', refresh);
 };
 
 const clearSession = () => {
@@ -297,8 +337,10 @@ const download = async (path: string, fallbackName: string) => {
 export const api = {
   hasSession: () => Boolean(accessToken || refreshToken),
   clearSession,
-  login: async (email: string, password: string) => {
+  canRemember: () => Boolean(persistentStore()),
+  login: async (email: string, password: string, remember = false) => {
     clearSession();
+    rememberSession = remember && Boolean(persistentStore());
     const version = sessionVersion;
     const session = await request<{
       user: User;
@@ -464,10 +506,12 @@ export const api = {
     request<Page<Message>>(
       `/api/messages/${encodeURIComponent(threadId)}?page=${page}&pageSize=25`,
     ),
-  sendMessage: (threadId: string, content: string) =>
+  sendMessage: (threadId: string, content: string, relatedDocumentId?: string) =>
     request<Message>(`/api/messages/${encodeURIComponent(threadId)}`, {
       method: 'POST',
-      body: JSON.stringify({ content }),
+      body: JSON.stringify(
+        relatedDocumentId ? { content, relatedDocumentId } : { content },
+      ),
     }),
   readMessages: (threadId: string) =>
     request(`/api/messages/${encodeURIComponent(threadId)}/read`, {

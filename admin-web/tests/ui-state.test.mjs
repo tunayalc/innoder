@@ -94,3 +94,27 @@ for (const order of [
     delete globalThis.document;
   });
 }
+
+test('event links render as anchors only for http(s) URLs', () => {
+  assert.equal(
+    domain.safeHttpUrl('https://example.org/event?id=1'),
+    'https://example.org/event?id=1',
+  );
+  assert.equal(domain.safeHttpUrl('http://example.org'), 'http://example.org/');
+  for (const value of [
+    'javascript:alert(1)',
+    'JAVASCRIPT:alert(1)',
+    'data:text/html,<b>x</b>',
+    'not a url',
+    '',
+    undefined,
+  ])
+    assert.equal(domain.safeHttpUrl(value), undefined);
+});
+
+test('contact links point to the association email and Instagram', () => {
+  assert.deepEqual(
+    domain.CONTACT_LINKS.map(([, url]) => url),
+    ['mailto:innodernegi@gmail.com', 'https://www.instagram.com/innodernegi/'],
+  );
+});

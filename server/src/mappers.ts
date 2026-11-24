@@ -45,6 +45,7 @@ export const mapApplication = (row: Record<string, unknown>, documents: unknown[
   programName: row.program_name,
   candidateEmail: row.candidate_email,
   candidatePhone: row.candidate_phone,
+  candidateEventLink: row.candidate_event_link ?? undefined,
   program: row.program,
   status: row.stage,
   decisionStatus: row.decision_status,

@@ -25,6 +25,7 @@ export interface User {
   status: string;
   mustChangePassword: boolean;
   eventLink?: string;
+  credentialRequestedAt?: string;
   createdAt: string;
 }
 
@@ -52,6 +53,7 @@ export interface Application {
   programName: string;
   candidateEmail?: string;
   candidatePhone?: string;
+  candidateEventLink?: string;
   status: Stage;
   decisionStatus: 'active' | 'rejected';
   decisionReason?: string;

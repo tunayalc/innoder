@@ -512,6 +512,29 @@ test(
           ).json();
           assert.equal(appRow.personalInfo.bloodGroup, undefined);
           assert.equal(appRow.personalInfo.birthDate, '');
+          await db!.query('UPDATE users SET event_link = $1 WHERE id = $2', [
+            'https://example.org/qa-event',
+            candidate.id,
+          ]);
+          const withLink = await api.inject({
+            url: `/api/applications/${applicationId}`,
+            headers,
+          });
+          assert.equal(
+            withLink.json().candidateEventLink,
+            'https://example.org/qa-event',
+          );
+          const listed = await api.inject({
+            url: '/api/applications?page=1&pageSize=25',
+            headers,
+          });
+          assert.equal(
+            listed
+              .json()
+              .items.find((item: { id: string }) => item.id === applicationId)
+              ?.candidateEventLink,
+            'https://example.org/qa-event',
+          );
         },
       );
       await t.test('blood group is revocable, consented and isolated to an opted-in ESC application', async healthTest => {

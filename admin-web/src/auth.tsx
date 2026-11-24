@@ -5,6 +5,7 @@ import { api, memberPortal } from './api';
 import { passwordHint, validPassword } from './domain';
 import {
   Brand,
+  ContactLinks,
   errorMessage,
   Feedback,
   PasswordField,
@@ -21,6 +22,7 @@ export const AuthScreen = ({
 }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [remember, setRemember] = useState(false);
   const [forgot, setForgot] = useState(false);
   const [register, setRegister] = useState(false);
   const [error, setError] = useState('');
@@ -39,7 +41,7 @@ export const AuthScreen = ({
             'E-posta adresiniz kayıtlıysa şifre yenileme bağlantısı gönderilecektir.',
           ),
         );
-      } else onLogin(await api.login(email.trim(), password));
+      } else onLogin(await api.login(email.trim(), password, remember));
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {
@@ -106,6 +108,17 @@ export const AuthScreen = ({
               )}
               {!forgot && (
                 <div className="form-link">
+                  {api.canRemember() && (
+                    <label className="check-row">
+                      <input
+                        type="checkbox"
+                        checked={remember}
+                        disabled={busy}
+                        onChange={event => setRemember(event.target.checked)}
+                      />
+                      {tr('Beni hatırla')}
+                    </label>
+                  )}
                   <button
                     type="button"
                     className="text-button"
@@ -154,6 +167,7 @@ export const AuthScreen = ({
             )}
           </>
         )}
+        {memberPortal && <ContactLinks />}
         <footer className="auth-footer">
           inno derneği ·{' '}
           {memberPortal ? tr('Üye erişimi') : tr('Yönetici erişimi')}

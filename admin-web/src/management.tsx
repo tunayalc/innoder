@@ -24,6 +24,7 @@ import { usePage } from './usePage';
 import {
   EmptyState,
   errorMessage,
+  EventLink,
   Feedback,
   Modal,
   PAGE_SIZE,
@@ -47,6 +48,14 @@ const Status = ({ status }: { status: string }) => (
     {USER_STATUS[status] || status}
   </span>
 );
+/** Every status the users table allows; the filter must not depend on the visible page. */
+export const CANDIDATE_STATUSES = [
+  'pending',
+  'active',
+  'disabled',
+  'deletion_requested',
+  'anonymized',
+] as const;
 const safePage = (page: number, total: number) =>
   Math.min(page, Math.max(0, Math.ceil(total / PAGE_SIZE) - 1));
 
@@ -105,7 +114,7 @@ export const CandidatesView = () => {
           }}
         >
           <option value="">{tr('Tüm durumlar')}</option>
-          {[...new Set(items.map(item => item.status))].map(value => (
+          {CANDIDATE_STATUSES.map(value => (
             <option value={value} key={value}>
               {USER_STATUS[value] || value}
             </option>
@@ -125,6 +134,7 @@ export const CandidatesView = () => {
             <tr>
               <th>{tr('Aday')}</th>
               <th>{tr('Durum')}</th>
+              <th>{tr('Etkinlik bağlantısı')}</th>
               <th>{tr('Kayıt tarihi')}</th>
               <th>
                 <span className="sr-only">{tr('İşlemler')}</span>
@@ -134,7 +144,7 @@ export const CandidatesView = () => {
           <tbody>
             {!filtered.length && (
               <tr>
-                <td colSpan={4}>
+                <td colSpan={5}>
                   <EmptyState
                     loading={loading}
                     title={
@@ -149,11 +159,28 @@ export const CandidatesView = () => {
               <tr key={item.id}>
                 <td>
                   <Person name={item.name} detail={item.email} />
+                  <a
+                    className="table-link"
+                    href={`mailto:${item.email}`}
+                  >
+                    {tr('E-posta gönder')}
+                  </a>
                 </td>
                 <td>
                   <Status status={item.status} />
                 </td>
-                <td className="date-cell">{formatDate(item.createdAt)}</td>
+                <td>
+                  <EventLink value={item.eventLink} />
+                </td>
+                <td className="date-cell">
+                  {formatDate(item.createdAt)}
+                  {item.credentialRequestedAt && (
+                    <small className="muted block">
+                      {tr('Şifre talebi')}:{' '}
+                      {formatDate(item.credentialRequestedAt)}
+                    </small>
+                  )}
+                </td>
                 <td className="action-cell">
                   <button
                     className="secondary small"

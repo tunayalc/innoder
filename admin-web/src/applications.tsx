@@ -43,6 +43,7 @@ import { useCollection } from './hooks';
 import {
   EmptyState,
   errorMessage,
+  EventLink,
   Feedback,
   Modal,
   PAGE_SIZE,
@@ -580,6 +581,7 @@ const ApplicationDrawer = ({
   const [loading, setLoading] = useState(true);
   const [action, setAction] = useState<'stage' | 'reject' | 'activate'>();
   const [messagesOpen, setMessagesOpen] = useState(false);
+  const [generalOpen, setGeneralOpen] = useState(false);
   const [reason, setReason] = useState('');
   const sequence = useRef(0);
   const load = useCallback(async () => {
@@ -820,6 +822,17 @@ const ApplicationDrawer = ({
               <summary>{tr('Başvuru mesajları')}</summary>
               {messagesOpen && <ThreadView threadId={item.id} />}
             </details>
+            <details
+              className="detail-section"
+              onToggle={event =>
+                setGeneralOpen(event.currentTarget.open)
+              }
+            >
+              <summary>{tr('Genel mesajlar')}</summary>
+              {generalOpen && (
+                <ThreadView threadId={`general:${item.userId}`} />
+              )}
+            </details>
             <section className="detail-section">
               <h3>{tr('Kişisel bilgiler')}</h3>
               <dl className="details">
@@ -847,6 +860,12 @@ const ApplicationDrawer = ({
                     <dd>{value || '—'}</dd>
                   </div>
                 ))}
+                <div>
+                  <dt>{tr('Etkinlik bağlantısı')}</dt>
+                  <dd>
+                    <EventLink value={item.candidateEventLink} />
+                  </dd>
+                </div>
               </dl>
               <ApplicationBloodGroup key={item.id} applicationId={item.id} />
             </section>
@@ -906,6 +925,38 @@ const ApplicationDrawer = ({
   );
 };
 
+/** Review templates, matching the mobile verification screen. */
+const QUICK_TEMPLATES: ReadonlyArray<{
+  label: string;
+  status: Document['status'];
+  message: string;
+}> = [
+  { label: tr('Uygun'), status: 'ok', message: tr('Belgeniz onaylandı.') },
+  {
+    label: tr('Eksik'),
+    status: 'missing',
+    message: tr('Belge eksik. Lütfen gerekli belgeyi yükleyin.'),
+  },
+  {
+    label: tr('Yanlış format'),
+    status: 'wrong_format',
+    message: tr(
+      'Yüklenen dosya beklenen formatta değil. Lütfen doğru formatta yükleyin.',
+    ),
+  },
+  {
+    label: tr('Okunamıyor'),
+    status: 'wrong_format',
+    message: tr(
+      'Yüklenen görüntü bulanık/okunamıyor. Lütfen daha net bir görüntü çekin.',
+    ),
+  },
+];
+const needsFix = (status: Document['status']) =>
+  status === 'missing' || status === 'wrong_format';
+const defaultMessage = (status: Document['status']) =>
+  QUICK_TEMPLATES.find(item => item.status === status)?.message || '';
+
 const DocumentRow = ({
   applicationId,
   document: doc,
@@ -920,6 +971,7 @@ const DocumentRow = ({
   const [review, setReview] = useState(false);
   const [status, setStatus] = useState(doc.status);
   const [note, setNote] = useState(doc.verifyNote || '');
+  const [notify, setNotify] = useState(true);
   const [preview, setPreview] =
     useState<Awaited<ReturnType<typeof api.previewDocument>>>();
   const previewRef = useRef<string | undefined>(undefined);
@@ -1064,6 +1116,20 @@ const DocumentRow = ({
               void run(async () => {
                 await api.verifyDocument(applicationId, doc.id, status, note);
                 setReview(false);
+                if (notify && needsFix(status)) {
+                  const content = `[${DOCUMENTS[doc.type] || doc.type}] ${
+                    note.trim() || defaultMessage(status)
+                  }`;
+                  try {
+                    await api.sendMessage(applicationId, content, doc.id);
+                  } catch {
+                    throw new Error(
+                      tr(
+                        'İnceleme kaydedildi ancak mesaj gönderilemedi. Mesajlar bölümünden tekrar deneyin.',
+                      ),
+                    );
+                  }
+                }
               });
             }}
           >
@@ -1080,6 +1146,22 @@ const DocumentRow = ({
                 <option value="missing">{tr('Eksik')}</option>
               </select>
             </label>
+            <div className="quick-messages" aria-label={tr('Hazır mesajlar')}>
+              {QUICK_TEMPLATES.map(template => (
+                <button
+                  type="button"
+                  key={template.label}
+                  className="secondary small"
+                  disabled={busy}
+                  onClick={() => {
+                    setStatus(template.status);
+                    setNote(template.message);
+                  }}
+                >
+                  {template.label}
+                </button>
+              ))}
+            </div>
             <label>
               {tr('İnceleme notu')}
               <textarea
@@ -1089,6 +1171,17 @@ const DocumentRow = ({
                 onChange={e => setNote(e.target.value)}
               />
             </label>
+            {needsFix(status) && (
+              <label className="check-row">
+                <input
+                  type="checkbox"
+                  checked={notify}
+                  disabled={busy}
+                  onChange={e => setNotify(e.target.checked)}
+                />
+                {tr('Adaya başvuru mesajı olarak gönder')}
+              </label>
+            )}
             <div className="button-row">
               <button
                 type="button"

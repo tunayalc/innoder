@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { api } from './api';
 import type { Application, Document, User } from './types';
-import { DOCUMENTS, STAGES, formatDate } from './domain';
+import { CONTACT_LINKS, DOCUMENTS, STAGES, formatDate } from './domain';
 import { useCollection } from './hooks';
 import { usePage } from './usePage';
 import {
@@ -731,8 +731,7 @@ export function AccountSettings({
             'https://api.innoder.org/account-deletion',
           ],
           [tr('İletişim ve destek'), 'https://api.innoder.org/support'],
-          ['innodernegi@gmail.com', 'mailto:innodernegi@gmail.com'],
-          ['Instagram', 'https://www.instagram.com/innodernegi/'],
+          ...CONTACT_LINKS,
         ].map(([name, url]) => (
           <a key={url} href={url} target="_blank" rel="noreferrer">
             {name}

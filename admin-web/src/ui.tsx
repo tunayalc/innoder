@@ -23,6 +23,34 @@ import {
 } from 'lucide-react';
 import { lockBodyScroll } from './scrollLock';
 import { memberPortal } from './api';
+import { CONTACT_LINKS, safeHttpUrl } from './domain';
+
+export const EventLink = ({ value }: { value?: string }) => {
+  const href = safeHttpUrl(value);
+  if (!value) return <span className="muted">{tr('Paylaşılmadı')}</span>;
+  if (!href) return <span className="break-anywhere">{value}</span>;
+  return (
+    <a
+      className="table-link break-anywhere"
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={href}
+    >
+      {new URL(href).host || href}
+    </a>
+  );
+};
+
+export const ContactLinks = () => (
+  <nav className="contact-links" aria-label={tr('İletişim')}>
+    {CONTACT_LINKS.map(([name, url]) => (
+      <a key={url} href={url} target="_blank" rel="noopener noreferrer">
+        {name}
+      </a>
+    ))}
+  </nav>
+);
 
 export const Brand = () => (
   <div className="brand">

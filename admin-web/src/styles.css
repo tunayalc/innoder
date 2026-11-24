@@ -1601,3 +1601,55 @@ dialog::backdrop {
     overflow: auto;
   }
 }
+.table-link,
+.detail-link {
+  color: var(--on-accent);
+  text-underline-offset: 3px;
+  font-size: 13px;
+}
+.table-link {
+  display: inline-block;
+  margin-top: 4px;
+}
+.block {
+  display: block;
+}
+.break-anywhere {
+  overflow-wrap: anywhere;
+}
+.quick-messages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+.check-row input {
+  width: auto;
+  min-height: 0;
+}
+.contact-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 16px;
+  margin-top: 12px;
+}
+.contact-links a {
+  color: var(--on-accent);
+  font-size: 13px;
+  text-underline-offset: 3px;
+}
+.form-link:has(.check-row) {
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.form-link .check-row {
+  font-size: 14px;
+  color: var(--secondary);
+}

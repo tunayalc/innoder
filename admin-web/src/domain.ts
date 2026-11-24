@@ -89,6 +89,23 @@ export const formatDate = (value?: string) =>
   value && !Number.isNaN(Date.parse(value))
     ? dateFormatter.format(new Date(value))
     : '—';
+/** Only http(s) links may be rendered as clickable anchors. */
+export const safeHttpUrl = (value?: string) => {
+  if (!value) return undefined;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' || url.protocol === 'http:'
+      ? url.href
+      : undefined;
+  } catch {
+    return undefined;
+  }
+};
+export const CONTACT_EMAIL = 'innodernegi@gmail.com';
+export const CONTACT_LINKS: ReadonlyArray<readonly [string, string]> = [
+  [CONTACT_EMAIL, `mailto:${CONTACT_EMAIL}`],
+  ['Instagram', 'https://www.instagram.com/innodernegi/'],
+];
 export const formatBytes = (value: number) =>
   value < 1024 * 1024
     ? `${Math.ceil(value / 1024)} KB`
