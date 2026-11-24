@@ -1,0 +1,162 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+ROOT_DIR="$(cd "$(dirname "$SCRIPT_PATH")/../.." && pwd)"
+DEPLOY_DIR="$ROOT_DIR/deploy"
+ENV_FILE="$DEPLOY_DIR/.env"
+
+if [[ ! -f "$ENV_FILE" ]]; then
+  echo "Missing $ENV_FILE. Run deploy/natro/setup.sh first." >&2
+  exit 1
+fi
+if ! docker info >/dev/null 2>&1; then
+  echo "Docker access is required. Run with sudo or add this user to the docker group." >&2
+  exit 1
+fi
+
+compose() {
+  docker compose --env-file "$ENV_FILE" -f "$DEPLOY_DIR/docker-compose.yml" "$@"
+}
+env_value() {
+  sed -n "s/^${1}=//p" "$ENV_FILE" | tail -n 1
+}
+deploy_release() {
+  bash "$DEPLOY_DIR/scripts/validate-env.sh" "$ENV_FILE"
+  compose config --quiet
+  "$0" backup
+  local release_id old_server old_web switched=false
+  release_id="$(date -u +%Y%m%dT%H%M%SZ)"
+  old_server="$(compose images -q server | head -n 1)"
+  old_web="$(compose images -q admin-web | head -n 1)"
+  if [[ -z "$old_server" || -z "$old_web" ]]; then
+    echo "A running rollback version is required. Use start for a first installation." >&2
+    return 1
+  fi
+  mkdir -p "$DEPLOY_DIR/releases"
+  docker image tag "$old_server" "inno-rollback-server:$release_id"
+  docker image tag "$old_web" "inno-rollback-web:$release_id"
+  local override="$DEPLOY_DIR/releases/rollback-$release_id.yml"
+  printf 'services:\n  server:\n    image: inno-rollback-server:%s\n  admin-web:\n    image: inno-rollback-web:%s\n' "$release_id" "$release_id" > "$override"
+  chmod 600 "$override"
+  rollback_release() {
+    trap - ERR
+    if [[ "$switched" == true ]]; then
+      echo "Release failed. Restoring the previous API and web images; additive database migration is retained." >&2
+      docker compose --env-file "$ENV_FILE" -f "$DEPLOY_DIR/docker-compose.yml" -f "$override" \
+        up -d --no-deps --no-build server admin-web || true
+    else
+      echo "Release failed before activation. Existing API and web containers were not replaced." >&2
+    fi
+    echo "Rollback descriptor: $override" >&2
+    exit 1
+  }
+  trap rollback_release ERR
+  compose build server migrate admin-web backup
+  compose run --rm --no-deps server node dist/scripts/checkRuntime.js
+  # Migrations must be additive so old clients/containers keep working during rollout.
+  compose run --rm --no-deps migrate node dist/scripts/migrate.js
+  switched=true
+  compose up -d --no-deps --wait --wait-timeout 120 server
+  compose up -d --no-deps --wait --wait-timeout 120 admin-web
+  compose up -d --no-deps backup monitor
+  "$0" check
+  trap - ERR
+  echo "Release verified: $release_id. Rollback: $override"
+}
+usage() {
+  cat <<'EOF'
+Usage: innoctl COMMAND
+
+  status                 Show services, health and disk usage
+  logs [service]         Follow recent production logs
+  check                  Validate environment and public HTTPS health
+  backup                 Create an encrypted backup now
+  backups                List encrypted backups
+  restore FILE --yes     Restore database and documents from a backup
+  update                 Backup, pull main, rebuild and deploy
+  release                Backup and deploy already uploaded sources, API before web
+  admin-reset            Generate a one-time super admin password
+  start                  Start production services
+  stop                   Stop application services without deleting data
+EOF
+}
+
+command_name="${1:-}"
+shift || true
+case "$command_name" in
+  status)
+    compose ps
+    echo
+    docker system df
+    ;;
+  logs)
+    compose logs --tail=200 -f "${1:-server}"
+    ;;
+  check)
+    bash "$DEPLOY_DIR/scripts/validate-env.sh" "$ENV_FILE"
+    compose config --quiet
+    compose exec -T server curl -fsS http://localhost:3000/health/ready
+    echo
+    curl -fsS --max-time 15 "https://$(env_value API_DOMAIN)/health/ready"
+    echo
+    ;;
+  backup)
+    compose run --rm --no-deps --entrypoint /bin/sh backup /scripts/backup.sh
+    ;;
+  backups)
+    compose run --rm --no-deps --entrypoint /bin/sh restore -c 'ls -lh /backups/inno-*.tar.gz.enc 2>/dev/null || true'
+    ;;
+  restore)
+    backup_file="${1:-}"
+    confirmation="${2:-}"
+    if [[ ! "$backup_file" =~ ^inno-[0-9T]+Z\.tar\.gz\.enc$ || "$confirmation" != "--yes" ]]; then
+      echo "Usage: innoctl restore inno-TIMESTAMP.tar.gz.enc --yes" >&2
+      exit 1
+    fi
+    "$0" backup
+    compose stop proxy server
+    if ! compose run --rm restore "/scripts/restore.sh" "/backups/${backup_file}"; then
+      compose up -d server proxy
+      exit 1
+    fi
+    compose up -d server proxy
+    "$0" check
+    ;;
+  update)
+    if [[ ! -d "$ROOT_DIR/.git" ]]; then
+      echo "This installation is not a git checkout; upload a new release before updating." >&2
+      exit 1
+    fi
+    if [[ -n "$(git -C "$ROOT_DIR" status --porcelain)" ]]; then
+      echo "The production checkout has local changes; update aborted." >&2
+      exit 1
+    fi
+    git -C "$ROOT_DIR" fetch origin main
+    git -C "$ROOT_DIR" pull --ff-only origin main
+    deploy_release
+    ;;
+  release)
+    deploy_release
+    ;;
+  admin-reset)
+    email="$(env_value SUPER_ADMIN_EMAIL)"
+    username="$(env_value SUPER_ADMIN_USERNAME)"
+    password="Tmp$(openssl rand -hex 10)A9"
+    compose run --rm \
+      -e "SUPER_ADMIN_EMAIL=$email" \
+      -e "SUPER_ADMIN_USERNAME=$username" \
+      -e "SUPER_ADMIN_PASSWORD=$password" \
+      server node dist/scripts/createSuperAdmin.js
+    echo "Super admin: $username"
+    echo "One-time password: $password"
+    ;;
+  start)
+    compose up -d postgres migrate server admin-web proxy backup monitor
+    ;;
+  stop)
+    compose stop proxy admin-web server backup monitor
+    ;;
+  -h|--help|help|'') usage ;;
+  *) echo "Unknown command: $command_name" >&2; usage; exit 1 ;;
+esac

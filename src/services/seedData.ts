@@ -51,7 +51,8 @@ export const createSeedApplications = (): Application[] => {
       programId: programA.id,
       programName: programA.name,
       program: programA,
-      status: 'needs_fix',
+      status: 'application_stage',
+      decisionStatus: 'active',
       personalInfo: {
         fullName: 'Aylin Demir',
         birthDate: '1995-04-15',
@@ -119,7 +120,8 @@ export const createSeedApplications = (): Application[] => {
       programId: programB.id,
       programName: programB.name,
       program: programB,
-      status: 'under_review',
+      status: 'application_stage',
+      decisionStatus: 'active',
       personalInfo: {
         fullName: 'Kerem Kaya',
         birthDate: '1998-08-22',
@@ -162,7 +164,8 @@ export const createSeedApplications = (): Application[] => {
       programId: programA.id,
       programName: programA.name,
       program: programA,
-      status: 'approved',
+      status: 'erasmus_stage',
+      decisionStatus: 'active',
       personalInfo: {
         fullName: 'Selin Bora',
         birthDate: '1997-01-10',
@@ -512,7 +515,8 @@ export const createNewApplication = (
     programId: program.id,
     programName: program.name,
     program,
-    status: 'draft',
+    status: 'application_stage',
+    decisionStatus: 'active',
     personalInfo,
     documents: [
       {

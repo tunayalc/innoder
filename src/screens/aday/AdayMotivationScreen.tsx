@@ -5,14 +5,19 @@ import {
   StyleSheet,
   ViewStyle,
   TextStyle,
-  ScrollView,
   Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { useThemedStyles, type AppColors } from '../../theme';
-import { Button, Card, InputField, Pill } from '../../components';
+import {
+  Button,
+  Card,
+  InputField,
+  Pill,
+  ScreenScrollView,
+} from '../../components';
 import { useAuth } from '../../hooks';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
@@ -20,8 +25,14 @@ import {
   selectApplicationLoading,
   selectApplications,
 } from '../../store/selectors';
-import { RootStackNavigationProp, RootStackParamList, MotivationLetterDraft } from '../../types';
+import {
+  RootStackNavigationProp,
+  RootStackParamList,
+  MotivationLetterDraft,
+} from '../../types';
 import { updatePersonalInfoDraft } from '../../store/thunks/applicationThunks';
+import { useUnsavedChanges } from '../../hooks/useUnsavedChanges';
+import { openApplicationPdf } from '../../services/applicationPdf';
 import { getProgramById } from '../../services/programCatalog';
 import {
   createEmptyMotivationLetter,
@@ -42,8 +53,8 @@ export const AdayMotivationScreen: React.FC = () => {
   const myApplication = useMemo(
     () =>
       route.params?.applicationId
-        ? applications.find((app) => app.id === route.params?.applicationId)
-        : applications.find((app) => app.userId === user?.id),
+        ? applications.find(app => app.id === route.params?.applicationId)
+        : applications.find(app => app.userId === user?.id),
     [applications, route.params?.applicationId, user?.id],
   );
   const program = useMemo(
@@ -51,10 +62,13 @@ export const AdayMotivationScreen: React.FC = () => {
     [myApplication],
   );
 
-  const savedLetter = myApplication?.personalInfo.motivationLetter ?? createEmptyMotivationLetter();
+  const savedLetter =
+    myApplication?.personalInfo.motivationLetter ??
+    createEmptyMotivationLetter();
   const applicationId = myApplication?.id;
 
   const [letter, setLetter] = useState<MotivationLetterDraft>(savedLetter);
+  useUnsavedChanges(JSON.stringify(letter) !== JSON.stringify(savedLetter));
 
   // Re-sync local state when navigating to a different application
   const prevApplicationIdRef = React.useRef(applicationId);
@@ -63,15 +77,18 @@ export const AdayMotivationScreen: React.FC = () => {
     setLetter(savedLetter);
   }
 
-  const completion = useMemo(() => isMotivationLetterComplete(letter), [letter]);
+  const completion = useMemo(
+    () => isMotivationLetterComplete(letter),
+    [letter],
+  );
 
   const updateField = (key: keyof MotivationLetterDraft, value: string) => {
-    setLetter((prev) => ({ ...prev, [key]: value }));
+    setLetter(prev => ({ ...prev, [key]: value }));
   };
 
   const saveLetter = async () => {
     if (!myApplication) return;
-    await dispatch(
+    const saved = await dispatch(
       updatePersonalInfoDraft({
         applicationId: myApplication.id,
         programId: myApplication.programId,
@@ -80,9 +97,34 @@ export const AdayMotivationScreen: React.FC = () => {
         },
       }),
     );
-    Alert.alert('Mektup Kaydedildi', 'Motivasyon mektubu taslağı kaydedildi.');
+    if (saved)
+      Alert.alert(
+        'Mektup Kaydedildi',
+        'Motivasyon mektubu taslağı kaydedildi.',
+        [
+          { text: 'Tamam' },
+          {
+            text: 'PDF Aç',
+            onPress: () =>
+              openApplicationPdf(
+                {
+                  ...myApplication,
+                  personalInfo: {
+                    ...myApplication.personalInfo,
+                    motivationLetter: letter,
+                  },
+                },
+                'motivation',
+              ).catch(cause =>
+                Alert.alert(
+                  'PDF Açılamadı',
+                  cause instanceof Error ? cause.message : 'Tekrar deneyin.',
+                ),
+              ),
+          },
+        ],
+      );
   };
-
 
   if (!myApplication) {
     return (
@@ -91,14 +133,20 @@ export const AdayMotivationScreen: React.FC = () => {
           <View style={styles.accentBar} />
           <View style={styles.headerContent}>
             <Text style={styles.h2}>Motivasyon Mektubu Oluşturucu</Text>
-            <Text style={styles.subtitle}>Önce başvuru taslağı oluşturmanız gerekiyor.</Text>
+            <Text style={styles.subtitle}>
+              Önce başvuru taslağı oluşturmanız gerekiyor.
+            </Text>
           </View>
         </View>
         <Card>
           <Text style={styles.emptyText}>
-            Motivasyon mektubu düzenlemek için önce Programlarım ekranından bir programa geçin.
+            Motivasyon mektubu düzenlemek için önce Programlarım ekranından bir
+            programa geçin.
           </Text>
-          <Button label="Programlarıma Git" onPress={() => navigation.navigate('AdayEgitim')} />
+          <Button
+            label="Programlarıma Git"
+            onPress={() => navigation.navigate('AdayEgitim')}
+          />
         </Card>
       </View>
     );
@@ -109,40 +157,52 @@ export const AdayMotivationScreen: React.FC = () => {
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.section}>
+      <ScreenScrollView contentContainerStyle={styles.section}>
         <View style={styles.headerCard}>
           <View style={styles.accentBar} />
           <View style={styles.headerContent}>
             <View style={styles.titleRow}>
               <Text style={styles.h2}>Motivasyon Mektubu Oluşturucu</Text>
-              <Pill label={completion ? 'Hazır' : 'Eksik'} variant={completion ? 'ok' : 'warn'} />
+              <Pill
+                label={completion ? 'Hazır' : 'Eksik'}
+                variant={completion ? 'ok' : 'warn'}
+              />
             </View>
             <Text style={styles.subtitle}>
-              Mektubu uygulama içinde oluşturun: hitap, neden bu program, katkılarınız ve kapanış.
+              Mektubu uygulama içinde oluşturun: hitap, neden bu program,
+              katkılarınız ve kapanış.
             </Text>
           </View>
         </View>
 
         <Card title="Mektup Yapısı">
           <Text style={styles.hintRow}>• Hitap ve konu</Text>
-          <Text style={styles.hintRow}>• Açılış: kimsiniz ve neden yazıyorsunuz</Text>
+          <Text style={styles.hintRow}>
+            • Açılış: kimsiniz ve neden yazıyorsunuz
+          </Text>
           <Text style={styles.hintRow}>• Motivasyon: neden bu program</Text>
           <Text style={styles.hintRow}>• Katkı: programa ne katacaksınız</Text>
-          <Text style={styles.hintRow}>• Kapanış: uygunluk, sorumluluk ve teşekkür</Text>
+          <Text style={styles.hintRow}>
+            • Kapanış: uygunluk, sorumluluk ve teşekkür
+          </Text>
         </Card>
 
         <Card title="Bu Program İçin Şartlar">
           <Text style={styles.hintRow}>
-            • Mektubunuzda neden özellikle {myApplication.programName} programına başvurduğunuzu açıkça yazın.
+            • Mektubunuzda neden özellikle {myApplication.programName}{' '}
+            programına başvurduğunuzu açıkça yazın.
           </Text>
           <Text style={styles.hintRow}>
-            • Programa hangi deneyim, beceri ve katkılarla dahil olacağınızı somut biçimde belirtin.
+            • Programa hangi deneyim, beceri ve katkılarla dahil olacağınızı
+            somut biçimde belirtin.
           </Text>
           <Text style={styles.hintRow}>
-            • Katılım adımlarına, takvime ve sorumluluklara uyacağınızı net biçimde ifade edin.
+            • Katılım adımlarına, takvime ve sorumluluklara uyacağınızı net
+            biçimde ifade edin.
           </Text>
           <Text style={styles.hintRow}>
-            • Genel ve kopya bir metin yerine bu programa özel gerekçeler kullanın.
+            • Genel ve kopya bir metin yerine bu programa özel gerekçeler
+            kullanın.
           </Text>
           {program?.steps?.length ? (
             <Text style={styles.programHint}>
@@ -155,48 +215,56 @@ export const AdayMotivationScreen: React.FC = () => {
         <InputField
           label="Hitap *"
           value={letter.addressee}
-          onChangeText={(value) => updateField('addressee', value)}
+          onChangeText={value => updateField('addressee', value)}
           placeholder="Inno Derneği Seçim Ekibi"
         />
         <InputField
           label="Konu *"
           value={letter.subject}
-          onChangeText={(value) => updateField('subject', value)}
+          onChangeText={value => updateField('subject', value)}
           placeholder="Başvuru Motivasyon Mektubu"
         />
 
         <Text style={styles.sectionLabel}>GÖVDE</Text>
         <InputField
-          label={`Açılış Paragrafı * (${wordCount(letter.openingParagraph)} kelime)`}
+          label={`Açılış Paragrafı * (${wordCount(
+            letter.openingParagraph,
+          )} kelime)`}
           value={letter.openingParagraph}
-          onChangeText={(value) => updateField('openingParagraph', value)}
+          onChangeText={value => updateField('openingParagraph', value)}
           placeholder="Kimsiniz, hangi role başvuruyorsunuz?"
           multiline
           numberOfLines={5}
           style={styles.textArea}
         />
         <InputField
-          label={`Motivasyon Paragrafı * (${wordCount(letter.motivationParagraph)} kelime)`}
+          label={`Motivasyon Paragrafı * (${wordCount(
+            letter.motivationParagraph,
+          )} kelime)`}
           value={letter.motivationParagraph}
-          onChangeText={(value) => updateField('motivationParagraph', value)}
+          onChangeText={value => updateField('motivationParagraph', value)}
           placeholder="Bu programa neden katılmak istiyorsunuz?"
           multiline
           numberOfLines={6}
           style={styles.textArea}
         />
         <InputField
-          label={`Katkı Paragrafı * (${wordCount(letter.contributionParagraph)} kelime)`}
+          label={`Katkı Paragrafı * (${wordCount(
+            letter.contributionParagraph,
+          )} kelime)`}
           value={letter.contributionParagraph}
-          onChangeText={(value) => updateField('contributionParagraph', value)}
+          onChangeText={value => updateField('contributionParagraph', value)}
           placeholder="Deneyimlerinizle programa nasıl katkıda bulunacaksınız?"
           multiline
           numberOfLines={6}
           style={styles.textArea}
         />
         <InputField
-          label={`Kapanış Paragrafı * (${wordCount(letter.closingParagraph)} kelime)`}
+          label={`Kapanış Paragrafı * (${wordCount(
+            letter.closingParagraph,
+          )} kelime)`}
           value={letter.closingParagraph}
-          onChangeText={(value) => updateField('closingParagraph', value)}
+          onChangeText={value => updateField('closingParagraph', value)}
           placeholder="Teşekkür, uygunluk ve iletişim bilgisi"
           multiline
           numberOfLines={5}
@@ -205,138 +273,144 @@ export const AdayMotivationScreen: React.FC = () => {
 
         <View style={styles.notice}>
           <Text style={styles.noticeText}>
-            Minimum önerilen kelime sayısı: giriş 20+, motivasyon 40+, katkılar 40+, kapanış 20+.
+            Minimum önerilen kelime sayısı: giriş 20+, motivasyon 40+, katkılar
+            40+, kapanış 20+.
           </Text>
         </View>
 
-
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        {error ? (
+          <Text
+            accessibilityRole="alert"
+            accessibilityLiveRegion="polite"
+            style={styles.errorText}
+          >
+            {error}
+          </Text>
+        ) : null}
 
         <Button
           label={isLoading ? 'Kaydediliyor...' : 'Mektup Taslağını Kaydet'}
+          loading={isLoading}
           onPress={saveLetter}
         />
-      </ScrollView>
+      </ScreenScrollView>
     </KeyboardAvoidingView>
   );
 };
 
-const createStyles = (colors: AppColors) => StyleSheet.create({
-  flex: {
-    flex: 1,
-  } as ViewStyle,
-  section: {
-    paddingTop: 16,
-    gap: 14,
-    padding: 20,
-    paddingBottom: 40,
-  } as ViewStyle,
-  headerCard: {
-    backgroundColor: colors.cardBg,
-    borderRadius: 14,
-    padding: 18,
-    flexDirection: 'row',
-    gap: 14,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  } as ViewStyle,
-  accentBar: {
-    width: 4,
-    borderRadius: 2,
-    backgroundColor: colors.teal,
-  } as ViewStyle,
-  headerContent: {
-    flex: 1,
-    gap: 6,
-  } as ViewStyle,
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
-  } as ViewStyle,
-  h2: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    flex: 1,
-  } as TextStyle,
-  subtitle: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
-  } as TextStyle,
-  sectionLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textMuted,
-    letterSpacing: 0.8,
-    marginTop: 4,
-  } as TextStyle,
-  hintRow: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    lineHeight: 20,
-  } as TextStyle,
-  programHint: {
-    fontSize: 13,
-    color: colors.textPrimary,
-    fontWeight: '600',
-    lineHeight: 20,
-    marginTop: 4,
-  } as TextStyle,
-  textArea: {
-    minHeight: 110,
-    textAlignVertical: 'top',
-  } as TextStyle,
-  notice: {
-    backgroundColor: colors.noticeBg,
-    padding: 14,
-    borderRadius: 12,
-  } as ViewStyle,
-  noticeText: {
-    color: colors.noticeText,
-    fontSize: 13,
-    lineHeight: 19,
-  } as TextStyle,
-  exportMetaRow: {
-    flexDirection: 'row',
-    gap: 10,
-  } as ViewStyle,
-  exportMetaItem: {
-    flex: 1,
-    backgroundColor: colors.inputBg,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    padding: 12,
-  } as ViewStyle,
-  exportMetaValue: {
-    color: colors.textPrimary,
-    fontSize: 18,
-    fontWeight: '800',
-  } as TextStyle,
-  exportMetaLabel: {
-    color: colors.textMuted,
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 2,
-  } as TextStyle,
-  exportText: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    lineHeight: 19,
-  } as TextStyle,
-  emptyText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
-    marginBottom: 12,
-  } as TextStyle,
-  errorText: {
-    fontSize: 13,
-    color: colors.danger,
-    textAlign: 'center',
-  } as TextStyle,
-});
-
+const createStyles = (colors: AppColors) =>
+  StyleSheet.create({
+    flex: {
+      flex: 1,
+    } as ViewStyle,
+    section: {
+      paddingTop: 16,
+      gap: 14,
+      padding: 20,
+      paddingBottom: 40,
+    } as ViewStyle,
+    headerCard: {
+      paddingVertical: 18,
+      flexDirection: 'row',
+      gap: 14,
+    } as ViewStyle,
+    accentBar: {
+      width: 4,
+      borderRadius: 2,
+      backgroundColor: colors.teal,
+    } as ViewStyle,
+    headerContent: {
+      flex: 1,
+      gap: 6,
+    } as ViewStyle,
+    titleRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 10,
+    } as ViewStyle,
+    h2: {
+      flexShrink: 1,
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.textPrimary,
+      flex: 1,
+    } as TextStyle,
+    subtitle: {
+      color: colors.textSecondary,
+      fontSize: 14,
+      lineHeight: 20,
+    } as TextStyle,
+    sectionLabel: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.textMuted,
+      marginTop: 4,
+    } as TextStyle,
+    hintRow: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      lineHeight: 20,
+    } as TextStyle,
+    programHint: {
+      fontSize: 13,
+      color: colors.textPrimary,
+      fontWeight: '600',
+      lineHeight: 20,
+      marginTop: 4,
+    } as TextStyle,
+    textArea: {
+      minHeight: 110,
+      textAlignVertical: 'top',
+    } as TextStyle,
+    notice: {
+      backgroundColor: colors.noticeBg,
+      padding: 14,
+      borderRadius: 8,
+    } as ViewStyle,
+    noticeText: {
+      color: colors.noticeText,
+      fontSize: 13,
+      lineHeight: 19,
+    } as TextStyle,
+    exportMetaRow: {
+      flexDirection: 'row',
+      gap: 10,
+    } as ViewStyle,
+    exportMetaItem: {
+      flex: 1,
+      backgroundColor: colors.inputBg,
+      borderRadius: 6,
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+      padding: 12,
+    } as ViewStyle,
+    exportMetaValue: {
+      color: colors.textPrimary,
+      fontSize: 18,
+      fontWeight: '800',
+    } as TextStyle,
+    exportMetaLabel: {
+      color: colors.textMuted,
+      fontSize: 12,
+      fontWeight: '700',
+      marginTop: 2,
+    } as TextStyle,
+    exportText: {
+      color: colors.textSecondary,
+      fontSize: 13,
+      lineHeight: 19,
+    } as TextStyle,
+    emptyText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      lineHeight: 20,
+      marginBottom: 12,
+    } as TextStyle,
+    errorText: {
+      fontSize: 13,
+      color: colors.danger,
+      textAlign: 'center',
+    } as TextStyle,
+  });

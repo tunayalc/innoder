@@ -1,50 +1,57 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
-  ScrollView,
   StyleSheet,
   Text,
   TextStyle,
   View,
   ViewStyle,
+  FlatList,
 } from 'react-native';
-import { Button, Field, InputField, Pill } from '../../components';
+import { Button, Field, InputField, Pill, StateMessage } from '../../components';
+import { useAuth } from '../../hooks';
 import { getBackend } from '../../services/backend';
 import { useThemedStyles, type AppColors } from '../../theme';
 import { formatDateShort } from '../../utils/date';
 import { openExternalUrl, openMailto } from '../../utils/contact';
 import { User } from '../../types';
+import {apiClient,requireData} from '../../services/api/apiClient';
+import {appConfig} from '../../config/appConfig';
 
 export const AdminPasswordRequestsScreen: React.FC = () => {
   const styles = useThemedStyles(createStyles);
+  const { user: adminUser } = useAuth();
   const [candidates, setCandidates] = useState<User[]>([]);
   const [passwords, setPasswords] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSendingFor, setIsSendingFor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [page,setPage]=useState(1),[total,setTotal]=useState(0),[query,setQuery]=useState('');
 
   const loadCandidates = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
       const backend = getBackend();
-      const nextCandidates = await backend.auth.listCandidates();
+      const response=appConfig.dataSource==='remote'?requireData(await apiClient.get<{items:User[];total:number}>(`/admin/candidates?page=${page}&pageSize=25&status=pending&q=${encodeURIComponent(query)}`)):null;
+      const nextCandidates = response?.items||await backend.auth.listCandidates();
       setCandidates(nextCandidates);
+      setTotal(response?.total||nextCandidates.length);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Şifre talepleri yüklenemedi.');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [page,query]);
 
   useEffect(() => {
-    loadCandidates();
+    const timer=setTimeout(()=>{loadCandidates();},250);return()=>clearTimeout(timer);
   }, [loadCandidates]);
 
   const pendingCandidates = useMemo(
     () =>
       candidates
-        .filter((candidate) => candidate.credentialRequestPending)
+        .filter((candidate) => candidate.status === 'pending' || candidate.credentialRequestPending)
         .sort((a, b) =>
           new Date(b.credentialRequestedAt || 0).getTime() -
           new Date(a.credentialRequestedAt || 0).getTime(),
@@ -53,9 +60,9 @@ export const AdminPasswordRequestsScreen: React.FC = () => {
   );
 
   const handleSendPassword = async (candidate: User) => {
-    const password = passwords[candidate.id]?.trim();
-    if (!password) {
-      Alert.alert('Uyarı', 'Lütfen gönderilecek şifreyi yazın.');
+    const password = passwords[candidate.id]?.trim() || '';
+    if (password.length < 12 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password)) {
+      Alert.alert('Uyarı', 'Geçici şifre en az 12 karakter, büyük/küçük harf ve rakam içermelidir.');
       return;
     }
 
@@ -65,7 +72,7 @@ export const AdminPasswordRequestsScreen: React.FC = () => {
       const updatedCandidate = await backend.auth.sendCandidatePassword({
         candidateUserId: candidate.id,
         password,
-        adminUserId: 'admin-001',
+        adminUserId: adminUser?.id || '',
       });
 
       setCandidates((prev) =>
@@ -73,20 +80,10 @@ export const AdminPasswordRequestsScreen: React.FC = () => {
       );
       setPasswords((prev) => ({ ...prev, [candidate.id]: '' }));
 
-      try {
-        await openMailto({
-          to: updatedCandidate.email,
-          subject: 'Inno Derneği Giriş Şifresi',
-          body:
-            `Merhaba ${updatedCandidate.name},\n\n` +
-            `Giriş şifreniz: ${password}\n\n` +
-            'İyi günler,\nInno Derneği',
-        });
-      } catch {
-        // Mail uygulaması yoksa backend tarafındaki gönderim yine tamamlanmış olur.
-      }
-
-      Alert.alert('Şifre Gönderildi', `${updatedCandidate.name} için şifre hazırlandı.`);
+      Alert.alert(
+        'Geçici Şifre Hazırlandı',
+        `${updatedCandidate.name} ilk girişte bu şifreyi değiştirmek zorundadır. Şifreyi güvenli bir kanaldan adaya iletin.`,
+      );
     } catch (err) {
       Alert.alert('Hata', err instanceof Error ? err.message : 'Şifre gönderilemedi.');
     } finally {
@@ -95,7 +92,7 @@ export const AdminPasswordRequestsScreen: React.FC = () => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <FlatList data={pendingCandidates} keyExtractor={item=>item.id} contentContainerStyle={styles.container} initialNumToRender={6} windowSize={5} ListHeaderComponent={<>
       <View style={styles.heroCard}>
         <Text style={styles.title}>Şifre Talepleri</Text>
         <Text style={styles.subtitle}>
@@ -103,17 +100,16 @@ export const AdminPasswordRequestsScreen: React.FC = () => {
         </Text>
       </View>
 
-      <Button label={isLoading ? 'Yükleniyor...' : 'Listeyi Yenile'} variant="ghost" onPress={loadCandidates} />
+      <Button label={isLoading ? 'Yükleniyor...' : 'Listeyi Yenile'} variant="ghost" loading={isLoading} disabled={Boolean(isSendingFor)} onPress={loadCandidates} />
+      <InputField label="Aday ara" value={query} onChangeText={value=>{setQuery(value);setPage(1);}} autoCapitalize="none"/>
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.errorText}>{error}</Text> : null}
 
-      {!isLoading && pendingCandidates.length === 0 ? (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyText}>Bekleyen şifre talebi yok.</Text>
-        </View>
+      {!isLoading && !error && pendingCandidates.length === 0 ? (
+        <StateMessage message="Bekleyen şifre talebi yok." />
       ) : null}
 
-      {pendingCandidates.map((candidate) => (
+      </>} renderItem={({item:candidate}) => (
         <View key={candidate.id} style={styles.card}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>{candidate.name}</Text>
@@ -145,17 +141,19 @@ export const AdminPasswordRequestsScreen: React.FC = () => {
             onChangeText={(value) =>
               setPasswords((prev) => ({ ...prev, [candidate.id]: value }))
             }
-            placeholder="Örnek: inno2026!"
+            placeholder="En az 12 karakter"
+            secureTextEntry
             autoCapitalize="none"
             autoCorrect={false}
           />
           <Button
             label={isSendingFor === candidate.id ? 'Gönderiliyor...' : 'Şifreyi Gönder'}
-            onPress={isSendingFor === candidate.id ? undefined : () => handleSendPassword(candidate)}
+            loading={isSendingFor === candidate.id}
+            disabled={isLoading || Boolean(isSendingFor)}
+            onPress={() => handleSendPassword(candidate)}
           />
         </View>
-      ))}
-    </ScrollView>
+      )} ListFooterComponent={appConfig.dataSource==='remote'?<View style={styles.cardHeader}><Button label="Önceki" variant="ghost" disabled={page===1||isLoading} onPress={()=>setPage(value=>value-1)}/><Text>{page} / {Math.max(1,Math.ceil(total/25))}</Text><Button label="Sonraki" variant="ghost" disabled={page*25>=total||isLoading} onPress={()=>setPage(value=>value+1)}/></View>:null}/>
   );
 };
 
@@ -169,12 +167,8 @@ const createStyles = (colors: AppColors) =>
       backgroundColor: colors.background,
     } as ViewStyle,
     heroCard: {
-      backgroundColor: colors.surfaceContainerLow,
-      borderRadius: 24,
-      padding: 20,
+      paddingVertical: 16,
       gap: 8,
-      borderWidth: 1,
-      borderColor: colors.borderLight,
     } as ViewStyle,
     title: {
       fontSize: 24,
@@ -188,7 +182,7 @@ const createStyles = (colors: AppColors) =>
     } as TextStyle,
     card: {
       backgroundColor: colors.cardBg,
-      borderRadius: 18,
+      borderRadius: 8,
       padding: 16,
       gap: 10,
       borderWidth: 1,
@@ -208,7 +202,7 @@ const createStyles = (colors: AppColors) =>
     } as TextStyle,
     emptyCard: {
       backgroundColor: colors.noticeBg,
-      borderRadius: 16,
+      borderRadius: 8,
       padding: 20,
     } as ViewStyle,
     emptyText: {

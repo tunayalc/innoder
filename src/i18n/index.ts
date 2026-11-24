@@ -27,7 +27,7 @@ const isTranslationRecord = (
 const translations = {
   tr: {
     common: {
-      appName: 'Inno',
+      appName: 'Inno Derneği',
       back: 'Geri',
       email: 'E-posta',
       password: 'Şifre',
@@ -55,6 +55,18 @@ const translations = {
       themeText: 'Açık ve koyu görünüm arasında geçiş yapın.',
       languageTitle: 'Dil',
       languageText: 'Uygulama metinlerini Türkçe veya İngilizce kullanın.',
+      privacyTitle: 'Gizlilik ve Hesap',
+      privacyText: 'Aydınlatma metni, destek, şifre ve hesap silme işlemleri.',
+      privacyLink: 'Gizlilik Politikasını Aç',
+      deletionLink: 'Web Hesap Silme Bilgisi',
+      supportLink: 'Destek ve İletişim',
+      changePassword: 'Şifremi Değiştir',
+      deleteAccount: 'Hesap Silme Talebi',
+      deletionWarning: 'Profiliniz ve belgeleriniz için silme/anonimleştirme incelemesi başlatılacaktır. Talebiniz kaydedildiğinde oturumunuz kapatılır.',
+      deletionSubmit: 'Talep Oluştur',
+      deletionReceived: 'Talebiniz Alındı',
+      deletionError: 'Talep oluşturulamadı. Lütfen tekrar deneyin.',
+      linkError: 'Bağlantı açılamadı. Cihazınızdaki tarayıcı veya e-posta uygulamasını kontrol edin.',
     },
     nav: {
       applicationList: 'Başvuru Listesi',
@@ -75,68 +87,16 @@ const translations = {
     },
     status: {
       application: {
-        draft: 'Taslak',
-        submitted: 'Gönderildi',
-        under_review: 'İnceleniyor',
-        needs_fix: 'Düzeltme Gerekli',
-        approved: 'Onaylandı',
-        rejected: 'Reddedildi',
+        application_stage: 'Başvuru Aşaması',
+        erasmus_stage: 'Hareketlilik / Erasmus Aşaması',
+        returned_home: 'Ülkeye Dönüş Tamamlandı',
       },
     },
-    onboarding: {
-      title: 'Bilgilendirme Alanı',
-      subtitle:
-        'Kayıt için tüm videoları tamamlamak zorunludur. Giriş için ise videoları tamamlayabilir veya beyan seçeneğini kullanabilirsiniz.',
-      launcherCaption: 'Uygulama simgesi ve tanıtım görseli',
-      demoTitle: 'Demo Giriş Bilgisi',
-      demoEmail: 'E-posta: aday@inno.com',
-      demoPassword: 'Şifre: 123123',
-      demoCta: 'Bilgi Girmeden Demo Giriş',
-      progressTitle: 'Video Tamamlama Durumu',
-      progressCaption: '{{watched}}/{{total}} video tamamlandı',
-      statusDone: 'İzlendi',
-      statusPending: 'Bekliyor',
-      play: 'Videoyu Oynat',
-      pause: 'Videoyu Durdur',
-      markWatched: 'Videoyu İzledim',
-      unmarkWatched: 'İzlemeyi Geri Al',
-      declarationTitle: 'Beyanım',
-      declarationText:
-        'Inno Derneği ile ilgili içerikleri daha önce izledim, tüm sorumlulukları biliyorum ve kabul ediyorum.',
-      login: 'Giriş Yap',
-      register: 'Kayıt Ol',
-      helper:
-        'Giriş için tüm videoları tamamlayın veya beyanı açın. Kayıt için tüm videolar zorunlu.',
-      videos: [
-        {
-          title: 'ESC Projeleri Başvuru Süreci',
-          duration: 'Yerel Video',
-          summary:
-            'Inno Derneği, İtalya gönüllülük süreci ve projelere katılım adımlarını bu videodan izleyin.',
-        },
-        {
-          title: 'European Youth Portal Kayıt İşlemleri',
-          duration: 'Yerel Video',
-          summary:
-            'European Youth Portal üzerinde ESC gönüllülük projeleri için kayıt adımlarını bu videodan izleyin.',
-        },
-        {
-          title: 'Aday Sorumlulukları',
-          duration: '05:10',
-          summary: 'Başvuru sürecindeki sorumluluklar ve doğrulama adımları.',
-        },
-        {
-          title: 'Belge ve Etik Kurallar',
-          duration: '03:45',
-          summary: 'Belge yükleme, doğruluk beyanı ve gizlilik kuralları.',
-        },
-      ] as const,
-    },
     entry: {
-      title: 'Inno',
-      subtitle: 'Demo erişimi, tek giriş ekranı ve kayıt seçeneklerini buradan başlatın.',
+      title: 'Inno Derneği',
+      subtitle: 'ESC ve Erasmus başvurularınızı takip edin.',
       actionsTitle: 'Hızlı Erişim',
-      registerHint: 'Kayıt ekranında videoları tamamlayıp şifre talebinizi gönderebilirsiniz.',
+      registerHint: 'Kayıt ekranından hesabınız için başvuru gönderebilirsiniz.',
     },
     auth: {
       loginTitle: 'Giriş Yap',
@@ -150,7 +110,6 @@ const translations = {
         'Sadece tarafımızca giriş bilgisi tanımlanan hesaplar giriş yapabilir.',
       noAccount: 'Hesabınız yok mu?',
       registerNow: 'Kayıt Ol',
-      watchVideosFirst: 'Önce Videoları İzle',
       adminLoginLink: 'Yönetici girişi',
       adminDemoButton: 'Yönetici Demo Girişi',
       fillEmailPassword: 'Lütfen e-posta ve şifrenizi girin.',
@@ -162,7 +121,6 @@ const translations = {
       registerTitle: 'Kayıt Ol',
       registerSubtitle:
         'Kayıt olabilirsiniz. Uygulamaya sadece tarafımızca paylaşılan giriş bilgileri ile giriş yapılabilir.',
-      registerWarning: 'Kayıt için önce bilgilendirme videolarını tamamlayın.',
       fullName: 'Ad Soyad *',
       fullNamePlaceholder: 'Adınız Soyadınız',
       emailRequired: 'E-posta *',
@@ -173,16 +131,15 @@ const translations = {
         'Hangi etkinliğe katılmak istediğinizi gösteren linki paylaşın.',
       validEmail: 'Geçerli bir e-posta giriniz.',
       kvkkRequired: 'KVKK onayı zorunludur.',
-      videoRequiredTitle: 'Video Zorunluluğu',
-      videoRequiredText:
-        'Kayıt olmadan önce bilgilendirme videolarının tamamını izlemelisiniz.',
-      backToVideos: 'Videolara Dön',
       registerLoading: 'Kayıt yapılıyor...',
       registerSuccessTitle: 'Kayıt alındı',
       registerSuccessText:
         'Başvurunuz alındı. Tarafımızca paylaşılan giriş bilgileriyle daha sonra uygulamaya giriş yapabilirsiniz.',
       ok: 'Tamam',
       backToLogin: 'Giriş ekranına dön',
+      noticeTitle: 'KVKK Aydınlatma Metni',
+      noticeRead: 'Kişisel verilerimin işlenmesine ilişkin aydınlatma metnini okudum.',
+      noticeOpen: 'Aydınlatma Metnini Aç',
       kvkkTitle: 'KVKK Açık Rıza Onayı',
       kvkkText:
         'Kişisel verilerimin başvuru sürecinin yönetimi, iletişim ve doğrulama amacıyla işlenmesini kabul ediyorum.',
@@ -267,9 +224,9 @@ const translations = {
       programChat: 'Program Sohbeti',
       commitmentTitle: 'Belge Teslim Taahhüdü',
       commitmentTextBase:
-        'Her belge yüklemesinde ilgili belge için ayrı taahhüt verilir. Tüm belgeler için belgenin doğru ve geçerli olduğu ve aksi durumda uygulanacak yaptırımların kabul edildiği beyan edilir.',
+        'Activity Agreement ve Taahhütname sisteme taranmış olarak yüklenir; ıslak imzalı asılları ayrıca elden teslim edilir.',
       commitmentTextBoarding:
-        ' Boarding Pass belgesi için ayrıca aslının Inno Derneği\'ne teslim edileceği de taahhüt edilir.',
+        ' Gidiş ve dönüş biniş kartları ayrı ayrı yüklenir; asılları hareketlilik dönüşünde Inno Derneği\'ne elden teslim edilir.',
       stepsTitle: 'KATILIM ADIMLARI',
       deadlinesTitle: 'TESLİM TARİHLERİ',
       requiredDocumentsTitle: 'GEREKLİ BELGELER',
@@ -346,6 +303,10 @@ const translations = {
         photo_activity_report: 'Fotoğraflı Faaliyet Raporu',
         visa_payment_receipt_original: 'Vize Ödeme Dekontu (Asıl)',
         boarding_pass: 'Biniş Kartı',
+        boarding_pass_outbound: 'Gidiş Biniş Kartı',
+        boarding_pass_return: 'Dönüş Biniş Kartı',
+        activity_agreement: 'Activity Agreement',
+        commitment_letter: 'Taahhütname',
         extra: 'Ek Belge',
       },
       auditAction: {
@@ -406,6 +367,10 @@ const translations = {
       parseTitle: 'Parse Sonucu',
       verifyDecision: 'Doğrulama Kararı',
       messaging: 'Mesajlaşma',
+      download: 'Belgeyi indir',
+      share: 'Dosyayı paylaş',
+      saved: 'Belge İndirilenler / Inno klasörüne kaydedildi.',
+      exportError: 'Dosya aktarılamadı. Tekrar deneyin.',
     },
     adminListExtra: {
       refreshShort: 'Yenile',
@@ -414,7 +379,7 @@ const translations = {
   },
   en: {
     common: {
-      appName: 'Inno',
+      appName: 'Inno Association',
       back: 'Back',
       email: 'Email',
       password: 'Password',
@@ -442,6 +407,18 @@ const translations = {
       themeText: 'Switch between light and dark appearance.',
       languageTitle: 'Language',
       languageText: 'Use the app in Turkish or English.',
+      privacyTitle: 'Privacy and Account',
+      privacyText: 'Privacy notice, support, password and account deletion.',
+      privacyLink: 'Open Privacy Policy',
+      deletionLink: 'Account Deletion on the Web',
+      supportLink: 'Support and Contact',
+      changePassword: 'Change Password',
+      deleteAccount: 'Request Account Deletion',
+      deletionWarning: 'A deletion/anonymization review will begin for your profile and documents. You will be signed out once your request is saved.',
+      deletionSubmit: 'Submit Request',
+      deletionReceived: 'Request Received',
+      deletionError: 'Your request could not be submitted. Please try again.',
+      linkError: 'The link could not be opened. Check your browser or email app.',
     },
     nav: {
       applicationList: 'Application List',
@@ -462,68 +439,16 @@ const translations = {
     },
     status: {
       application: {
-        draft: 'Draft',
-        submitted: 'Submitted',
-        under_review: 'Under Review',
-        needs_fix: 'Needs Fix',
-        approved: 'Approved',
-        rejected: 'Rejected',
+        application_stage: 'Application Stage',
+        erasmus_stage: 'Mobility / Erasmus Stage',
+        returned_home: 'Return Home Completed',
       },
     },
-    onboarding: {
-      title: 'Information Area',
-      subtitle:
-        'Watching all videos is required for registration. For login, you may either complete the videos or use the declaration option.',
-      launcherCaption: 'App icon and promo image',
-      demoTitle: 'Demo Login Info',
-      demoEmail: 'Email: aday@inno.com',
-      demoPassword: 'Password: 123123',
-      demoCta: 'Demo Login Without Typing',
-      progressTitle: 'Video Completion Status',
-      progressCaption: '{{watched}}/{{total}} videos completed',
-      statusDone: 'Watched',
-      statusPending: 'Pending',
-      play: 'Play Video',
-      pause: 'Pause Video',
-      markWatched: 'I Watched This Video',
-      unmarkWatched: 'Undo Watched',
-      declarationTitle: 'My Declaration',
-      declarationText:
-        'I have previously watched the Inno Association content, and I know and accept all responsibilities.',
-      login: 'Log In',
-      register: 'Register',
-      helper:
-        'To log in, complete all videos or enable the declaration. Registration requires all videos.',
-      videos: [
-        {
-          title: 'ESC Project Application Process',
-          duration: 'Local Video',
-          summary:
-            'Watch Inno Association, the Italy volunteering process, and the project participation steps in this video.',
-        },
-        {
-          title: 'European Youth Portal Registration Steps',
-          duration: 'Local Video',
-          summary:
-            'Watch the ESC volunteering project registration steps on the European Youth Portal in this video.',
-        },
-        {
-          title: 'Candidate Responsibilities',
-          duration: '05:10',
-          summary: 'Responsibilities and verification steps in the application process.',
-        },
-        {
-          title: 'Document and Ethics Rules',
-          duration: '03:45',
-          summary: 'Document upload, accuracy declaration, and privacy rules.',
-        },
-      ] as const,
-    },
     entry: {
-      title: 'Inno',
-      subtitle: 'Start demo access, the unified login screen, and registration options from here.',
+      title: 'Inno Association',
+      subtitle: 'Track your ESC and Erasmus applications.',
       actionsTitle: 'Quick Access',
-      registerHint: 'On the registration screen, complete the videos and send your password request.',
+      registerHint: 'Send an account request from the registration screen.',
     },
     auth: {
       loginTitle: 'Log In',
@@ -537,7 +462,6 @@ const translations = {
         'Only accounts provisioned by us can access the application.',
       noAccount: "Don't have an account?",
       registerNow: 'Register',
-      watchVideosFirst: 'Watch Videos First',
       adminLoginLink: 'Admin login',
       adminDemoButton: 'Admin Demo Login',
       fillEmailPassword: 'Please enter your email and password.',
@@ -549,7 +473,6 @@ const translations = {
       registerTitle: 'Register',
       registerSubtitle:
         'You may register here. Access is only available with credentials shared by us.',
-      registerWarning: 'Complete the information videos before registering.',
       fullName: 'Full Name *',
       fullNamePlaceholder: 'Your full name',
       emailRequired: 'Email *',
@@ -559,15 +482,15 @@ const translations = {
       eventLinkRequired: 'Please share the link for the event you want to join.',
       validEmail: 'Please enter a valid email address.',
       kvkkRequired: 'Privacy consent is required.',
-      videoRequiredTitle: 'Video Requirement',
-      videoRequiredText: 'You must complete all information videos before registering.',
-      backToVideos: 'Back to Videos',
       registerLoading: 'Registering...',
       registerSuccessTitle: 'Registration received',
       registerSuccessText:
         'Your application has been received. You can log into the app later with the credentials shared by us.',
       ok: 'OK',
       backToLogin: 'Back to login',
+      noticeTitle: 'Data Protection Notice',
+      noticeRead: 'I have read the notice about how my personal data is processed.',
+      noticeOpen: 'Open the Data Protection Notice',
       kvkkTitle: 'Privacy Consent',
       kvkkText:
         'I consent to the processing of my personal data for application management, communication, and verification purposes.',
@@ -652,9 +575,9 @@ const translations = {
       programChat: 'Program Chat',
       commitmentTitle: 'Document Delivery Commitment',
       commitmentTextBase:
-        'A separate commitment is given for each document upload. For all documents, the applicant declares that the document is accurate and valid and accepts the sanctions that will apply otherwise.',
+        'Scanned copies of the Activity Agreement and Commitment Letter are uploaded; wet-signed originals are delivered in person.',
       commitmentTextBoarding:
-        ' For the Boarding Pass document, the applicant also undertakes to deliver the original to Inno Association.',
+        ' Outbound and return boarding passes are uploaded separately; originals are delivered to Inno Association after the mobility.',
       stepsTitle: 'PARTICIPATION STEPS',
       deadlinesTitle: 'DEADLINES',
       requiredDocumentsTitle: 'REQUIRED DOCUMENTS',
@@ -731,6 +654,10 @@ const translations = {
         photo_activity_report: 'Photo Activity Report',
         visa_payment_receipt_original: 'Visa Payment Receipt (Original)',
         boarding_pass: 'Boarding Pass',
+        boarding_pass_outbound: 'Outbound Boarding Pass',
+        boarding_pass_return: 'Return Boarding Pass',
+        activity_agreement: 'Activity Agreement',
+        commitment_letter: 'Commitment Letter',
         extra: 'Extra Document',
       },
       auditAction: {
@@ -791,6 +718,10 @@ const translations = {
       parseTitle: 'Parse Result',
       verifyDecision: 'Verification Decision',
       messaging: 'Messaging',
+      download: 'Download document',
+      share: 'Share file',
+      saved: 'The document was saved to Downloads / Inno.',
+      exportError: 'The file could not be exported. Try again.',
     },
     adminListExtra: {
       refreshShort: 'Refresh',
@@ -889,8 +820,4 @@ export const useI18n = () => {
 
   return value;
 };
-
-
-
-
 

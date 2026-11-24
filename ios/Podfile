@@ -31,13 +31,19 @@ target 'InnoPrototype' do
       # :ccache_enabled => true
     )
 
+    minimum_ios = Gem::Version.new(min_ios_version_supported)
     installer.pods_project.targets.each do |target|
-      next unless target.name == 'fmt'
-
       target.build_configurations.each do |build_configuration|
+        settings = build_configuration.build_settings
+        deployment_target = settings['IPHONEOS_DEPLOYMENT_TARGET']
+        # Resource bundles can inherit podspec targets older than the app's target.
+        if deployment_target && Gem::Version.correct?(deployment_target) &&
+          Gem::Version.new(deployment_target) < minimum_ios
+          settings['IPHONEOS_DEPLOYMENT_TARGET'] = minimum_ios.to_s
+        end
+
         # Xcode 26.x clang fails on fmt 11 consteval checks in C++20 mode.
-        # Restrict fmt to C++17 so it uses non-consteval code paths.
-        build_configuration.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
+        settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17' if target.name == 'fmt'
       end
     end
   end

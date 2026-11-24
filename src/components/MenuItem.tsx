@@ -22,11 +22,13 @@ export const MenuItem: React.FC<MenuItemProps> = ({
 }) => {
   const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
-  const resolvedIconColor = iconColor || colors.primary;
-  const resolvedIconBg = iconBg || colors.warning;
+  const resolvedIconColor = iconColor || colors.textSecondary;
+  const resolvedIconBg = iconBg || colors.surfaceContainerHigh;
 
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={[label, subtitle].filter(Boolean).join('. ')}
       style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
       onPress={onPress}
     >
@@ -48,33 +50,39 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   menuItem: {
     paddingVertical: 14,
     paddingHorizontal: 16,
-    borderRadius: 18,
-    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: 0,
+    borderBottomWidth: 1,
+    borderColor: colors.borderLight,
+    minHeight: 64,
+    backgroundColor: colors.cardBg,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
   } as ViewStyle,
   menuItemPressed: {
-    opacity: 0.88,
+    backgroundColor: colors.surfaceContainerHigh,
   } as ViewStyle,
   iconWrap: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   } as ViewStyle,
   textWrap: {
     flex: 1,
+    minWidth: 0,
     gap: 2,
   } as ViewStyle,
   menuText: {
     fontSize: 16,
-    fontWeight: '700',
+    lineHeight: 23,
+    fontWeight: '500',
     color: colors.textPrimary,
   } as TextStyle,
   menuSubtext: {
     fontSize: 13,
+    lineHeight: 19,
     color: colors.textMuted,
   } as TextStyle,
 });

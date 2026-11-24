@@ -1,57 +1,18 @@
-export type ApplicationStatus = 
-  | 'draft'
-  | 'submitted'
-  | 'under_review'
-  | 'needs_fix'
-  | 'approved'
-  | 'rejected';
+export type ApplicationStatus =
+  | 'application_stage'
+  | 'erasmus_stage'
+  | 'returned_home';
+
+export type ApplicationDecisionStatus = 'active' | 'rejected';
 
 export type DocumentStatus = 'ok' | 'missing' | 'wrong_format' | 'unread';
-export type CefrLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
-
-export interface EuropassWorkExperience {
-  role: string;
-  organization: string;
-  startDate: string;
-  endDate: string;
-  responsibilities: string;
-}
-
-export interface EuropassEducationEntry {
-  qualification: string;
-  institution: string;
-  startDate: string;
-  endDate: string;
-  description: string;
-}
-
-export interface EuropassLanguageSkill {
-  language: string;
-  listening: CefrLevel;
-  reading: CefrLevel;
-  spokenInteraction: CefrLevel;
-  spokenProduction: CefrLevel;
-  writing: CefrLevel;
-}
-
-export interface EuropassCvProfile {
-  profileTitle: string;
-  summary: string;
-  keySkills: string;
-  digitalSkills: string;
-  workExperiences: EuropassWorkExperience[];
-  educationEntries: EuropassEducationEntry[];
-  languageSkills: EuropassLanguageSkill[];
-}
-
-export interface MotivationLetterDraft {
-  addressee: string;
-  subject: string;
-  openingParagraph: string;
-  motivationParagraph: string;
-  contributionParagraph: string;
-  closingParagraph: string;
-}
+export type PhysicalDeliveryStatus =
+  | 'not_required'
+  | 'awaiting_original'
+  | 'delivered';
+export type IdentityType = 'turkish_id' | 'passport';
+import type { EuropassCvProfile, MotivationLetterDraft } from '../../admin-web/src/shared/europass';
+export type { CefrLevel, EuropassWorkExperience, EuropassEducationEntry, EuropassLanguageSkill, EuropassCvProfile, MotivationLetterDraft } from '../../admin-web/src/shared/europass';
 
 export type DocumentType =
   | 'identity'
@@ -60,9 +21,16 @@ export type DocumentType =
   | 'agreement'
   | 'photo_activity_report'
   | 'visa_payment_receipt_original'
-  | 'boarding_pass';
+  | 'boarding_pass'
+  | 'boarding_pass_outbound'
+  | 'boarding_pass_return'
+  | 'activity_agreement'
+  | 'commitment_letter';
 
 export interface Document {
+  revision?: number;
+  version?: number;
+  isCurrent?: boolean;
   id: string;
   applicationId: string;
   type: DocumentType;
@@ -70,7 +38,11 @@ export interface Document {
   fileUrl?: string;
   pageCount?: number;
   mimeType?: string;
+  sizeBytes?: number;
   status: DocumentStatus;
+  physicalDeliveryStatus?: PhysicalDeliveryStatus;
+  physicalDeliveredAt?: string;
+  physicalDeliveredByUserId?: string;
   parseResult?: string;
   uploadedAt: string;
   verifiedAt?: string;
@@ -85,12 +57,17 @@ export interface ProgramDeadline {
 
 export interface ProgramChecklistItem {
   documentType: DocumentType;
+  requiredStage?: ApplicationStatus;
   expectedFormat: string;
   description?: string;
   exampleHint?: string;
 }
 
 export interface AssignedProgram {
+  programKind?: 'other' | 'esc';
+  collectBloodGroup?: boolean;
+  revision?: number;
+  active?: boolean;
   id: string;
   name: string;
   year: number;
@@ -104,6 +81,9 @@ export interface AssignedProgram {
 }
 
 export interface ProgramDraftInput {
+  programKind?: AssignedProgram['programKind'];
+  collectBloodGroup?: boolean;
+  id?: string;
   name: string;
   year: number;
   steps?: string[];
@@ -113,12 +93,15 @@ export interface ProgramDraftInput {
 }
 
 export interface Application {
+  revision?: number;
   id: string;
   userId: string;
   programId: string;
   programName: string;
   program: AssignedProgram;
   status: ApplicationStatus;
+  decisionStatus: ApplicationDecisionStatus;
+  decisionReason?: string;
   personalInfo: PersonalInfo;
   documents: Document[];
   createdAt: string;
@@ -129,6 +112,8 @@ export interface Application {
 export interface PersonalInfo {
   fullName: string;
   birthDate?: string;
+  nationality?: string;
+  identityType?: IdentityType;
   identityNumber?: string;
   passportNumber?: string;
   pnrNumber?: string;
@@ -138,6 +123,9 @@ export interface PersonalInfo {
 }
 
 export interface ApplicationState {
+  page?: number;
+  total?: number;
+  hasMore?: boolean;
   applications: Application[];
   currentApplication: Application | null;
   isLoading: boolean;

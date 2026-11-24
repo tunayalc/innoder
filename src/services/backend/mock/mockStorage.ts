@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const MOCK_STORAGE_KEYS = {
   users: '@inno_mock/users',
+  programs: '@inno_mock/programs',
   passwords: '@inno_mock/passwords',
   applications: '@inno_mock/applications',
   messages: '@inno_mock/messages',

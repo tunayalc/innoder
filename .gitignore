@@ -33,6 +33,7 @@ local.properties
 .cxx/
 *.keystore
 !debug.keystore
+android/keystore.properties
 .kotlin/
 
 # node.js
@@ -65,6 +66,17 @@ yarn-error.log
 
 # testing
 /coverage
+/.playwright-cli/
+/output/playwright/
+/output/store-prep/
+server/.env
+server/dist/
+admin-web/.env
+admin-web/dist/
+deploy/.env
+deploy/backups/
+deploy/releases/
+deploy/rclone.conf
 
 # Yarn
 .yarn/*

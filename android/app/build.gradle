@@ -2,6 +2,51 @@ apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
+def keystoreProperties = new Properties()
+def unsignedVerification = project.findProperty('innoUnsignedVerification') == 'true'
+def storeRelease = project.findProperty('innoStoreRelease') == 'true'
+if (unsignedVerification && storeRelease) {
+    throw new GradleException('A store release cannot use unsigned verification mode.')
+}
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def releaseSigningKeys = ['INNO_UPLOAD_STORE_FILE', 'INNO_UPLOAD_STORE_PASSWORD', 'INNO_UPLOAD_KEY_ALIAS', 'INNO_UPLOAD_KEY_PASSWORD']
+if (!unsignedVerification) {
+    def environmentSigning = releaseSigningKeys.collectEntries { key -> [key, System.getenv(key)] }
+    if (environmentSigning.values().any { it != null }) {
+        if (!environmentSigning.values().every { it }) {
+            throw new GradleException('Release signing environment must provide all upload keystore settings.')
+        }
+        keystoreProperties.putAll(environmentSigning)
+    } else if (keystorePropertiesFile.exists()) {
+        keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+    }
+}
+def hasReleaseSigning = releaseSigningKeys.every { keystoreProperties[it] }
+def debugReleaseKey = hasReleaseSigning && (
+    keystoreProperties['INNO_UPLOAD_STORE_FILE'].toLowerCase().contains('debug.keystore') ||
+    keystoreProperties['INNO_UPLOAD_KEY_ALIAS'].toLowerCase() == 'androiddebugkey'
+)
+if (debugReleaseKey && gradle.startParameter.taskNames.any { it.toLowerCase().contains('release') }) {
+    throw new GradleException('Release signing cannot use an Android debug key.')
+}
+if (storeRelease && !hasReleaseSigning) {
+    throw new GradleException('Store release requires the institution upload keystore.')
+}
+if (hasReleaseSigning && gradle.startParameter.taskNames.any { it.toLowerCase().contains('release') }) {
+    def releaseStore = java.security.KeyStore.getInstance(java.security.KeyStore.getDefaultType())
+    try {
+        rootProject.file(keystoreProperties['INNO_UPLOAD_STORE_FILE']).withInputStream { stream ->
+            releaseStore.load(stream, keystoreProperties['INNO_UPLOAD_STORE_PASSWORD'].toCharArray())
+        }
+        def certificate = releaseStore.getCertificate(keystoreProperties['INNO_UPLOAD_KEY_ALIAS'])
+        if (certificate == null || certificate.subjectX500Principal.name.toLowerCase().contains('cn=android debug')) {
+            throw new GradleException('Release signing requires a non-debug institution certificate.')
+        }
+    } catch (java.security.GeneralSecurityException ignored) {
+        throw new GradleException('Release signing certificate could not be validated.')
+    }
+}
+
 /**
  * This is the configuration block to customize your React Native Android app.
  * By default you don't need to apply any configuration, just uncomment the lines you need.
@@ -57,7 +102,7 @@ react {
 /**
  * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
  */
-def enableProguardInReleaseBuilds = false
+def enableProguardInReleaseBuilds = true
 
 /**
  * The preferred build flavor of JavaScriptCore (JSC)
@@ -72,17 +117,44 @@ def enableProguardInReleaseBuilds = false
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
+abstract class InnoFontAssets extends DefaultTask {
+    @InputDirectory abstract DirectoryProperty getInputDirectory()
+    @OutputDirectory abstract DirectoryProperty getOutputDirectory()
+    @javax.inject.Inject abstract FileSystemOperations getFileSystemOperations()
+
+    @TaskAction
+    void syncFonts() {
+        fileSystemOperations.sync {
+            from(inputDirectory) {
+                include 'Inter-*.ttf', 'OFL.txt'
+                into 'fonts'
+            }
+            into(outputDirectory)
+        }
+    }
+}
+
+// Register generated assets with AGP so packaging and lint share the dependency.
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        def copyFonts = tasks.register("copy${variant.name.capitalize()}InnoFonts", InnoFontAssets) {
+            inputDirectory.set(layout.projectDirectory.dir('../../src/assets/fonts'))
+        }
+        variant.sources.assets.addGeneratedSourceDirectory(copyFonts) { it.outputDirectory }
+    }
+}
+
 android {
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.innoprototype"
+    namespace "org.innoassociation.mobile"
     defaultConfig {
-        applicationId "com.innoprototype"
+        applicationId "org.innoassociation.mobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
+        versionCode 3
         versionName "1.0"
     }
     signingConfigs {
@@ -92,16 +164,25 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        if (hasReleaseSigning) {
+            release {
+                storeFile rootProject.file(keystoreProperties['INNO_UPLOAD_STORE_FILE'])
+                storePassword keystoreProperties['INNO_UPLOAD_STORE_PASSWORD']
+                keyAlias keystoreProperties['INNO_UPLOAD_KEY_ALIAS']
+                keyPassword keystoreProperties['INNO_UPLOAD_KEY_PASSWORD']
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled enableProguardInReleaseBuilds
+            shrinkResources enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }

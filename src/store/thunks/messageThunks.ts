@@ -12,6 +12,7 @@ import {
 } from '../slices/messageSlice';
 import { getErrorMessage } from './errors';
 import { reloadAuditLogs } from './auditThunks';
+import { apiClient } from '../../services/api/apiClient';
 
 export type AppThunk<ReturnType = void> = ThunkAction<
   ReturnType,
@@ -20,42 +21,92 @@ export type AppThunk<ReturnType = void> = ThunkAction<
   AnyAction
 >;
 
-const mergeThreadMessages = (all: Message[], thread: Message[], applicationId: string) => {
-  const withoutThread = all.filter((m) => m.applicationId !== applicationId);
+const mergeThreadMessages = (
+  all: Message[],
+  thread: Message[],
+  applicationId: string,
+) => {
+  const withoutThread = all.filter(m => m.applicationId !== applicationId);
   return [...withoutThread, ...thread].sort(
     (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
   );
 };
 
 export const loadMessageThread =
-  (params: { applicationId: string }): AppThunk =>
+  (params: {
+    applicationId: string;
+    page?: number;
+  }): AppThunk<Promise<{ page: number; hasMore: boolean } | undefined>> =>
   async (dispatch, getState) => {
+    const userId = getState().user.user?.id,
+      version = apiClient.getVersion();
+    const current = () =>
+      getState().user.user?.id === userId && apiClient.getVersion() === version;
     const backend = getBackend();
     dispatch(setMessageLoading(true));
     dispatch(setMessageError(null));
     try {
-      const thread = await backend.messages.listByApplicationId({
-        applicationId: params.applicationId,
-      });
+      const page = backend.messages.listPage
+        ? await backend.messages.listPage({
+            ...params,
+            page: params.page || 1,
+            pageSize: 25,
+          })
+        : null;
+      const thread =
+        page?.items ||
+        (await backend.messages.listByApplicationId({
+          applicationId: params.applicationId,
+        }));
+      if (!current()) return;
+      const previous = getState().message.messages;
+      const loaded =
+        params.page && params.page > 1
+          ? Array.from(
+              new Map(
+                [
+                  ...thread,
+                  ...previous.filter(
+                    item => item.applicationId === params.applicationId,
+                  ),
+                ].map(item => [item.id, item]),
+              ).values(),
+            )
+          : thread;
       const merged = mergeThreadMessages(
-        getState().message.messages,
-        thread,
+        previous,
+        loaded,
         params.applicationId,
       );
       dispatch(setMessages(merged));
+      return {
+        page: page?.page || 1,
+        hasMore: page ? loaded.length < page.total : false,
+      };
     } catch (err) {
-      dispatch(setMessageError(getErrorMessage(err, 'Mesajlar yüklenemedi.')));
+      if (current())
+        dispatch(
+          setMessageError(getErrorMessage(err, 'Mesajlar yüklenemedi.')),
+        );
     } finally {
-      dispatch(setMessageLoading(false));
+      if (current()) dispatch(setMessageLoading(false));
     }
   };
 
 export const sendMessageThunk =
-  (params: { applicationId: string; content: string; relatedDocumentId?: string }): AppThunk =>
+  (params: {
+    applicationId: string;
+    content: string;
+    relatedDocumentId?: string;
+  }): AppThunk<Promise<boolean>> =>
   async (dispatch, getState) => {
     const backend = getBackend();
     const user = getState().user.user;
-    if (!user) return;
+    if (!user) return false;
+    const version = apiClient.getVersion();
+    const current = () =>
+      getState().user.user?.id === user.id &&
+      apiClient.getVersion() === version;
 
     dispatch(setMessageLoading(true));
     dispatch(setMessageError(null));
@@ -63,16 +114,20 @@ export const sendMessageThunk =
       const msg = await backend.messages.send({
         applicationId: params.applicationId,
         senderId: user.id,
-        senderRole: user.role,
+        senderRole: user.role === 'candidate' ? 'candidate' : 'admin',
         content: params.content,
         relatedDocumentId: params.relatedDocumentId,
       });
+      if (!current()) return false;
       dispatch(addMessage(msg));
-      dispatch(reloadAuditLogs());
+      if (user.role !== 'candidate') dispatch(reloadAuditLogs());
+      return true;
     } catch (err) {
-      dispatch(setMessageError(getErrorMessage(err, 'Mesaj gönderilemedi.')));
+      if (current())
+        dispatch(setMessageError(getErrorMessage(err, 'Mesaj gönderilemedi.')));
+      return false;
     } finally {
-      dispatch(setMessageLoading(false));
+      if (current()) dispatch(setMessageLoading(false));
     }
   };
 
@@ -82,19 +137,36 @@ export const markThreadRead =
     const backend = getBackend();
     const user = getState().user.user;
     if (!user) return;
-
-    dispatch(setMessageLoading(true));
-    dispatch(setMessageError(null));
+    const version = apiClient.getVersion();
+    const current = () =>
+      getState().user.user?.id === user.id &&
+      version === apiClient.getVersion();
     try {
       await backend.messages.markThreadRead({
         applicationId: params.applicationId,
         readerId: user.id,
       });
-      // Reload the thread so readAt timestamps are reflected in UI.
-      dispatch(loadMessageThread({ applicationId: params.applicationId }));
+      if (current())
+        dispatch(
+          setMessages(
+            getState().message.messages.map(item =>
+              item.applicationId === params.applicationId
+                ? {
+                    ...item,
+                    readBy: Array.from(
+                      new Set([...(item.readBy || []), user.id]),
+                    ),
+                  }
+                : item,
+            ),
+          ),
+        );
     } catch (err) {
-      dispatch(setMessageError(getErrorMessage(err, 'Okunma durumu güncellenemedi.')));
-    } finally {
-      dispatch(setMessageLoading(false));
+      if (current())
+        dispatch(
+          setMessageError(
+            getErrorMessage(err, 'Okunma durumu güncellenemedi.'),
+          ),
+        );
     }
   };

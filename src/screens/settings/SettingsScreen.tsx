@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  ScrollView,
+  Alert,
   StyleSheet,
   Text,
   TextStyle,
@@ -8,20 +8,65 @@ import {
   ViewStyle,
 } from 'react-native';
 import {
+  Button,
   LanguageSwitcher,
   ThemeSwitcher,
+  ScreenScrollView,
 } from '../../components';
+import { useNavigation } from '@react-navigation/native';
+import { useAuth } from '../../hooks';
+import { appConfig } from '../../config/appConfig';
+import { apiClient } from '../../services/api/apiClient';
+import type { RootStackNavigationProp } from '../../types';
+import { openExternalUrl } from '../../utils/contact';
 import { useI18n } from '../../i18n';
 import { useThemedStyles, type AppColors } from '../../theme';
 
 export const SettingsScreen: React.FC = () => {
   const styles = useThemedStyles(createStyles);
   const { t } = useI18n();
+  const navigation = useNavigation<RootStackNavigationProp>();
+  const { isAuthenticated, logout } = useAuth();
+  const sending = React.useRef(false);
+  const [deleting, setDeleting] = React.useState(false);
+  const openLink = async (url: string) => {
+    try {
+      await openExternalUrl(url);
+    } catch {
+      Alert.alert(t('common.errorTitle'), t('settings.linkError'));
+    }
+  };
+
+  const requestAccountDeletion = () => Alert.alert(
+    t('settings.deleteAccount'),
+    t('settings.deletionWarning'),
+    [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('settings.deletionSubmit'), style: 'destructive', onPress: async () => {
+          if (sending.current) return;
+          sending.current = true;
+          setDeleting(true);
+          try {
+            const response = await apiClient.delete<{ message: string }>('/users/me');
+            if (!response.data) throw new Error(response.error || t('settings.deletionError'));
+            await logout();
+            Alert.alert(t('settings.deletionReceived'), response.data.message);
+          } catch (error) {
+            Alert.alert(t('common.errorTitle'), error instanceof Error ? error.message : t('settings.deletionError'));
+          } finally {
+            sending.current = false;
+            setDeleting(false);
+          }
+        },
+      },
+    ],
+  );
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScreenScrollView contentContainerStyle={styles.container}>
       <View style={styles.heroCard}>
-        <Text style={styles.title}>{t('settings.title')}</Text>
+        <Text accessibilityRole="header" style={styles.title}>{t('settings.title')}</Text>
         <Text style={styles.subtitle}>{t('settings.subtitle')}</Text>
       </View>
 
@@ -32,11 +77,21 @@ export const SettingsScreen: React.FC = () => {
       </View>
 
       <View style={styles.card}>
+        <Text style={styles.cardTitle}>{t('settings.privacyTitle')}</Text>
+        <Text style={styles.cardText}>{t('settings.privacyText')}</Text>
+        <Button label={t('settings.privacyLink')} variant="ghost" onPress={() => openLink(appConfig.privacyPolicyUrl)} />
+        <Button label={t('settings.deletionLink')} variant="ghost" onPress={() => openLink(appConfig.accountDeletionUrl)} />
+        <Button label={t('settings.supportLink')} variant="ghost" onPress={() => openLink(appConfig.supportUrl)} />
+        {isAuthenticated ? <Button label={t('settings.changePassword')} variant="ghost" onPress={() => navigation.navigate('ChangePassword')} /> : null}
+        {isAuthenticated ? <Button label={t('settings.deleteAccount')} variant="ghost" onPress={requestAccountDeletion} loading={deleting} /> : null}
+      </View>
+
+      <View style={styles.card}>
         <Text style={styles.cardTitle}>{t('settings.languageTitle')}</Text>
         <Text style={styles.cardText}>{t('settings.languageText')}</Text>
         <LanguageSwitcher />
       </View>
-    </ScrollView>
+    </ScreenScrollView>
   );
 };
 
@@ -50,12 +105,8 @@ const createStyles = (colors: AppColors) =>
       backgroundColor: colors.background,
     } as ViewStyle,
     heroCard: {
-      backgroundColor: colors.surfaceContainerLow,
-      borderRadius: 24,
-      padding: 20,
+      paddingVertical: 8,
       gap: 8,
-      borderWidth: 1,
-      borderColor: colors.borderLight,
     } as ViewStyle,
     title: {
       fontSize: 28,
@@ -68,12 +119,10 @@ const createStyles = (colors: AppColors) =>
       color: colors.textSecondary,
     } as TextStyle,
     card: {
-      backgroundColor: colors.cardBg,
-      borderRadius: 20,
-      padding: 16,
+      paddingVertical: 20,
       gap: 10,
-      borderWidth: 1,
-      borderColor: colors.borderLight,
+      borderTopWidth: 1,
+      borderTopColor: colors.borderLight,
     } as ViewStyle,
     cardTitle: {
       fontSize: 15,

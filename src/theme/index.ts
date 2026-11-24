@@ -4,6 +4,7 @@ import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { selectIsDarkMode } from '../store/selectors';
 import { setDarkMode, toggleDarkMode } from '../store/slices/uiSlice';
 import { darkColors, lightColors, type AppColors } from './colors';
+import { withTypography } from './typography';
 
 export * from './colors';
 export * from './spacing';
@@ -29,7 +30,7 @@ export const useThemedStyles = <T extends StyleSheet.NamedStyles<T>>(
   factory: (colors: AppColors) => T,
 ) => {
   const colors = useThemeColors();
-  return useMemo(() => StyleSheet.create(factory(colors)), [colors, factory]);
+  return useMemo(() => StyleSheet.create(withTypography(factory(colors))), [colors, factory]);
 };
 
 export const theme = {

@@ -23,9 +23,12 @@ describe('mock backend', () => {
       fullName: 'Test User',
       email: 'test@example.com',
       kvkkAccepted: true,
+      noticeAccepted: true,
+      noticeVersion: '2026-01',
+      consentVersion: '2026-01',
     });
 
-    expect(user.status).toBe('verified');
+    expect(user.status).toBe('pending');
 
     await expect(
       backend.auth.loginCandidate({
@@ -34,10 +37,14 @@ describe('mock backend', () => {
       }),
     ).rejects.toThrow();
 
-    // Demo candidate is seeded as verified with credentials.
+    await backend.auth.sendCandidatePassword({
+      candidateUserId: user.id,
+      password: 'StrongPassword123',
+      adminUserId: 'admin-test',
+    });
     const loggedIn = await backend.auth.loginCandidate({
-      email: 'aday@inno.com',
-      password: '123123',
+      email: user.email,
+      password: 'StrongPassword123',
     });
 
     expect(loggedIn.role).toBe('candidate');
@@ -51,9 +58,10 @@ describe('mock backend', () => {
       }),
       fullName: loggedIn.name,
     });
-    expect(['draft', 'under_review']).toContain(draft.status);
+    expect(draft.status).toBe('application_stage');
     expect(draft.documents.length).toBeGreaterThan(0);
-    expect(draft.documents.some((d) => d.type === 'boarding_pass')).toBe(true);
+    expect(draft.documents.some((d) => d.type === 'boarding_pass_outbound')).toBe(true);
+    expect(draft.documents.some((d) => d.type === 'boarding_pass_return')).toBe(true);
 
     const uploadRes = await backend.applications.uploadDocument({
       applicationId: draft.id,
@@ -65,21 +73,29 @@ describe('mock backend', () => {
     });
     expect(uploadRes.document.status).toBe('wrong_format');
 
-    const admin = await backend.auth.loginAdmin({
-      username: 'admin',
-      password: '123123',
-    });
-
     const verifyRes = await backend.applications.verifyDocument({
       applicationId: draft.id,
       documentId: uploadRes.document.id,
       status: 'wrong_format',
-      verifiedByUserId: admin.id,
+      verifiedByUserId: 'admin-test',
       note: 'Form PDF olmali',
     });
 
     expect(verifyRes.document.verifiedAt).toBeTruthy();
-    expect(verifyRes.application.status).toBe('needs_fix');
+    expect(verifyRes.application.status).toBe('application_stage');
+
+    const erasmus = await backend.applications.approve({
+      applicationId: draft.id,
+      adminUserId: 'admin-test',
+    });
+    const rejected = await backend.applications.reject({
+      applicationId: draft.id,
+      adminUserId: 'admin-test',
+      reason: 'Uygunluk koşulları karşılanmadı',
+    });
+    expect(erasmus.status).toBe('erasmus_stage');
+    expect(rejected.status).toBe('erasmus_stage');
+    expect(rejected.decisionStatus).toBe('rejected');
 
     const logs = await backend.audit.list();
     expect(logs.length).toBeGreaterThan(0);
@@ -92,6 +108,9 @@ describe('mock backend', () => {
       fullName: 'Password User',
       email: 'password@example.com',
       kvkkAccepted: true,
+      noticeAccepted: true,
+      noticeVersion: '2026-01',
+      consentVersion: '2026-01',
     });
 
     const requested = await backend.auth.requestCandidatePassword({
@@ -109,17 +128,29 @@ describe('mock backend', () => {
 
     const updated = await backend.auth.sendCandidatePassword({
       candidateUserId: candidate.id,
-      password: 'inno-pass-2026',
+      password: 'InnoTemporary2026',
       adminUserId: 'admin-001',
     });
 
     expect(updated.credentialRequestPending).toBe(false);
     expect(updated.credentialSentAt).toBeTruthy();
 
+    expect(updated.mustChangePassword).toBe(true);
+
     const loggedIn = await backend.auth.loginCandidate({
       email: candidate.email,
-      password: 'inno-pass-2026',
+      password: 'InnoTemporary2026',
     });
     expect(loggedIn.id).toBe(candidate.id);
+
+    await backend.auth.changePassword({
+      userId: candidate.id,
+      currentPassword: 'InnoTemporary2026',
+      newPassword: 'PersonalPassword2026',
+    });
+    await expect(backend.auth.loginCandidate({
+      email: candidate.email,
+      password: 'PersonalPassword2026',
+    })).resolves.toMatchObject({ id: candidate.id });
   });
 });

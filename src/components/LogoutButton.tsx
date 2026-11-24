@@ -24,11 +24,13 @@ export const LogoutButton: React.FC = () => {
 
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={t('common.logout')}
       style={({ pressed }) => [styles.container, pressed && styles.pressed]}
       onPress={handleLogout}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
     >
-      <Icon name="logout-variant" size={22} color={colors.primary} />
+      <Icon name="logout-variant" size={22} color={colors.textSecondary} />
     </Pressable>
   );
 };
@@ -37,7 +39,7 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   container: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 6,
     backgroundColor: colors.surfaceContainerLow,
     alignItems: 'center',
     justifyContent: 'center',

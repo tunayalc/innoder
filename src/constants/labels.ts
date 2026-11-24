@@ -1,10 +1,12 @@
 ﻿// Application Status Labels
 export const APPLICATION_STATUS_LABELS: Record<string, string> = {
-  draft: 'Taslak',
-  submitted: 'Gönderildi',
-  under_review: 'İnceleniyor',
-  needs_fix: 'Düzeltme Gerekli',
-  approved: 'Onaylandı',
+  application_stage: 'Başvuru Aşaması',
+  erasmus_stage: 'Hareketlilik / Erasmus Aşaması',
+  returned_home: 'Ülkeye Dönüş Tamamlandı',
+};
+
+export const APPLICATION_DECISION_LABELS: Record<string, string> = {
+  active: 'Aktif',
   rejected: 'Reddedildi',
 };
 
@@ -24,6 +26,10 @@ export const DOCUMENT_TYPES = {
   photo_activity_report: 'Fotoğraflı Faaliyet Raporu',
   visa_payment_receipt_original: 'Vize Ödeme Dekontu (Asıl)',
   boarding_pass: 'Biniş Kartı',
+  boarding_pass_outbound: 'Gidiş Biniş Kartı',
+  boarding_pass_return: 'Dönüş Biniş Kartı',
+  activity_agreement: 'Activity Agreement',
+  commitment_letter: 'Taahhütname',
   extra: 'Ek Belge',
 } as const;
 

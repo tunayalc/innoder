@@ -42,8 +42,6 @@ const AppContent: React.FC = () => {
           backgroundColor={colors.background}
         />
         <View style={styles.container}>
-          <View style={styles.orbA} />
-          <View style={styles.orbB} />
           <RootNavigator />
         </View>
       </NavigationContainer>
@@ -74,24 +72,6 @@ const createStyles = (colors: AppColors) =>
     container: {
       flex: 1,
       backgroundColor: colors.background,
-    },
-    orbA: {
-      position: 'absolute',
-      top: -140,
-      right: -140,
-      width: 300,
-      height: 300,
-      borderRadius: 999,
-      backgroundColor: colors.orbOrange,
-    },
-    orbB: {
-      position: 'absolute',
-      bottom: -160,
-      left: -120,
-      width: 320,
-      height: 320,
-      borderRadius: 999,
-      backgroundColor: colors.tealMuted,
     },
   });
 

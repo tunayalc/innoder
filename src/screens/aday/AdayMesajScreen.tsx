@@ -1,6 +1,13 @@
-import React, { useCallback, useMemo, useRef, useEffect, useState } from 'react';
+import React, {
+  useCallback,
+  useMemo,
+  useRef,
+  useEffect,
+  useState,
+} from 'react';
 import {
   View,
+  ActivityIndicator,
   Text,
   StyleSheet,
   ViewStyle,
@@ -12,8 +19,19 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useRoute } from '@react-navigation/native';
-import { useAppTheme, useThemedStyles, type AppColors } from '../../theme';
+import { useStore } from 'react-redux';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import {
+  layout,
+  useAppTheme,
+  useThemedStyles,
+  type AppColors,
+} from '../../theme';
+import { StateMessage } from '../../components';
+import type { RootState } from '../../store';
 import { useAuth } from '../../hooks';
+import { useUnsavedChanges } from '../../hooks/useUnsavedChanges';
 import { useI18n } from '../../i18n';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { selectApplications } from '../../store/selectors';
@@ -39,50 +57,108 @@ export const AdayMesajScreen: React.FC = () => {
   const styles = useThemedStyles(createStyles);
   const route = useRoute<AdayMesajRouteProp>();
   const { user, isAdmin } = useAuth();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const dispatch = useAppDispatch();
+  const store = useStore<RootState>();
+  const insets = useSafeAreaInsets();
   const applications = useAppSelector(selectApplications);
   const flatListRef = useRef<FlatList>(null);
   const [newMessage, setNewMessage] = useState('');
+  useUnsavedChanges(Boolean(newMessage));
+  const [isSending, setIsSending] = useState(false);
+  const sendingRef = useRef(false);
+  const [historyPage, setHistoryPage] = useState(1),
+    [hasOlder, setHasOlder] = useState(false);
+  const loadingOlder = useRef(false);
 
   const activeThreadId =
-    route.params?.applicationId || (!isAdmin && user ? createGeneralChatThreadId(user.id) : '');
+    route.params?.applicationId ||
+    (!isAdmin && user ? createGeneralChatThreadId(user.id) : '');
   const isGeneralThread = isGeneralChatThreadId(activeThreadId);
 
   const messages = useAppSelector(
     selectMessagesByApplicationId(activeThreadId || ''),
   );
   const isLoading = useAppSelector(selectMessageLoading);
-  const error = useAppSelector((state) => state.message.error);
+  const error = useAppSelector(state => state.message.error);
 
   const application = useMemo(
     () =>
       isGeneralThread
         ? null
-        : applications.find((app) => app.id === activeThreadId) || null,
+        : applications.find(app => app.id === activeThreadId) || null,
     [applications, activeThreadId, isGeneralThread],
   );
 
   useEffect(() => {
     if (!activeThreadId) return;
-    dispatch(loadMessageThread({ applicationId: activeThreadId }));
-    dispatch(markThreadRead({ applicationId: activeThreadId }));
+    let active = true;
+    setHasOlder(false);
+    setHistoryPage(1);
+    dispatch(loadMessageThread({ applicationId: activeThreadId })).then(
+      result => {
+        if (active && result) {
+          setHistoryPage(result.page);
+          setHasOlder(result.hasMore);
+          dispatch(markThreadRead({ applicationId: activeThreadId }));
+        }
+      },
+    );
+    return () => {
+      active = false;
+    };
   }, [dispatch, activeThreadId]);
 
   useEffect(() => {
-    if (messages.length === 0) return;
+    if (messages.length === 0 || historyPage > 1 || loadingOlder.current)
+      return;
     const timer = setTimeout(() => {
       flatListRef.current?.scrollToEnd({ animated: true });
     }, 100);
     return () => clearTimeout(timer);
-  }, [messages.length]);
+  }, [messages.length, historyPage]);
 
-  const handleSend = useCallback(() => {
-    if (!newMessage.trim() || !user || !activeThreadId) return;
-
-    dispatch(sendMessageThunk({ applicationId: activeThreadId, content: newMessage.trim() }));
-    setNewMessage('');
-  }, [activeThreadId, dispatch, newMessage, user]);
+  const handleSend = useCallback(async () => {
+    if (
+      !newMessage.trim() ||
+      !user ||
+      !activeThreadId ||
+      sendingRef.current ||
+      isLoading
+    )
+      return;
+    const draft = newMessage;
+    const previousIds = new Set(
+      store.getState().message.messages.map(message => message.id),
+    );
+    sendingRef.current = true;
+    setIsSending(true);
+    try {
+      await dispatch(
+        sendMessageThunk({
+          applicationId: activeThreadId,
+          content: draft.trim(),
+        }),
+      );
+      // The existing thunk reports failure in Redux, not by rejecting its promise.
+      const delivered = store
+        .getState()
+        .message.messages.some(
+          message =>
+            !previousIds.has(message.id) &&
+            message.applicationId === activeThreadId &&
+            message.senderId === user.id &&
+            message.content === draft.trim(),
+        );
+      if (delivered)
+        setNewMessage(current => (current === draft ? '' : current));
+    } finally {
+      sendingRef.current = false;
+      setIsSending(false);
+    }
+  }, [activeThreadId, dispatch, isLoading, newMessage, store, user]);
+  const sendDisabled =
+    !newMessage.trim() || !activeThreadId || isSending || isLoading;
 
   const renderMessage = ({ item }: { item: Message }) => {
     const isOwnMessage = item.senderId === user?.id;
@@ -97,8 +173,8 @@ export const AdayMesajScreen: React.FC = () => {
           {isOwnMessage
             ? t('candidateMessages.you')
             : item.senderRole === 'admin'
-              ? t('candidateMessages.admin')
-              : t('candidateMessages.candidate')}
+            ? t('candidateMessages.admin')
+            : t('candidateMessages.candidate')}
         </Text>
         <Text style={styles.msgText}>{item.content}</Text>
         <Text style={styles.msgTime}>{getRelativeTime(item.createdAt)}</Text>
@@ -109,26 +185,27 @@ export const AdayMesajScreen: React.FC = () => {
   const emptyMessageText = !activeThreadId
     ? t('candidateMessages.noThread')
     : isGeneralThread
-      ? t('candidateMessages.emptyGeneral')
-      : t('candidateMessages.emptyProgram');
+    ? t('candidateMessages.emptyGeneral')
+    : t('candidateMessages.emptyProgram');
 
   const headerSubtitle = isGeneralThread
     ? t('candidateMessages.generalTitle')
     : application
-      ? application.programName
-      : t('candidateMessages.threadNotFound');
+    ? application.programName
+    : t('candidateMessages.threadNotFound');
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={100}
+      keyboardVerticalOffset={insets.top + 56}
     >
       <View style={styles.header}>
         <View style={styles.headerCard}>
-          <View style={styles.accentBar} />
           <View style={styles.headerContent}>
-            <Text style={styles.h2}>{t('candidateMessages.title')}</Text>
+            <Text accessibilityRole="header" style={styles.h2}>
+              {t('candidateMessages.title')}
+            </Text>
             <Text style={styles.subtitle}>{headerSubtitle}</Text>
           </View>
         </View>
@@ -136,30 +213,90 @@ export const AdayMesajScreen: React.FC = () => {
 
       {!activeThreadId ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>{emptyMessageText}</Text>
+          <StateMessage message={emptyMessageText} />
         </View>
       ) : messages.length === 0 ? (
         <View style={styles.emptyContainer}>
-          {isLoading ? (
-            <Text style={styles.emptyText}>{t('candidateMessages.loading')}</Text>
-          ) : error ? (
-            <Text style={styles.emptyText}>{error}</Text>
-          ) : (
-            <Text style={styles.emptyText}>{emptyMessageText}</Text>
-          )}
+          <StateMessage
+            kind={isLoading ? 'loading' : error ? 'error' : 'empty'}
+            message={
+              isLoading
+                ? t('candidateMessages.loading')
+                : error || emptyMessageText
+            }
+            actionLabel={error && !isLoading ? t('common.refresh') : undefined}
+            onAction={() =>
+              dispatch(loadMessageThread({ applicationId: activeThreadId }))
+            }
+          />
         </View>
       ) : (
         <FlatList
           ref={flatListRef}
           data={messages}
           renderItem={renderMessage}
-          keyExtractor={(item) => item.id}
+          keyExtractor={item => item.id}
           contentContainerStyle={styles.messageList}
-          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          initialNumToRender={15}
+          windowSize={7}
+          ListHeaderComponent={
+            hasOlder ? (
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={
+                  language === 'en'
+                    ? 'Load earlier messages'
+                    : 'Önceki mesajları yükle'
+                }
+                disabled={isLoading}
+                onPress={async () => {
+                  if (loadingOlder.current) return;
+                  loadingOlder.current = true;
+                  try {
+                    const result = await dispatch(
+                      loadMessageThread({
+                        applicationId: activeThreadId,
+                        page: historyPage + 1,
+                      }),
+                    );
+                    if (result) {
+                      setHistoryPage(result.page);
+                      setHasOlder(result.hasMore);
+                    }
+                  } finally {
+                    loadingOlder.current = false;
+                  }
+                }}
+              >
+                <Text style={styles.subtitle}>
+                  {isLoading
+                    ? t('candidateMessages.loading')
+                    : language === 'en'
+                    ? 'Earlier messages'
+                    : 'Önceki mesajlar'}
+                </Text>
+              </TouchableOpacity>
+            ) : null
+          }
         />
       )}
 
-      <View style={styles.inputRow}>
+      {error && messages.length > 0 ? (
+        <Text
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite"
+          style={styles.errorText}
+        >
+          {error}
+        </Text>
+      ) : null}
+      <View
+        style={[
+          styles.inputRow,
+          { paddingBottom: Math.max(insets.bottom, 12) },
+        ]}
+      >
         <TextInput
           style={styles.input}
           value={newMessage}
@@ -170,143 +307,149 @@ export const AdayMesajScreen: React.FC = () => {
               : t('candidateMessages.placeholderProgram')
           }
           placeholderTextColor={colors.textMuted}
+          accessibilityLabel={
+            isGeneralThread
+              ? t('candidateMessages.placeholderGeneral')
+              : t('candidateMessages.placeholderProgram')
+          }
           multiline
-          maxLength={500}
-          editable={Boolean(activeThreadId)}
+          maxLength={4000}
+          editable={Boolean(activeThreadId) && !isSending}
         />
         <TouchableOpacity
-          style={[
-            styles.sendButton,
-            (!newMessage.trim() || !activeThreadId) && styles.sendButtonDisabled,
-          ]}
+          style={[styles.sendButton, sendDisabled && styles.sendButtonDisabled]}
           onPress={handleSend}
-          disabled={!newMessage.trim() || !activeThreadId}
+          disabled={sendDisabled}
+          accessibilityRole="button"
+          accessibilityLabel={t('candidateMessages.send')}
+          accessibilityState={{ disabled: sendDisabled, busy: isSending }}
         >
-          <Text style={styles.sendButtonText}>{t('candidateMessages.send')}</Text>
+          {isSending ? (
+            <ActivityIndicator color={colors.white} />
+          ) : (
+            <Icon name="send" size={22} color={colors.white} />
+          )}
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
   );
 };
 
-const createStyles = (colors: AppColors) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  } as ViewStyle,
-  header: {
-    padding: 20,
-    paddingBottom: 10,
-  } as ViewStyle,
-  headerCard: {
-    backgroundColor: colors.cardBg,
-    borderRadius: 14,
-    padding: 18,
-    flexDirection: 'row',
-    gap: 14,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  } as ViewStyle,
-  accentBar: {
-    width: 4,
-    borderRadius: 2,
-    backgroundColor: colors.primary,
-  } as ViewStyle,
-  headerContent: {
-    flex: 1,
-    gap: 4,
-  } as ViewStyle,
-  h2: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  } as TextStyle,
-  subtitle: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    marginTop: 4,
-  } as TextStyle,
-  messageList: {
-    padding: 20,
-    paddingTop: 8,
-    gap: 14,
-  } as ViewStyle,
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  } as ViewStyle,
-  emptyText: {
-    fontSize: 15,
-    color: colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 22,
-  } as TextStyle,
-  msgBubble: {
-    padding: 14,
-    borderRadius: 14,
-    maxWidth: '80%',
-    gap: 5,
-  } as ViewStyle,
-  msgAdmin: {
-    backgroundColor: colors.msgAdmin,
-    alignSelf: 'flex-start',
-    borderBottomLeftRadius: 4,
-  } as ViewStyle,
-  msgUser: {
-    backgroundColor: colors.msgUser,
-    alignSelf: 'flex-end',
-    borderBottomRightRadius: 4,
-  } as ViewStyle,
-  msgSender: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.textMuted,
-    textTransform: 'uppercase',
-  } as TextStyle,
-  msgText: {
-    color: colors.textPrimary,
-    fontSize: 15,
-    lineHeight: 21,
-  } as TextStyle,
-  msgTime: {
-    fontSize: 11,
-    color: colors.textMuted,
-    alignSelf: 'flex-end',
-  } as TextStyle,
-  inputRow: {
-    flexDirection: 'row',
-    padding: 12,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 12,
-    gap: 8,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
-    backgroundColor: colors.cardBg,
-    alignItems: 'flex-end',
-  } as ViewStyle,
-  input: {
-    flex: 1,
-    backgroundColor: colors.background,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: colors.textPrimary,
-    maxHeight: 100,
-  } as TextStyle,
-  sendButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 20,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-  } as ViewStyle,
-  sendButtonDisabled: {
-    opacity: 0.4,
-  } as ViewStyle,
-  sendButtonText: {
-    color: colors.white,
-    fontWeight: '700',
-    fontSize: 15,
-  } as TextStyle,
-});
+const createStyles = (colors: AppColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      width: '100%',
+      maxWidth: layout.contentMaxWidth,
+      alignSelf: 'center',
+      backgroundColor: colors.background,
+    } as ViewStyle,
+    header: {
+      padding: 20,
+      paddingBottom: 10,
+    } as ViewStyle,
+    headerCard: {
+      flexDirection: 'row',
+      gap: 14,
+    } as ViewStyle,
+    headerContent: {
+      flex: 1,
+      gap: 4,
+    } as ViewStyle,
+    h2: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    } as TextStyle,
+    subtitle: {
+      color: colors.textSecondary,
+      fontSize: 14,
+      marginTop: 4,
+    } as TextStyle,
+    messageList: {
+      padding: 20,
+      paddingTop: 8,
+      gap: 14,
+    } as ViewStyle,
+    emptyContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    } as ViewStyle,
+    errorText: {
+      fontSize: 15,
+      color: colors.danger,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      textAlign: 'center',
+      lineHeight: 22,
+    } as TextStyle,
+    msgBubble: {
+      padding: 14,
+      borderRadius: 8,
+      maxWidth: '90%',
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+      gap: 5,
+    } as ViewStyle,
+    msgAdmin: {
+      backgroundColor: colors.msgAdmin,
+      alignSelf: 'flex-start',
+      borderBottomLeftRadius: 4,
+    } as ViewStyle,
+    msgUser: {
+      backgroundColor: colors.msgUser,
+      alignSelf: 'flex-end',
+      borderBottomRightRadius: 4,
+    } as ViewStyle,
+    msgSender: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.textMuted,
+    } as TextStyle,
+    msgText: {
+      color: colors.textPrimary,
+      fontSize: 15,
+      lineHeight: 21,
+    } as TextStyle,
+    msgTime: {
+      fontSize: 12,
+      color: colors.textMuted,
+      alignSelf: 'flex-end',
+    } as TextStyle,
+    inputRow: {
+      flexDirection: 'row',
+      padding: 12,
+      gap: 8,
+      borderTopWidth: 1,
+      borderTopColor: colors.borderLight,
+      backgroundColor: colors.cardBg,
+      alignItems: 'flex-end',
+    } as ViewStyle,
+    input: {
+      flex: 1,
+      backgroundColor: colors.background,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.outline,
+      minHeight: 48,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      fontSize: 16,
+      color: colors.textPrimary,
+      maxHeight: 100,
+      textAlignVertical: 'top',
+    } as TextStyle,
+    sendButton: {
+      backgroundColor: colors.primary,
+      borderRadius: 8,
+      width: 48,
+      height: 48,
+      alignItems: 'center',
+      justifyContent: 'center',
+    } as ViewStyle,
+    sendButtonDisabled: {
+      opacity: 0.4,
+    } as ViewStyle,
+  });

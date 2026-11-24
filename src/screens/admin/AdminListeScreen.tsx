@@ -1,6 +1,7 @@
 ﻿import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View,
+  ActivityIndicator,
   Text,
   StyleSheet,
   ViewStyle,
@@ -10,14 +11,32 @@ import {
   TextInput,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useAppTheme, useThemedStyles, type AppColors } from '../../theme';
-import { Pill, Button } from '../../components';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import {
+  layout,
+  useAppTheme,
+  useThemedStyles,
+  type AppColors,
+} from '../../theme';
+import { Pill, Button, StateMessage } from '../../components';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { selectApplicationError, selectApplicationLoading, selectApplications } from '../../store/selectors';
-import { Application, ApplicationStatus, RootStackNavigationProp } from '../../types';
+import {
+  selectApplicationError,
+  selectApplicationLoading,
+  selectApplications,
+} from '../../store/selectors';
+import {
+  Application,
+  ApplicationStatus,
+  RootStackNavigationProp,
+} from '../../types';
 import { PROGRAM_CATALOG } from '../../services/programCatalog';
 import { loadAdminApplications } from '../../store/thunks/applicationThunks';
 import { useI18n, getApplicationStatusLabel } from '../../i18n';
+import { appConfig } from '../../config/appConfig';
+import { getBackend } from '../../services/backend';
+import type { AssignedProgram } from '../../types';
 
 type FilterType = 'all' | ApplicationStatus;
 type ProgramFilter = 'all' | string;
@@ -26,13 +45,12 @@ type DateFilter = 'all' | '7d' | '30d';
 
 const statusToVariant = (status: ApplicationStatus) => {
   switch (status) {
-    case 'approved':
+    case 'returned_home':
       return 'ok' as const;
-    case 'needs_fix':
-    case 'draft':
+    case 'application_stage':
       return 'warn' as const;
-    case 'rejected':
-      return 'err' as const;
+    case 'erasmus_stage':
+      return 'info' as const;
     default:
       return 'info' as const;
   }
@@ -40,6 +58,7 @@ const statusToVariant = (status: ApplicationStatus) => {
 
 export const AdminListeScreen: React.FC = () => {
   const navigation = useNavigation<RootStackNavigationProp>();
+  const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const dispatch = useAppDispatch();
@@ -47,23 +66,64 @@ export const AdminListeScreen: React.FC = () => {
   const applications = useAppSelector(selectApplications);
   const isLoading = useAppSelector(selectApplicationLoading);
   const error = useAppSelector(selectApplicationError);
+  const pagination = useAppSelector(state => state.application);
+  const [programs, setPrograms] = useState<AssignedProgram[]>(
+    PROGRAM_CATALOG as unknown as AssignedProgram[],
+  );
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [programFilter, setProgramFilter] = useState<ProgramFilter>('all');
   const [issuesFilter, setIssuesFilter] = useState<IssuesFilter>('all');
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [query, setQuery] = useState('');
+  const hasFilters =
+    activeFilter !== 'all' ||
+    programFilter !== 'all' ||
+    issuesFilter !== 'all' ||
+    dateFilter !== 'all' ||
+    Boolean(query.trim());
+  const resetFilters = () => {
+    setActiveFilter('all');
+    setProgramFilter('all');
+    setIssuesFilter('all');
+    setDateFilter('all');
+    setQuery('');
+  };
 
+  const serverFilters = useMemo(
+    () => ({
+      status: activeFilter === 'all' ? undefined : activeFilter,
+      programId: programFilter === 'all' ? undefined : programFilter,
+      hasIssues: issuesFilter === 'all' ? undefined : issuesFilter === 'issues',
+      createdAfterISO:
+        dateFilter === 'all'
+          ? undefined
+          : new Date(
+              Date.now() - (dateFilter === '7d' ? 7 : 30) * 86400000,
+            ).toISOString(),
+      query,
+    }),
+    [activeFilter, programFilter, issuesFilter, dateFilter, query],
+  );
   useEffect(() => {
-    dispatch(loadAdminApplications());
-  }, [dispatch]);
+    const timer = setTimeout(() => {
+      dispatch(loadAdminApplications(serverFilters));
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [dispatch, serverFilters]);
+  useEffect(() => {
+    if (appConfig.dataSource === 'remote')
+      getBackend()
+        .programs.listPrograms()
+        .then(setPrograms)
+        .catch(() => undefined);
+  }, []);
 
   const filters: { key: FilterType; label: string }[] = useMemo(
     () => [
       { key: 'all', label: t('adminList.filters.all') },
-      { key: 'submitted', label: t('adminList.filters.submitted') },
-      { key: 'under_review', label: t('adminList.filters.underReview') },
-      { key: 'needs_fix', label: t('adminList.filters.needsFix') },
-      { key: 'approved', label: t('adminList.filters.approved') },
+      { key: 'application_stage', label: 'Başvuru Aşaması' },
+      { key: 'erasmus_stage', label: 'Hareketlilik / Erasmus' },
+      { key: 'returned_home', label: 'Ülkeye Dönüş Tamamlandı' },
     ],
     [t],
   );
@@ -87,20 +147,21 @@ export const AdminListeScreen: React.FC = () => {
   );
 
   const filteredApps = useMemo(() => {
+    if (appConfig.dataSource === 'remote') return applications;
     let apps = applications;
 
     if (activeFilter !== 'all') {
-      apps = apps.filter((app) => app.status === activeFilter);
+      apps = apps.filter(app => app.status === activeFilter);
     }
 
     if (programFilter !== 'all') {
-      apps = apps.filter((app) => app.programId === programFilter);
+      apps = apps.filter(app => app.programId === programFilter);
     }
 
     if (issuesFilter !== 'all') {
       const wantIssues = issuesFilter === 'issues';
-      apps = apps.filter((app) => {
-        const hasIssues = app.documents.some((d) => d.status !== 'ok');
+      apps = apps.filter(app => {
+        const hasIssues = app.documents.some(d => d.status !== 'ok');
         return wantIssues ? hasIssues : !hasIssues;
       });
     }
@@ -108,12 +169,12 @@ export const AdminListeScreen: React.FC = () => {
     if (dateFilter !== 'all') {
       const days = dateFilter === '7d' ? 7 : 30;
       const threshold = Date.now() - days * 24 * 60 * 60 * 1000;
-      apps = apps.filter((app) => new Date(app.createdAt).getTime() >= threshold);
+      apps = apps.filter(app => new Date(app.createdAt).getTime() >= threshold);
     }
 
     if (query.trim()) {
       const q = query.trim().toLowerCase();
-      apps = apps.filter((app) => {
+      apps = apps.filter(app => {
         const name = app.personalInfo.fullName.toLowerCase();
         return (
           name.includes(q) ||
@@ -124,192 +185,255 @@ export const AdminListeScreen: React.FC = () => {
     }
 
     return apps;
-  }, [applications, activeFilter, programFilter, issuesFilter, dateFilter, query]);
+  }, [
+    applications,
+    activeFilter,
+    programFilter,
+    issuesFilter,
+    dateFilter,
+    query,
+  ]);
 
-  const getSubtitle = useCallback((app: Application) => {
-    const missingDocs = app.documents.filter((d) => d.status !== 'ok').length;
-    if (missingDocs === 0) return t('adminList.allDocumentsDone');
-    return t('adminList.missingDocuments', { count: missingDocs });
-  }, [t]);
+  const getSubtitle = useCallback(
+    (app: Application) => {
+      const missingDocs = app.documents.filter(d => d.status !== 'ok').length;
+      if (missingDocs === 0) return t('adminList.allDocumentsDone');
+      return t('adminList.missingDocuments', { count: missingDocs });
+    },
+    [t],
+  );
 
   const renderItem = useCallback(
     ({ item }: { item: Application }) => (
       <TouchableOpacity
+        accessibilityRole="button"
         style={styles.listRow}
         onPress={() =>
           navigation.navigate('AdminDetay', { applicationId: item.id })
         }
         activeOpacity={0.7}
       >
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {item.personalInfo.fullName
-              .split(' ')
-              .map((w) => w[0])
-              .join('')
-              .slice(0, 2)
-              .toUpperCase()}
-          </Text>
-        </View>
         <View style={styles.rowContent}>
           <Text style={styles.rowName}>{item.personalInfo.fullName}</Text>
           <Text style={styles.rowSubtitle}>
             {item.programName} · {getSubtitle(item)}
           </Text>
+          <Pill
+            subtle
+            label={getApplicationStatusLabel(item.status, language)}
+            variant={statusToVariant(item.status)}
+          />
         </View>
-        <Pill
-          label={getApplicationStatusLabel(item.status, language)}
-          variant={statusToVariant(item.status)}
-        />
+        <Icon name="chevron-right" size={20} color={colors.textMuted} />
       </TouchableOpacity>
     ),
-    [navigation, getSubtitle, styles, language],
+    [navigation, getSubtitle, styles, language, colors.textMuted],
   );
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.h2}>{t('adminList.title')}</Text>
-        <Text style={styles.countText}>
-          {t('adminList.count', {
-            filtered: filteredApps.length,
-            total: applications.length,
-          })}
-        </Text>
-      </View>
-
-      <View style={styles.searchWrap}>
-        <TextInput
-          style={styles.searchInput}
-          value={query}
-          onChangeText={setQuery}
-          placeholder={t('adminList.searchPlaceholder')}
-          placeholderTextColor={colors.textMuted}
-          autoCapitalize="none"
-        />
-        <TouchableOpacity
-          style={styles.refreshBtn}
-          onPress={() => dispatch(loadAdminApplications())}
-          disabled={isLoading}
-        >
-          <Text style={styles.refreshText}>
-            {isLoading ? t('adminListExtra.loadingShort') : t('adminListExtra.refreshShort')}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.filterRow}>
-        {filters.map((f) => (
-          <TouchableOpacity
-            key={f.key}
-            style={[
-              styles.filterChip,
-              activeFilter === f.key && styles.filterChipActive,
-            ]}
-            onPress={() => setActiveFilter(f.key)}
-          >
-            <Text
-              style={[
-                styles.filterText,
-                activeFilter === f.key && styles.filterTextActive,
-              ]}
-            >
-              {f.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <View style={styles.filterRow}>
-        {PROGRAM_CATALOG.map((p) => (
-          <TouchableOpacity
-            key={p.id}
-            style={[
-              styles.filterChip,
-              programFilter === p.id && styles.filterChipActive,
-            ]}
-            onPress={() => setProgramFilter(programFilter === p.id ? 'all' : p.id)}
-          >
-            <Text
-              style={[
-                styles.filterText,
-                programFilter === p.id && styles.filterTextActive,
-              ]}
-            >
-              {p.name}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <View style={styles.filterRow}>
-        {issueFilters.map((f) => (
-          <TouchableOpacity
-            key={f.key}
-            style={[
-              styles.filterChip,
-              issuesFilter === f.key && styles.filterChipActive,
-            ]}
-            onPress={() => setIssuesFilter(f.key)}
-          >
-            <Text
-              style={[
-                styles.filterText,
-                issuesFilter === f.key && styles.filterTextActive,
-              ]}
-            >
-              {f.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <View style={styles.filterRow}>
-        {dateFilters.map((f) => (
-          <TouchableOpacity
-            key={f.key}
-            style={[
-              styles.filterChip,
-              dateFilter === f.key && styles.filterChipActive,
-            ]}
-            onPress={() => setDateFilter(f.key)}
-          >
-            <Text
-              style={[
-                styles.filterText,
-                dateFilter === f.key && styles.filterTextActive,
-              ]}
-            >
-              {f.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
       <FlatList
         data={filteredApps}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={7}
+        onEndReached={() => {
+          if (pagination.hasMore && !isLoading)
+            dispatch(
+              loadAdminApplications({
+                ...serverFilters,
+                page: (pagination.page || 1) + 1,
+                append: true,
+              }),
+            );
+        }}
+        onEndReachedThreshold={0.4}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
+        keyExtractor={item => item.id}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={[
+          styles.listContainer,
+          { paddingBottom: insets.bottom + 24 },
+        ]}
+        refreshing={isLoading}
+        onRefresh={() => dispatch(loadAdminApplications())}
+        ListHeaderComponent={
+          <>
+            <View style={styles.header}>
+              <Text accessibilityRole="header" style={styles.h2}>
+                {t('adminList.title')}
+              </Text>
+              <Text style={styles.countText}>
+                {t('adminList.count', {
+                  filtered: filteredApps.length,
+                  total: applications.length,
+                })}
+              </Text>
+            </View>
+
+            <View style={styles.searchWrap}>
+              <TextInput
+                style={styles.searchInput}
+                value={query}
+                onChangeText={setQuery}
+                placeholder={t('adminList.searchPlaceholder')}
+                placeholderTextColor={colors.textMuted}
+                accessibilityLabel={t('adminList.searchPlaceholder')}
+                accessibilityRole="search"
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="search"
+              />
+              <TouchableOpacity
+                style={styles.refreshBtn}
+                accessibilityRole="button"
+                accessibilityLabel={t('common.refresh')}
+                accessibilityState={{ disabled: isLoading, busy: isLoading }}
+                onPress={() => dispatch(loadAdminApplications())}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color={colors.primaryText} />
+                ) : (
+                  <Icon name="refresh" size={22} color={colors.primaryText} />
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.filterRow}>
+              {filters.map(f => (
+                <TouchableOpacity
+                  key={f.key}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: activeFilter === f.key }}
+                  style={[
+                    styles.filterChip,
+                    activeFilter === f.key && styles.filterChipActive,
+                  ]}
+                  onPress={() => setActiveFilter(f.key)}
+                >
+                  <Text
+                    style={[
+                      styles.filterText,
+                      activeFilter === f.key && styles.filterTextActive,
+                    ]}
+                  >
+                    {f.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.filterRow}>
+              {programs.map(p => (
+                <TouchableOpacity
+                  key={p.id}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: programFilter === p.id }}
+                  style={[
+                    styles.filterChip,
+                    programFilter === p.id && styles.filterChipActive,
+                  ]}
+                  onPress={() =>
+                    setProgramFilter(programFilter === p.id ? 'all' : p.id)
+                  }
+                >
+                  <Text
+                    style={[
+                      styles.filterText,
+                      programFilter === p.id && styles.filterTextActive,
+                    ]}
+                  >
+                    {p.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.filterRow}>
+              {issueFilters.map(f => (
+                <TouchableOpacity
+                  key={f.key}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: issuesFilter === f.key }}
+                  style={[
+                    styles.filterChip,
+                    issuesFilter === f.key && styles.filterChipActive,
+                  ]}
+                  onPress={() => setIssuesFilter(f.key)}
+                >
+                  <Text
+                    style={[
+                      styles.filterText,
+                      issuesFilter === f.key && styles.filterTextActive,
+                    ]}
+                  >
+                    {f.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.filterRow}>
+              {dateFilters.map(f => (
+                <TouchableOpacity
+                  key={f.key}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: dateFilter === f.key }}
+                  style={[
+                    styles.filterChip,
+                    dateFilter === f.key && styles.filterChipActive,
+                  ]}
+                  onPress={() => setDateFilter(f.key)}
+                >
+                  <Text
+                    style={[
+                      styles.filterText,
+                      dateFilter === f.key && styles.filterTextActive,
+                    ]}
+                  >
+                    {f.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {hasFilters ? (
+              <Button
+                label={
+                  language === 'tr' ? 'Filtreleri Temizle' : 'Clear Filters'
+                }
+                variant="ghost"
+                onPress={resetFilters}
+              />
+            ) : null}
+            {error && filteredApps.length > 0 ? (
+              <StateMessage kind="error" message={error} />
+            ) : null}
+          </>
+        }
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>
-              {isLoading
+          <StateMessage
+            kind={isLoading ? 'loading' : error ? 'error' : 'empty'}
+            message={
+              isLoading
                 ? t('common.loading')
-                : error || t('adminList.noApplicationsForFilter')}
-            </Text>
+                : error || t('adminList.noApplicationsForFilter')
+            }
+            actionLabel={error && !isLoading ? t('common.refresh') : undefined}
+            onAction={() => dispatch(loadAdminApplications())}
+          />
+        }
+        ListFooterComponent={
+          <View style={styles.footer}>
+            <Button
+              label={t('adminMenu.auditLog')}
+              variant="ghost"
+              onPress={() => navigation.navigate('AdminAudit')}
+            />
           </View>
         }
       />
-
-      <View style={styles.footer}>
-        <Button
-          label={t('adminMenu.auditLog')}
-          variant="ghost"
-          onPress={() => navigation.navigate('AdminAudit')}
-        />
-      </View>
     </View>
   );
 };
@@ -322,9 +446,10 @@ const createStyles = (colors: AppColors) =>
     } as ViewStyle,
     header: {
       flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingHorizontal: 20,
       paddingTop: 16,
     } as ViewStyle,
     h2: {
@@ -338,32 +463,38 @@ const createStyles = (colors: AppColors) =>
     } as TextStyle,
     filterRow: {
       flexDirection: 'row',
-      paddingHorizontal: 20,
       paddingVertical: 12,
       gap: 8,
       flexWrap: 'wrap',
     } as ViewStyle,
     filterChip: {
+      minHeight: 44,
+      justifyContent: 'center',
+      maxWidth: '100%',
       paddingHorizontal: 12,
       paddingVertical: 6,
-      borderRadius: 20,
+      borderRadius: 8,
       backgroundColor: colors.cardBg,
       borderWidth: 1,
       borderColor: colors.borderLight,
     } as ViewStyle,
     filterChipActive: {
-      backgroundColor: colors.teal,
-      borderColor: colors.teal,
+      backgroundColor: colors.tealBg,
+      borderColor: colors.onSuccess,
     } as ViewStyle,
     filterText: {
-      fontSize: 12,
+      fontSize: 13,
+      lineHeight: 19,
       color: colors.textSecondary,
       fontWeight: '600',
     } as TextStyle,
     filterTextActive: {
-      color: colors.white,
+      color: colors.onSuccess,
     } as TextStyle,
     listContainer: {
+      width: '100%',
+      maxWidth: layout.contentMaxWidth,
+      alignSelf: 'center',
       paddingHorizontal: 20,
       gap: 10,
       paddingBottom: 20,
@@ -371,56 +502,35 @@ const createStyles = (colors: AppColors) =>
     listRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      padding: 14,
-      borderRadius: 14,
+      paddingVertical: 14,
+      paddingHorizontal: 4,
+      borderRadius: 0,
       backgroundColor: colors.cardBg,
-      borderWidth: 1,
+      borderBottomWidth: 1,
       borderColor: colors.borderLight,
       gap: 12,
     } as ViewStyle,
-    avatar: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: colors.teal,
-      alignItems: 'center',
-      justifyContent: 'center',
-    } as ViewStyle,
-    avatarText: {
-      color: colors.white,
-      fontWeight: '700',
-      fontSize: 13,
-    } as TextStyle,
     rowContent: {
       flex: 1,
+      gap: 6,
     } as ViewStyle,
     rowName: {
-      fontSize: 14,
-      fontWeight: '600',
+      fontSize: 15,
+      fontWeight: '500',
       color: colors.textPrimary,
     } as TextStyle,
     rowSubtitle: {
-      fontSize: 11,
+      fontSize: 13,
+      lineHeight: 19,
       color: colors.textSecondary,
       marginTop: 2,
     } as TextStyle,
-    emptyContainer: {
-      padding: 40,
-      alignItems: 'center',
-    } as ViewStyle,
-    emptyText: {
-      fontSize: 13,
-      color: colors.textMuted,
-      textAlign: 'center',
-    } as TextStyle,
     footer: {
-      padding: 16,
-      paddingBottom: 28,
+      paddingTop: 16,
     } as ViewStyle,
     searchWrap: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 20,
       paddingTop: 12,
       gap: 10,
     } as ViewStyle,
@@ -428,25 +538,22 @@ const createStyles = (colors: AppColors) =>
       flex: 1,
       backgroundColor: colors.cardBg,
       borderWidth: 1,
-      borderColor: colors.borderLight,
-      borderRadius: 14,
+      borderColor: colors.outline,
+      borderRadius: 8,
+      minHeight: 48,
       paddingHorizontal: 14,
       paddingVertical: 10,
-      fontSize: 13,
+      fontSize: 16,
       color: colors.textPrimary,
     } as TextStyle,
     refreshBtn: {
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      borderRadius: 12,
+      width: 48,
+      height: 48,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 8,
       backgroundColor: colors.cardBg,
       borderWidth: 1,
       borderColor: colors.borderLight,
     } as ViewStyle,
-    refreshText: {
-      fontSize: 12,
-      fontWeight: '700',
-      color: colors.primaryDark,
-    } as TextStyle,
   });
-

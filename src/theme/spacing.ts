@@ -12,9 +12,16 @@ export const spacing = {
 
 export const borderRadius = {
   sm: 4,
-  md: 10,
-  lg: 12,
-  xl: 16,
-  '2xl': 18,
+  md: 8,
+  lg: 8,
+  xl: 12,
+  '2xl': 16,
   full: 999,
+} as const;
+
+export const layout = {
+  contentMaxWidth: 720,
+  formMaxWidth: 560,
+  screenPadding: 20,
+  controlHeight: 48,
 } as const;

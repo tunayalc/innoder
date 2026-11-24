@@ -1,0 +1,151 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  mobile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test -- --runInBand
+      - name: Test Android release manifest checks
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
+      - name: Reject a store build without institutional signing
+        working-directory: android
+        run: |
+          log=$(mktemp)
+          if ./gradlew app:bundleRelease -PinnoStoreRelease=true >"$log" 2>&1; then
+            echo "Unsigned store build unexpectedly succeeded"
+            exit 1
+          fi
+          grep -q 'Store release requires the institution upload keystore' "$log"
+      - run: ./gradlew app:assembleRelease app:bundleRelease -PinnoUnsignedVerification=true
+        working-directory: android
+      - name: Check merged manifest and native page alignment
+        run: |
+          python3 -m pip install pyelftools==0.32
+          apk=android/app/build/outputs/apk/release/app-release-unsigned.apk
+          apkanalyzer manifest print "$apk" | python3 scripts/check-android-manifest.py
+          "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 -v 4 "$apk"
+          python3 scripts/check-android-package.py "$apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-unsigned-verification
+          path: |
+            android/app/build/outputs/apk/release/app-release-unsigned.apk
+            android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 7
+
+  ios:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+      - name: Select an installed App Store compatible Xcode
+        run: |
+          selected=$(find /Applications -maxdepth 1 -name 'Xcode_26*.app' | sort | tail -n 1)
+          if [ -n "$selected" ]; then sudo xcode-select -s "$selected/Contents/Developer"; fi
+      - run: npm ci
+      - run: bundle exec pod install
+        working-directory: ios
+      - name: Require the App Store SDK generation
+        run: |
+          test "$(xcodebuild -version | awk '/Xcode/{split($2,v,".");print v[1]}')" -ge 26
+          test "$(xcrun --sdk iphoneos --show-sdk-version | cut -d. -f1)" -ge 26
+      - run: xcodebuild -workspace InnoPrototype.xcworkspace -scheme InnoPrototype -configuration Release -sdk iphonesimulator CODE_SIGNING_ALLOWED=NO build
+        working-directory: ios
+
+  server:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: inno_test
+          POSTGRES_PASSWORD: ci-test-only
+          POSTGRES_DB: inno_test
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U inno_test" --health-interval 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://inno_test:ci-test-only@localhost:5432/inno_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: node dist/scripts/checkRuntime.js
+
+  admin-web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: admin-web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: admin-web/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  deployment:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check deployment scripts
+        run: |
+          docker run --rm --entrypoint shellcheck \
+            -v "$PWD:/mnt:ro" -w /mnt koalaman/shellcheck-alpine:stable \
+            deploy/natro/setup.sh deploy/natro/innoctl deploy/scripts/*.sh
+      - name: Validate Compose configuration
+        run: docker compose --env-file deploy/.env.example -f deploy/docker-compose.yml config --quiet
+      - name: Validate Caddy configuration
+        run: |
+          docker run --rm \
+            -e API_DOMAIN=api.innoder.org \
+            -e ADMIN_DOMAIN=admin.innoder.org \
+            -e TLS_EMAIL=info@innoder.org \
+            -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            caddy:2.9-alpine caddy validate --config /etc/caddy/Caddyfile
+      - name: Build operations image
+        run: docker compose --env-file deploy/.env.example -f deploy/docker-compose.yml build backup

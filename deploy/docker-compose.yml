@@ -1,0 +1,200 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "5"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    logging: *default-logging
+    mem_limit: 1g
+    pids_limit: 200
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [internal]
+
+  migrate:
+    build: ../server
+    env_file: ${INNO_ENV_FILE:-.env}
+    command: ["node", "dist/scripts/migrate.js"]
+    logging: *default-logging
+    mem_limit: 512m
+    pids_limit: 100
+    security_opt: [no-new-privileges:true]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [internal]
+    restart: "no"
+
+  server:
+    build: ../server
+    restart: unless-stopped
+    env_file: ${INNO_ENV_FILE:-.env}
+    logging: *default-logging
+    mem_limit: 1g
+    pids_limit: 250
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    volumes:
+      - documents:/data/documents
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/health/ready"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+    networks: [internal]
+
+  admin-web:
+    build:
+      context: ../admin-web
+      args:
+        VITE_API_URL: https://${API_DOMAIN}
+    restart: unless-stopped
+    logging: *default-logging
+    mem_limit: 192m
+    pids_limit: 100
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    networks: [internal]
+
+  proxy:
+    image: caddy:2.9-alpine
+    restart: unless-stopped
+    logging: *default-logging
+    mem_limit: 256m
+    pids_limit: 150
+    security_opt: [no-new-privileges:true]
+    environment:
+      API_DOMAIN: ${API_DOMAIN}
+      ADMIN_DOMAIN: ${ADMIN_DOMAIN}
+      TLS_EMAIL: ${TLS_EMAIL}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      server:
+        condition: service_healthy
+      admin-web:
+        condition: service_healthy
+    networks: [internal]
+
+  backup:
+    build:
+      context: .
+      dockerfile: ops/Dockerfile
+    image: inno-operations:local
+    restart: unless-stopped
+    env_file: ${INNO_ENV_FILE:-.env}
+    logging: *default-logging
+    mem_limit: 512m
+    pids_limit: 100
+    security_opt: [no-new-privileges:true]
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_ENCRYPTION_PASSWORD: ${BACKUP_ENCRYPTION_PASSWORD}
+      RCLONE_REMOTE: ${RCLONE_REMOTE}
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL}
+    volumes:
+      - documents:/data/documents:ro
+      - backups:/backups
+      - ./scripts:/scripts:ro
+      - ${RCLONE_CONFIG_FILE}:/root/.config/rclone/rclone.conf:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          if ! sh /scripts/backup.sh; then
+            message="Inno production backup failed"
+            echo "$${message}" >&2
+            if [ -n "$${ALERT_WEBHOOK_URL:-}" ]; then
+              curl -fsS --max-time 10 -X POST -H 'Content-Type: application/json' \
+                -d "{\"text\":\"$${message}\"}" "$${ALERT_WEBHOOK_URL}" >/dev/null || true
+            fi
+          fi
+          sleep "$${BACKUP_INTERVAL_SECONDS:-86400}"
+        done
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [internal]
+
+  restore:
+    image: inno-operations:local
+    profiles: [tools]
+    env_file: ${INNO_ENV_FILE:-.env}
+    logging: *default-logging
+    mem_limit: 512m
+    pids_limit: 100
+    security_opt: [no-new-privileges:true]
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_ENCRYPTION_PASSWORD: ${BACKUP_ENCRYPTION_PASSWORD}
+    volumes:
+      - documents:/data/documents
+      - backups:/backups
+      - ./scripts:/scripts:ro
+    entrypoint: ["/bin/sh"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [internal]
+
+  monitor:
+    image: inno-operations:local
+    restart: unless-stopped
+    logging: *default-logging
+    mem_limit: 128m
+    pids_limit: 50
+    security_opt: [no-new-privileges:true]
+    environment:
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL}
+      DISK_ALERT_PERCENT: ${DISK_ALERT_PERCENT:-80}
+      RCLONE_REMOTE: ${RCLONE_REMOTE}
+    volumes:
+      - backups:/backups:ro
+      - ./scripts:/scripts:ro
+      - /:/host:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - while true; do sh /scripts/monitor.sh; sleep 300; done
+    depends_on:
+      server:
+        condition: service_healthy
+    networks: [internal]
+
+volumes:
+  postgres_data:
+  documents:
+  backups:
+  caddy_data:
+  caddy_config:
+
+networks:
+  internal:
+    driver: bridge

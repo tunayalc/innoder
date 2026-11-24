@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ViewStyle,
   TextStyle,
-  ScrollView,
   Pressable,
   Alert,
   KeyboardAvoidingView,
@@ -13,7 +12,13 @@ import {
 } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { useThemedStyles, type AppColors } from '../../theme';
-import { Button, Card, InputField, Pill } from '../../components';
+import {
+  Button,
+  Card,
+  InputField,
+  Pill,
+  ScreenScrollView,
+} from '../../components';
 import { useAuth } from '../../hooks';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
@@ -21,8 +26,14 @@ import {
   selectApplicationLoading,
   selectApplications,
 } from '../../store/selectors';
-import { RootStackNavigationProp, RootStackParamList, EuropassCvProfile } from '../../types';
+import {
+  RootStackNavigationProp,
+  RootStackParamList,
+  EuropassCvProfile,
+} from '../../types';
 import { updatePersonalInfoDraft } from '../../store/thunks/applicationThunks';
+import { useUnsavedChanges } from '../../hooks/useUnsavedChanges';
+import { openApplicationPdf } from '../../services/applicationPdf';
 import {
   CEFR_LEVELS,
   createEmptyEuropassCv,
@@ -50,15 +61,17 @@ export const AdayCvBuilderScreen: React.FC = () => {
   const myApplication = useMemo(
     () =>
       route.params?.applicationId
-        ? applications.find((app) => app.id === route.params?.applicationId)
-        : applications.find((app) => app.userId === user?.id),
+        ? applications.find(app => app.id === route.params?.applicationId)
+        : applications.find(app => app.userId === user?.id),
     [applications, route.params?.applicationId, user?.id],
   );
 
-  const savedCv = myApplication?.personalInfo.europassCv ?? createEmptyEuropassCv();
+  const savedCv =
+    myApplication?.personalInfo.europassCv ?? createEmptyEuropassCv();
   const applicationId = myApplication?.id;
 
   const [cv, setCv] = useState<EuropassCvProfile>(savedCv);
+  useUnsavedChanges(JSON.stringify(cv) !== JSON.stringify(savedCv));
 
   // Re-sync local state when navigating to a different application
   const prevApplicationIdRef = React.useRef(applicationId);
@@ -70,11 +83,11 @@ export const AdayCvBuilderScreen: React.FC = () => {
   const isComplete = useMemo(() => isEuropassCvComplete(cv), [cv]);
 
   const updateCv = (patch: Partial<EuropassCvProfile>) => {
-    setCv((prev) => ({ ...prev, ...patch }));
+    setCv(prev => ({ ...prev, ...patch }));
   };
 
   const updateWorkField = (index: number, key: string, value: string) => {
-    setCv((prev) => ({
+    setCv(prev => ({
       ...prev,
       workExperiences: prev.workExperiences.map((item, idx) =>
         idx === index ? { ...item, [key]: value } : item,
@@ -83,7 +96,7 @@ export const AdayCvBuilderScreen: React.FC = () => {
   };
 
   const addWorkExperience = () => {
-    setCv((prev) => ({
+    setCv(prev => ({
       ...prev,
       workExperiences: [
         ...prev.workExperiences,
@@ -99,14 +112,14 @@ export const AdayCvBuilderScreen: React.FC = () => {
   };
 
   const removeWorkExperience = (index: number) => {
-    setCv((prev) => ({
+    setCv(prev => ({
       ...prev,
       workExperiences: prev.workExperiences.filter((_, idx) => idx !== index),
     }));
   };
 
   const updateEducationField = (index: number, key: string, value: string) => {
-    setCv((prev) => ({
+    setCv(prev => ({
       ...prev,
       educationEntries: prev.educationEntries.map((item, idx) =>
         idx === index ? { ...item, [key]: value } : item,
@@ -115,7 +128,7 @@ export const AdayCvBuilderScreen: React.FC = () => {
   };
 
   const addEducation = () => {
-    setCv((prev) => ({
+    setCv(prev => ({
       ...prev,
       educationEntries: [
         ...prev.educationEntries,
@@ -131,14 +144,14 @@ export const AdayCvBuilderScreen: React.FC = () => {
   };
 
   const removeEducation = (index: number) => {
-    setCv((prev) => ({
+    setCv(prev => ({
       ...prev,
       educationEntries: prev.educationEntries.filter((_, idx) => idx !== index),
     }));
   };
 
   const updateLanguageField = (index: number, key: string, value: string) => {
-    setCv((prev) => ({
+    setCv(prev => ({
       ...prev,
       languageSkills: prev.languageSkills.map((item, idx) =>
         idx === index ? { ...item, [key]: value } : item,
@@ -147,7 +160,7 @@ export const AdayCvBuilderScreen: React.FC = () => {
   };
 
   const addLanguage = () => {
-    setCv((prev) => ({
+    setCv(prev => ({
       ...prev,
       languageSkills: [
         ...prev.languageSkills,
@@ -164,7 +177,7 @@ export const AdayCvBuilderScreen: React.FC = () => {
   };
 
   const removeLanguage = (index: number) => {
-    setCv((prev) => ({
+    setCv(prev => ({
       ...prev,
       languageSkills: prev.languageSkills.filter((_, idx) => idx !== index),
     }));
@@ -172,7 +185,7 @@ export const AdayCvBuilderScreen: React.FC = () => {
 
   const saveCv = async () => {
     if (!myApplication) return;
-    await dispatch(
+    const saved = await dispatch(
       updatePersonalInfoDraft({
         applicationId: myApplication.id,
         programId: myApplication.programId,
@@ -181,9 +194,12 @@ export const AdayCvBuilderScreen: React.FC = () => {
         },
       }),
     );
-    Alert.alert('CV Kaydedildi', 'Europass formatındaki CV taslağı kaydedildi.');
+    if (saved)
+      Alert.alert(
+        'CV Kaydedildi',
+        'Europass formatındaki CV taslağı kaydedildi.',
+      );
   };
-
 
   if (!myApplication) {
     return (
@@ -192,14 +208,19 @@ export const AdayCvBuilderScreen: React.FC = () => {
           <View style={styles.accentBar} />
           <View style={styles.headerContent}>
             <Text style={styles.h2}>Europass CV Oluşturucu</Text>
-            <Text style={styles.subtitle}>Önce başvuru taslağı oluşturmanız gerekiyor.</Text>
+            <Text style={styles.subtitle}>
+              Önce başvuru taslağı oluşturmanız gerekiyor.
+            </Text>
           </View>
         </View>
         <Card>
           <Text style={styles.emptyText}>
             CV düzenlemek için önce Programlarım ekranından bir programa geçin.
           </Text>
-          <Button label="Programlarıma Git" onPress={() => navigation.navigate('AdayEgitim')} />
+          <Button
+            label="Programlarıma Git"
+            onPress={() => navigation.navigate('AdayEgitim')}
+          />
         </Card>
       </View>
     );
@@ -210,22 +231,26 @@ export const AdayCvBuilderScreen: React.FC = () => {
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.section}>
+      <ScreenScrollView contentContainerStyle={styles.section}>
         <View style={styles.headerCard}>
           <View style={styles.accentBar} />
           <View style={styles.headerContent}>
             <View style={styles.titleRow}>
               <Text style={styles.h2}>Europass CV Oluşturucu</Text>
-              <Pill label={isComplete ? 'Hazır' : 'Eksik'} variant={isComplete ? 'ok' : 'warn'} />
+              <Pill
+                label={isComplete ? 'Hazır' : 'Eksik'}
+                variant={isComplete ? 'ok' : 'warn'}
+              />
             </View>
             <Text style={styles.subtitle}>
-              European Youth Portal / Europass CV formatına uygun bilgileri uygulama içinde doldurun.
+              European Youth Portal / Europass CV formatına uygun bilgileri
+              uygulama içinde doldurun.
             </Text>
           </View>
         </View>
 
         <Card title="Format Kontrol Listesi">
-          {sectionHints.map((item) => (
+          {sectionHints.map(item => (
             <Text key={item} style={styles.hintRow}>
               • {item}
             </Text>
@@ -236,13 +261,13 @@ export const AdayCvBuilderScreen: React.FC = () => {
         <InputField
           label="Profil Başlığı *"
           value={cv.profileTitle}
-          onChangeText={(value) => updateCv({ profileTitle: value })}
+          onChangeText={value => updateCv({ profileTitle: value })}
           placeholder="Gençlik Çalışanı / Gönüllü / Öğrenci"
         />
         <InputField
           label="Profesyonel Özet *"
           value={cv.summary}
-          onChangeText={(value) => updateCv({ summary: value })}
+          onChangeText={value => updateCv({ summary: value })}
           placeholder="Kısa özet (en az 40 karakter)"
           multiline
           numberOfLines={4}
@@ -251,7 +276,7 @@ export const AdayCvBuilderScreen: React.FC = () => {
         <InputField
           label="Temel Yetkinlikler *"
           value={cv.keySkills}
-          onChangeText={(value) => updateCv({ keySkills: value })}
+          onChangeText={value => updateCv({ keySkills: value })}
           placeholder="İletişim, takım çalışması, proje yönetimi..."
           multiline
           numberOfLines={3}
@@ -260,7 +285,7 @@ export const AdayCvBuilderScreen: React.FC = () => {
         <InputField
           label="Dijital Beceriler"
           value={cv.digitalSkills}
-          onChangeText={(value) => updateCv({ digitalSkills: value })}
+          onChangeText={value => updateCv({ digitalSkills: value })}
           placeholder="Canva, Notion, Excel, video düzenleme..."
           multiline
           numberOfLines={2}
@@ -273,44 +298,55 @@ export const AdayCvBuilderScreen: React.FC = () => {
             <InputField
               label="Pozisyon *"
               value={item.role}
-              onChangeText={(value) => updateWorkField(index, 'role', value)}
+              onChangeText={value => updateWorkField(index, 'role', value)}
               placeholder="Proje Asistanı"
             />
             <InputField
               label="Kurum *"
               value={item.organization}
-              onChangeText={(value) => updateWorkField(index, 'organization', value)}
+              onChangeText={value =>
+                updateWorkField(index, 'organization', value)
+              }
               placeholder="STK / Okul / Şirket"
             />
             <InputField
               label="Başlangıç Tarihi *"
               value={item.startDate}
-              onChangeText={(value) => updateWorkField(index, 'startDate', value)}
+              onChangeText={value => updateWorkField(index, 'startDate', value)}
               placeholder="YYYY-MM"
             />
             <InputField
               label="Bitiş Tarihi"
               value={item.endDate}
-              onChangeText={(value) => updateWorkField(index, 'endDate', value)}
+              onChangeText={value => updateWorkField(index, 'endDate', value)}
               placeholder="YYYY-MM veya Devam Ediyor"
             />
             <InputField
               label="Sorumluluklar"
               value={item.responsibilities}
-              onChangeText={(value) => updateWorkField(index, 'responsibilities', value)}
+              onChangeText={value =>
+                updateWorkField(index, 'responsibilities', value)
+              }
               placeholder="Ana başarılar ve görevler"
               multiline
               numberOfLines={3}
               style={styles.textArea}
             />
             {cv.workExperiences.length > 1 ? (
-              <Pressable style={styles.removeButton} onPress={() => removeWorkExperience(index)}>
+              <Pressable
+                style={styles.removeButton}
+                onPress={() => removeWorkExperience(index)}
+              >
                 <Text style={styles.removeButtonText}>Deneyimi Kaldır</Text>
               </Pressable>
             ) : null}
           </Card>
         ))}
-        <Button label="Deneyim Ekle" variant="ghost" onPress={addWorkExperience} />
+        <Button
+          label="Deneyim Ekle"
+          variant="ghost"
+          onPress={addWorkExperience}
+        />
 
         <Text style={styles.sectionLabel}>EĞİTİM</Text>
         {cv.educationEntries.map((item, index) => (
@@ -318,38 +354,51 @@ export const AdayCvBuilderScreen: React.FC = () => {
             <InputField
               label="Yeterlilik *"
               value={item.qualification}
-              onChangeText={(value) => updateEducationField(index, 'qualification', value)}
+              onChangeText={value =>
+                updateEducationField(index, 'qualification', value)
+              }
               placeholder="Lisans: Bilgisayar Mühendisliği"
             />
             <InputField
               label="Kurum *"
               value={item.institution}
-              onChangeText={(value) => updateEducationField(index, 'institution', value)}
+              onChangeText={value =>
+                updateEducationField(index, 'institution', value)
+              }
               placeholder="Üniversite / Okul"
             />
             <InputField
               label="Başlangıç Tarihi *"
               value={item.startDate}
-              onChangeText={(value) => updateEducationField(index, 'startDate', value)}
+              onChangeText={value =>
+                updateEducationField(index, 'startDate', value)
+              }
               placeholder="YYYY-MM"
             />
             <InputField
               label="Bitiş Tarihi"
               value={item.endDate}
-              onChangeText={(value) => updateEducationField(index, 'endDate', value)}
+              onChangeText={value =>
+                updateEducationField(index, 'endDate', value)
+              }
               placeholder="YYYY-MM"
             />
             <InputField
               label="Açıklama"
               value={item.description}
-              onChangeText={(value) => updateEducationField(index, 'description', value)}
+              onChangeText={value =>
+                updateEducationField(index, 'description', value)
+              }
               placeholder="Projeler, tez, not ortalaması vb."
               multiline
               numberOfLines={3}
               style={styles.textArea}
             />
             {cv.educationEntries.length > 1 ? (
-              <Pressable style={styles.removeButton} onPress={() => removeEducation(index)}>
+              <Pressable
+                style={styles.removeButton}
+                onPress={() => removeEducation(index)}
+              >
                 <Text style={styles.removeButtonText}>Eğitimi Kaldır</Text>
               </Pressable>
             ) : null}
@@ -363,7 +412,9 @@ export const AdayCvBuilderScreen: React.FC = () => {
             <InputField
               label="Dil *"
               value={item.language}
-              onChangeText={(value) => updateLanguageField(index, 'language', value)}
+              onChangeText={value =>
+                updateLanguageField(index, 'language', value)
+              }
               placeholder="İngilizce"
             />
             {[
@@ -376,19 +427,23 @@ export const AdayCvBuilderScreen: React.FC = () => {
               <View key={`${index}-${fieldKey}`} style={styles.levelGroup}>
                 <Text style={styles.levelLabel}>{label}</Text>
                 <View style={styles.levelRow}>
-                  {CEFR_LEVELS.map((level) => (
+                  {CEFR_LEVELS.map(level => (
                     <Pressable
                       key={`${index}-${fieldKey}-${level}`}
                       style={[
                         styles.levelPill,
-                        item[fieldKey as keyof typeof item] === level && styles.levelPillActive,
+                        item[fieldKey as keyof typeof item] === level &&
+                          styles.levelPillActive,
                       ]}
-                      onPress={() => updateLanguageField(index, fieldKey, level)}
+                      onPress={() =>
+                        updateLanguageField(index, fieldKey, level)
+                      }
                     >
                       <Text
                         style={[
                           styles.levelPillText,
-                          item[fieldKey as keyof typeof item] === level && styles.levelPillTextActive,
+                          item[fieldKey as keyof typeof item] === level &&
+                            styles.levelPillTextActive,
                         ]}
                       >
                         {level}
@@ -399,7 +454,10 @@ export const AdayCvBuilderScreen: React.FC = () => {
               </View>
             ))}
             {cv.languageSkills.length > 1 ? (
-              <Pressable style={styles.removeButton} onPress={() => removeLanguage(index)}>
+              <Pressable
+                style={styles.removeButton}
+                onPress={() => removeLanguage(index)}
+              >
                 <Text style={styles.removeButtonText}>Dili Kaldır</Text>
               </Pressable>
             ) : null}
@@ -407,136 +465,173 @@ export const AdayCvBuilderScreen: React.FC = () => {
         ))}
         <Button label="Dil Ekle" variant="ghost" onPress={addLanguage} />
 
-
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        {error ? (
+          <Text
+            accessibilityRole="alert"
+            accessibilityLiveRegion="polite"
+            style={styles.errorText}
+          >
+            {error}
+          </Text>
+        ) : null}
 
         <Button
           label={isLoading ? 'Kaydediliyor...' : 'CV Taslağını Kaydet'}
+          loading={isLoading}
           onPress={saveCv}
         />
-      </ScrollView>
+        <Button
+          label="CV PDF Aç"
+          variant="ghost"
+          loading={isLoading}
+          onPress={async () => {
+            if (!myApplication) return;
+            const saved = await dispatch(
+              updatePersonalInfoDraft({
+                applicationId: myApplication.id,
+                programId: myApplication.programId,
+                patch: { europassCv: cv },
+              }),
+            );
+            if (saved)
+              try {
+                await openApplicationPdf(
+                  {
+                    ...myApplication,
+                    personalInfo: {
+                      ...myApplication.personalInfo,
+                      europassCv: cv,
+                    },
+                  },
+                  'cv',
+                );
+              } catch (cause) {
+                Alert.alert(
+                  'PDF Açılamadı',
+                  cause instanceof Error ? cause.message : 'Tekrar deneyin.',
+                );
+              }
+          }}
+        />
+      </ScreenScrollView>
     </KeyboardAvoidingView>
   );
 };
 
-const createStyles = (colors: AppColors) => StyleSheet.create({
-  flex: {
-    flex: 1,
-  } as ViewStyle,
-  section: {
-    paddingTop: 16,
-    gap: 14,
-    padding: 20,
-    paddingBottom: 40,
-  } as ViewStyle,
-  headerCard: {
-    backgroundColor: colors.cardBg,
-    borderRadius: 14,
-    padding: 18,
-    flexDirection: 'row',
-    gap: 14,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  } as ViewStyle,
-  accentBar: {
-    width: 4,
-    borderRadius: 2,
-    backgroundColor: colors.teal,
-  } as ViewStyle,
-  headerContent: {
-    flex: 1,
-    gap: 6,
-  } as ViewStyle,
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  } as ViewStyle,
-  h2: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  } as TextStyle,
-  subtitle: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
-  } as TextStyle,
-  sectionLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textMuted,
-    letterSpacing: 0.8,
-    marginTop: 4,
-  } as TextStyle,
-  hintRow: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    lineHeight: 20,
-  } as TextStyle,
-  textArea: {
-    minHeight: 88,
-    textAlignVertical: 'top',
-  } as TextStyle,
-  levelGroup: {
-    gap: 8,
-  } as ViewStyle,
-  levelLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  } as TextStyle,
-  levelRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  } as ViewStyle,
-  levelPill: {
-    borderWidth: 1,
-    borderColor: colors.borderMedium,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: colors.rowBg,
-  } as ViewStyle,
-  levelPillActive: {
-    borderColor: colors.teal,
-    backgroundColor: colors.tealLight,
-  } as ViewStyle,
-  levelPillText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textMuted,
-  } as TextStyle,
-  levelPillTextActive: {
-    color: colors.teal,
-  } as TextStyle,
-  removeButton: {
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderColor: colors.danger,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-  } as ViewStyle,
-  removeButtonText: {
-    color: colors.danger,
-    fontSize: 12,
-    fontWeight: '700',
-  } as TextStyle,
-  emptyText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
-    marginBottom: 12,
-  } as TextStyle,
-  errorText: {
-    fontSize: 13,
-    color: colors.danger,
-    textAlign: 'center',
-  } as TextStyle,
-});
-
-
-
-
+const createStyles = (colors: AppColors) =>
+  StyleSheet.create({
+    flex: {
+      flex: 1,
+    } as ViewStyle,
+    section: {
+      paddingTop: 16,
+      gap: 14,
+      padding: 20,
+      paddingBottom: 40,
+    } as ViewStyle,
+    headerCard: {
+      paddingVertical: 18,
+      flexDirection: 'row',
+      gap: 14,
+    } as ViewStyle,
+    accentBar: {
+      width: 4,
+      borderRadius: 2,
+      backgroundColor: colors.teal,
+    } as ViewStyle,
+    headerContent: {
+      flex: 1,
+      gap: 6,
+    } as ViewStyle,
+    titleRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 12,
+      alignItems: 'flex-start',
+    } as ViewStyle,
+    h2: {
+      flexShrink: 1,
+      fontSize: 24,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    } as TextStyle,
+    subtitle: {
+      color: colors.textSecondary,
+      fontSize: 14,
+      lineHeight: 20,
+    } as TextStyle,
+    sectionLabel: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.textMuted,
+      marginTop: 4,
+    } as TextStyle,
+    hintRow: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      lineHeight: 20,
+    } as TextStyle,
+    textArea: {
+      minHeight: 88,
+      textAlignVertical: 'top',
+    } as TextStyle,
+    levelGroup: {
+      gap: 8,
+    } as ViewStyle,
+    levelLabel: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    } as TextStyle,
+    levelRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    } as ViewStyle,
+    levelPill: {
+      borderWidth: 1,
+      borderColor: colors.borderMedium,
+      borderRadius: 6,
+      minHeight: 44,
+      justifyContent: 'center',
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      backgroundColor: colors.rowBg,
+    } as ViewStyle,
+    levelPillActive: {
+      borderColor: colors.teal,
+      backgroundColor: colors.tealLight,
+    } as ViewStyle,
+    levelPillText: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.textMuted,
+    } as TextStyle,
+    levelPillTextActive: {
+      color: colors.teal,
+    } as TextStyle,
+    removeButton: {
+      alignSelf: 'flex-start',
+      borderWidth: 1,
+      borderColor: colors.danger,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+    } as ViewStyle,
+    removeButtonText: {
+      color: colors.danger,
+      fontSize: 12,
+      fontWeight: '700',
+    } as TextStyle,
+    emptyText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      lineHeight: 20,
+      marginBottom: 12,
+    } as TextStyle,
+    errorText: {
+      fontSize: 13,
+      color: colors.danger,
+      textAlign: 'center',
+    } as TextStyle,
+  });

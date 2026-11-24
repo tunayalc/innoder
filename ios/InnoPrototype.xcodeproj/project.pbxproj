@@ -31,6 +31,11 @@
 		C880CADB3C564F33BBA8756A /* Ionicons.ttf in Resources */ = {isa = PBXBuildFile; fileRef = CF07F81779514013A2653B77 /* Ionicons.ttf */; };
 		D6C6F918FB054BC097CCF1A0 /* Feather.ttf in Resources */ = {isa = PBXBuildFile; fileRef = CC63D87419684533B01455C4 /* Feather.ttf */; };
 		DB4BA8AF431143969E6BC594 /* MaterialCommunityIcons.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 62DA63D4E3114226B3301C0F /* MaterialCommunityIcons.ttf */; };
+		FA0000000000000000000011 /* Inter-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = FA0000000000000000000001 /* Inter-Regular.ttf */; };
+		FA0000000000000000000012 /* Inter-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = FA0000000000000000000002 /* Inter-Medium.ttf */; };
+		FA0000000000000000000013 /* Inter-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = FA0000000000000000000003 /* Inter-SemiBold.ttf */; };
+		FA0000000000000000000014 /* Inter-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = FA0000000000000000000004 /* Inter-Bold.ttf */; };
+		FA0000000000000000000015 /* OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = FA0000000000000000000005 /* OFL.txt */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -63,6 +68,11 @@
 		EBD3258259B946B1AE1DFD91 /* Zocial.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = Zocial.ttf; path = "../node_modules/react-native-vector-icons/Fonts/Zocial.ttf"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F4AF8238CF234B82BFBD9AE5 /* FontAwesome5_Brands.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = FontAwesome5_Brands.ttf; path = "../node_modules/react-native-vector-icons/Fonts/FontAwesome5_Brands.ttf"; sourceTree = "<group>"; };
+		FA0000000000000000000001 /* Inter-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = "Inter-Regular.ttf"; path = "../src/assets/fonts/Inter-Regular.ttf"; sourceTree = "<group>"; };
+		FA0000000000000000000002 /* Inter-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = "Inter-Medium.ttf"; path = "../src/assets/fonts/Inter-Medium.ttf"; sourceTree = "<group>"; };
+		FA0000000000000000000003 /* Inter-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = "Inter-SemiBold.ttf"; path = "../src/assets/fonts/Inter-SemiBold.ttf"; sourceTree = "<group>"; };
+		FA0000000000000000000004 /* Inter-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = "Inter-Bold.ttf"; path = "../src/assets/fonts/Inter-Bold.ttf"; sourceTree = "<group>"; };
+		FA0000000000000000000005 /* OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; name = OFL.txt; path = ../src/assets/fonts/OFL.txt; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -140,6 +150,11 @@
 		E846E6C5F1F245D9A3916B35 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				FA0000000000000000000001 /* Inter-Regular.ttf */,
+				FA0000000000000000000002 /* Inter-Medium.ttf */,
+				FA0000000000000000000003 /* Inter-SemiBold.ttf */,
+				FA0000000000000000000004 /* Inter-Bold.ttf */,
+				FA0000000000000000000005 /* OFL.txt */,
 				D38A9CC2B4394065A1A746AA /* Fontisto.ttf */,
 				9799E703CA7D41C1AA140AC8 /* Octicons.ttf */,
 				CC63D87419684533B01455C4 /* Feather.ttf */,
@@ -224,6 +239,11 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FA0000000000000000000011 /* Inter-Regular.ttf in Resources */,
+				FA0000000000000000000012 /* Inter-Medium.ttf in Resources */,
+				FA0000000000000000000013 /* Inter-SemiBold.ttf in Resources */,
+				FA0000000000000000000014 /* Inter-Bold.ttf in Resources */,
+				FA0000000000000000000015 /* OFL.txt in Resources */,
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				996B574D4B1E586C20439B85 /* PrivacyInfo.xcprivacy in Resources */,
@@ -344,7 +364,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = InnoPrototype/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
@@ -358,8 +378,8 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
-				PRODUCT_NAME = InnoPrototype;
+				PRODUCT_BUNDLE_IDENTIFIER = org.innoassociation.mobile;
+				PRODUCT_NAME = InnoAssociation;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -372,7 +392,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3;
 				INFOPLIST_FILE = InnoPrototype/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -385,8 +405,8 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
-				PRODUCT_NAME = InnoPrototype;
+				PRODUCT_BUNDLE_IDENTIFIER = org.innoassociation.mobile;
+				PRODUCT_NAME = InnoAssociation;
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
 			};

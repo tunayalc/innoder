@@ -11,30 +11,25 @@ import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Button,
+  BrandWordmark,
   SettingsButton,
 } from '../../components';
-import { appConfig } from '../../config/appConfig';
-import { useAuth } from '../../hooks';
 import { useI18n } from '../../i18n';
-import { useThemedStyles, type AppColors } from '../../theme';
+import { layout, useThemedStyles, type AppColors } from '../../theme';
 import { RootStackNavigationProp } from '../../types';
 
 export const OnboardingIntroScreen: React.FC = () => {
   const navigation = useNavigation<RootStackNavigationProp>();
   const insets = useSafeAreaInsets();
   const styles = useThemedStyles(createStyles);
-  const { loginDemoCandidate } = useAuth();
   const { t } = useI18n();
-  const isMockMode = appConfig.dataSource === 'mock';
 
   return (
-    <View style={styles.container}>
-      <View pointerEvents="none" style={styles.topOrb} />
-      <View pointerEvents="none" style={styles.bottomOrb} />
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 },
+          { paddingBottom: insets.bottom + 24 },
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -43,26 +38,18 @@ export const OnboardingIntroScreen: React.FC = () => {
         </View>
 
         <View style={styles.heroCard}>
-          <Text style={styles.title}>{t('entry.title')}</Text>
-          <Text style={styles.subtitle}>{t('entry.subtitle')}</Text>
+          <BrandWordmark />
+          <Text accessibilityRole="header" style={styles.title}>{t('entry.title')}</Text>
+          <Text style={styles.subtitle}>{t('auth.loginSubtitle')}</Text>
         </View>
 
         <View style={styles.actionsCard}>
           <Text style={styles.actionsTitle}>{t('entry.actionsTitle')}</Text>
 
-          {isMockMode ? (
-            <Button
-              label={t('auth.demoButton')}
-              onPress={() => loginDemoCandidate(false)}
-              style={styles.primaryButton}
-            />
-          ) : null}
-
           <Button
             label={t('auth.loginButton')}
-            variant={isMockMode ? 'ghost' : 'solid'}
             onPress={() => navigation.navigate('Login')}
-            style={styles.secondaryButton}
+            style={styles.primaryButton}
           />
 
           <Button
@@ -86,27 +73,13 @@ const createStyles = (colors: AppColors) =>
       flex: 1,
       backgroundColor: colors.background,
     } as ViewStyle,
-    topOrb: {
-      position: 'absolute',
-      top: -120,
-      right: -40,
-      width: 240,
-      height: 240,
-      borderRadius: 120,
-      backgroundColor: colors.orbOrange,
-    } as ViewStyle,
-    bottomOrb: {
-      position: 'absolute',
-      bottom: 80,
-      left: -70,
-      width: 210,
-      height: 210,
-      borderRadius: 105,
-      backgroundColor: colors.tealLight,
-    } as ViewStyle,
     scrollContent: {
-      paddingHorizontal: 16,
-      gap: 14,
+      paddingTop: 16,
+      width: '100%',
+      maxWidth: layout.formMaxWidth,
+      alignSelf: 'center',
+      paddingHorizontal: layout.screenPadding,
+      gap: 24,
     } as ViewStyle,
     topControls: {
       flexDirection: 'row',
@@ -117,23 +90,12 @@ const createStyles = (colors: AppColors) =>
     } as ViewStyle,
     heroCard: {
       width: '100%',
-      backgroundColor: colors.surfaceContainerLow,
-      paddingHorizontal: 20,
-      paddingVertical: 24,
-      gap: 8,
-      borderRadius: 28,
-      borderWidth: 1,
-      borderColor: colors.borderLight,
-      shadowColor: colors.primary,
-      shadowOpacity: 0.08,
-      shadowRadius: 14,
-      shadowOffset: { width: 0, height: 5 },
+      gap: 16,
     } as ViewStyle,
     title: {
-      fontSize: 34,
-      fontWeight: '800',
+      fontSize: 28,
+      fontWeight: '700',
       color: colors.textPrimary,
-      letterSpacing: -0.6,
     } as TextStyle,
     subtitle: {
       fontSize: 15,
@@ -142,21 +104,11 @@ const createStyles = (colors: AppColors) =>
     } as TextStyle,
     actionsCard: {
       width: '100%',
-      backgroundColor: colors.cardBg,
-      paddingHorizontal: 18,
-      paddingVertical: 18,
       gap: 12,
-      borderRadius: 24,
-      borderWidth: 1,
-      borderColor: colors.borderLight,
-      shadowColor: colors.primary,
-      shadowOpacity: 0.06,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 3 },
     } as ViewStyle,
     actionsTitle: {
       fontSize: 16,
-      fontWeight: '800',
+      fontWeight: '600',
       color: colors.textPrimary,
     } as TextStyle,
     primaryButton: {

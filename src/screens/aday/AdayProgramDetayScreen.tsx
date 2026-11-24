@@ -1,7 +1,6 @@
-﻿import React, { useMemo } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
-  ScrollView,
   StyleSheet,
   Text,
   TextStyle,
@@ -9,7 +8,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
-import { Button, Pill } from '../../components';
+import { Button, Pill, ScreenScrollView } from '../../components';
 import { APPLICATION_STATUS_LABELS } from '../../constants';
 import { useI18n } from '../../i18n';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
@@ -18,7 +17,15 @@ import { submitApplication } from '../../store/thunks/applicationThunks';
 import { useThemedStyles, type AppColors } from '../../theme';
 import { RootStackNavigationProp, RootStackParamList } from '../../types';
 import { formatDateShort } from '../../utils/date';
-import { isEuropassCvComplete, isMotivationLetterComplete } from '../../utils/europass';
+import {
+  isEuropassCvComplete,
+  isMotivationLetterComplete,
+} from '../../utils/europass';
+import { documentProgress } from '../../utils/documentProgress';
+import { apiClient, requireData } from '../../services/api/apiClient';
+import { openPrivateFile } from '../../services/api/privateFiles';
+import { appConfig } from '../../config/appConfig';
+import { ProjectBloodGroup } from '../../components/ProjectBloodGroup';
 
 export const AdayProgramDetayScreen: React.FC = () => {
   const styles = useThemedStyles(createStyles);
@@ -29,48 +36,86 @@ export const AdayProgramDetayScreen: React.FC = () => {
   const applications = useAppSelector(selectApplications);
 
   const application = useMemo(
-    () => applications.find((app) => app.id === route.params.applicationId) || null,
+    () =>
+      applications.find(app => app.id === route.params.applicationId) || null,
     [applications, route.params.applicationId],
   );
 
   const program = application?.program || null;
-  const completedCount = application?.documents.filter((document) => document.status === 'ok').length ?? 0;
-  const totalCount = application?.documents.length ?? 0;
+  const [templates, setTemplates] = useState<
+    Array<{ id: string; fileName: string; fileUrl: string }>
+  >([]);
+  useEffect(() => {
+    let current = true;
+    if (appConfig.dataSource === 'remote' && program?.id)
+      apiClient
+        .get<Array<{ id: string; fileName: string; fileUrl: string }>>(
+          `/programs/${program.id}/templates`,
+        )
+        .then(response => {
+          const items = requireData(response);
+          if (current) setTemplates(items);
+        })
+        .catch(() => undefined);
+    return () => {
+      current = false;
+    };
+  }, [program?.id]);
+  const { approved: completedCount, total: totalCount } =
+    documentProgress(application);
   const progressFillStyle = {
-    width: (totalCount > 0 ? `${(completedCount / totalCount) * 100}%` : '0%') as ViewStyle['width'],
+    width: (totalCount > 0
+      ? `${(completedCount / totalCount) * 100}%`
+      : '0%') as ViewStyle['width'],
   };
-  const motivationReady = isMotivationLetterComplete(application?.personalInfo.motivationLetter);
+  const motivationReady = isMotivationLetterComplete(
+    application?.personalInfo.motivationLetter,
+  );
   const cvReady = isEuropassCvComplete(application?.personalInfo.europassCv);
   const hasDocumentCommitment = (program?.checklist || []).length > 0;
-  const hasBoardingPassRequirement = (program?.checklist || []).some((item) => item.documentType === 'boarding_pass');
+  const hasBoardingPassRequirement = (program?.checklist || []).some(
+    item =>
+      item.documentType === 'boarding_pass_outbound' ||
+      item.documentType === 'boarding_pass_return' ||
+      item.documentType === 'boarding_pass',
+  );
 
   if (!application || !program) {
     return (
       <View style={styles.section}>
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyText}>{t('candidateProgramDetail.notFound')}</Text>
+          <Text style={styles.emptyText}>
+            {t('candidateProgramDetail.notFound')}
+          </Text>
         </View>
       </View>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.section}>
+    <ScreenScrollView contentContainerStyle={styles.section}>
       <View style={styles.headerCard}>
         <View style={styles.accentBar} />
         <View style={styles.headerContent}>
           <View style={styles.headerRow}>
             <Text style={styles.h2}>{application.programName}</Text>
             <Pill
-              label={APPLICATION_STATUS_LABELS[application.status] || application.status}
+              label={
+                APPLICATION_STATUS_LABELS[application.status] ||
+                application.status
+              }
               variant={
-                application.status === 'approved'
+                application.decisionStatus === 'rejected'
+                  ? 'err'
+                  : application.status === 'returned_home'
                   ? 'ok'
-                  : application.status === 'needs_fix'
-                    ? 'warn'
-                    : application.status === 'rejected'
-                      ? 'err'
-                      : 'info'
+                  : application.documents.some(
+                      document =>
+                        document.status === 'wrong_format' ||
+                        document.status === 'missing',
+                    )
+                  ? 'warn'
+                  : 'info'
               }
             />
           </View>
@@ -80,9 +125,12 @@ export const AdayProgramDetayScreen: React.FC = () => {
         </View>
       </View>
 
+      <ProjectBloodGroup key={application.id} applicationId={application.id} />
       <View style={styles.progressCard}>
         <View style={styles.progressHeader}>
-          <Text style={styles.progressLabel}>{t('candidateProgramDetail.documentProgress')}</Text>
+          <Text style={styles.progressLabel}>
+            {t('candidateProgramDetail.documentProgress')}
+          </Text>
           <Text style={styles.progressCount}>
             {completedCount}/{totalCount}
           </Text>
@@ -93,41 +141,88 @@ export const AdayProgramDetayScreen: React.FC = () => {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>{t('candidateProgramDetail.contentsTitle')}</Text>
+        <Text style={styles.cardTitle}>
+          {t('candidateProgramDetail.contentsTitle')}
+        </Text>
+        {templates.map(template => (
+          <Button
+            key={template.id}
+            label={`${template.fileName} İndir`}
+            variant="ghost"
+            onPress={() =>
+              openPrivateFile(template.fileUrl).catch(cause =>
+                Alert.alert(
+                  'Şablon Açılamadı',
+                  cause instanceof Error ? cause.message : 'Tekrar deneyin.',
+                ),
+              )
+            }
+          />
+        ))}
         <View style={styles.statusRow}>
           <Text style={styles.statusLabel}>Europass CV</Text>
-          <Pill label={cvReady ? t('candidateProgramDetail.complete') : t('candidateProgramDetail.missing')} variant={cvReady ? 'ok' : 'warn'} />
+          <Pill
+            label={
+              cvReady
+                ? t('candidateProgramDetail.complete')
+                : t('candidateProgramDetail.missing')
+            }
+            variant={cvReady ? 'ok' : 'warn'}
+          />
         </View>
         <Button
           label="CV Ekranına Git"
           variant="ghost"
-          onPress={() => navigation.navigate('AdayCvBuilder', { applicationId: application.id })}
+          onPress={() =>
+            navigation.navigate('AdayCvBuilder', {
+              applicationId: application.id,
+            })
+          }
         />
 
         <View style={styles.statusRow}>
-          <Text style={styles.statusLabel}>{t('candidateProgramDetail.motivationLetter')}</Text>
+          <Text style={styles.statusLabel}>
+            {t('candidateProgramDetail.motivationLetter')}
+          </Text>
           <Pill
-            label={motivationReady ? t('candidateProgramDetail.complete') : t('candidateProgramDetail.missing')}
+            label={
+              motivationReady
+                ? t('candidateProgramDetail.complete')
+                : t('candidateProgramDetail.missing')
+            }
             variant={motivationReady ? 'ok' : 'warn'}
           />
         </View>
         <Button
           label={t('candidateProgramDetail.goToMotivation')}
           variant="ghost"
-          onPress={() => navigation.navigate('AdayMotivation', { applicationId: application.id })}
+          onPress={() =>
+            navigation.navigate('AdayMotivation', {
+              applicationId: application.id,
+            })
+          }
         />
         <Button
           label={t('candidateProgramDetail.uploadDocument')}
-          onPress={() => navigation.navigate('AdayBelge', { applicationId: application.id })}
+          onPress={() =>
+            navigation.navigate('AdayBelge', { applicationId: application.id })
+          }
         />
         <Button
           label={t('candidateProgramDetail.programChat')}
           variant="ghost"
-          onPress={() => navigation.navigate('AdayMesaj', { applicationId: application.id })}
+          onPress={() =>
+            navigation.navigate('AdayMesaj', { applicationId: application.id })
+          }
         />
-        {(application.status === 'draft' || application.status === 'needs_fix') ? (
+        {application.status === 'application_stage' &&
+        application.decisionStatus === 'active' ? (
           <Button
-            label={application.status === 'needs_fix' ? 'Düzelterek Yeniden Gönder' : 'Başvuruyu Gönder'}
+            label={
+              application.submittedAt
+                ? 'Başvuruyu Yeniden Gönder'
+                : 'Başvuruyu Gönder'
+            }
             onPress={() => {
               if (!cvReady || !motivationReady) {
                 Alert.alert(
@@ -144,15 +239,21 @@ export const AdayProgramDetayScreen: React.FC = () => {
 
       {hasDocumentCommitment ? (
         <View style={styles.commitmentInfoCard}>
-          <Text style={styles.commitmentInfoTitle}>{t('candidateProgramDetail.commitmentTitle')}</Text>
+          <Text style={styles.commitmentInfoTitle}>
+            {t('candidateProgramDetail.commitmentTitle')}
+          </Text>
           <Text style={styles.commitmentInfoText}>
             {t('candidateProgramDetail.commitmentTextBase')}
-            {hasBoardingPassRequirement ? t('candidateProgramDetail.commitmentTextBoarding') : ''}
+            {hasBoardingPassRequirement
+              ? t('candidateProgramDetail.commitmentTextBoarding')
+              : ''}
           </Text>
         </View>
       ) : null}
 
-      <Text style={styles.sectionLabel}>{t('candidateProgramDetail.stepsTitle')}</Text>
+      <Text style={styles.sectionLabel}>
+        {t('candidateProgramDetail.stepsTitle')}
+      </Text>
       <View style={styles.card}>
         {program.steps.map((step, index) => (
           <Text key={`${index}-${step}`} style={styles.stepText}>
@@ -163,18 +264,22 @@ export const AdayProgramDetayScreen: React.FC = () => {
 
       {program.deadlines.length > 0 ? (
         <>
-          <Text style={styles.sectionLabel}>{t('candidateProgramDetail.deadlinesTitle')}</Text>
+          <Text style={styles.sectionLabel}>
+            {t('candidateProgramDetail.deadlinesTitle')}
+          </Text>
           <View style={styles.card}>
-            {program.deadlines.map((deadline) => (
+            {program.deadlines.map(deadline => (
               <View key={deadline.label} style={styles.deadlineRow}>
                 <Text style={styles.deadlineLabel}>{deadline.label}</Text>
-                <Text style={styles.deadlineValue}>{formatDateShort(deadline.dateISO)}</Text>
+                <Text style={styles.deadlineValue}>
+                  {formatDateShort(deadline.dateISO)}
+                </Text>
               </View>
             ))}
           </View>
         </>
       ) : null}
-    </ScrollView>
+    </ScreenScrollView>
   );
 };
 
@@ -187,13 +292,9 @@ const createStyles = (colors: AppColors) =>
       paddingBottom: 40,
     } as ViewStyle,
     headerCard: {
-      backgroundColor: colors.cardBg,
-      borderRadius: 14,
-      padding: 18,
+      paddingVertical: 18,
       flexDirection: 'row',
       gap: 14,
-      borderWidth: 1,
-      borderColor: colors.borderLight,
     } as ViewStyle,
     accentBar: {
       width: 4,
@@ -224,12 +325,12 @@ const createStyles = (colors: AppColors) =>
       fontSize: 12,
       fontWeight: '700',
       color: colors.textMuted,
-      letterSpacing: 0.8,
+      letterSpacing: 0,
       marginTop: 4,
     } as TextStyle,
     progressCard: {
       backgroundColor: colors.cardBg,
-      borderRadius: 14,
+      borderRadius: 8,
       padding: 16,
       gap: 10,
       borderWidth: 1,
@@ -263,7 +364,7 @@ const createStyles = (colors: AppColors) =>
     } as ViewStyle,
     card: {
       backgroundColor: colors.cardBg,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: colors.borderLight,
       padding: 16,
@@ -271,7 +372,7 @@ const createStyles = (colors: AppColors) =>
     } as ViewStyle,
     commitmentInfoCard: {
       backgroundColor: colors.noticeBg,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: colors.warning,
       padding: 16,
@@ -324,7 +425,7 @@ const createStyles = (colors: AppColors) =>
     } as TextStyle,
     emptyCard: {
       backgroundColor: colors.noticeBg,
-      borderRadius: 12,
+      borderRadius: 8,
       padding: 24,
       gap: 18,
       alignItems: 'center',

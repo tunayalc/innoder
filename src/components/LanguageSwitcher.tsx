@@ -23,6 +23,9 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ compact = fa
 
     return (
       <Pressable
+        accessibilityRole="radio"
+        accessibilityState={{ checked: isActive }}
+        accessibilityLabel={label}
         key={value}
         style={[styles.option, compact && styles.optionCompact, isActive && styles.optionActive]}
         onPress={() => setLanguage(value)}
@@ -35,7 +38,7 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ compact = fa
   return (
     <View style={[styles.wrapper, compact && styles.wrapperCompact]}>
       {!compact ? <Text style={styles.label}>{t('common.language')}</Text> : null}
-      <View style={styles.row}>
+      <View accessibilityRole="radiogroup" accessibilityLabel={t('common.language')} style={styles.row}>
         {renderOption('tr', t('common.turkish'))}
         {renderOption('en', t('common.english'))}
       </View>
@@ -52,39 +55,43 @@ const createStyles = (colors: AppColors) =>
       gap: 6,
     } as ViewStyle,
     label: {
-      fontSize: 12,
-      fontWeight: '700',
+      fontSize: 14,
+      fontWeight: '500',
       color: colors.textMuted,
-      textTransform: 'uppercase',
-      letterSpacing: 0.8,
     } as TextStyle,
     row: {
       flexDirection: 'row',
+      flexWrap: 'wrap',
       alignSelf: 'flex-start',
-      gap: 8,
+      gap: 4,
+      padding: 4,
+      borderRadius: 8,
+      backgroundColor: colors.surfaceContainerHigh,
     } as ViewStyle,
     option: {
       paddingHorizontal: 12,
       paddingVertical: 8,
-      borderRadius: 999,
+      minHeight: 44,
+      justifyContent: 'center',
+      borderRadius: 6,
       borderWidth: 1,
-      borderColor: colors.borderLight,
-      backgroundColor: colors.cardBg,
+      borderColor: 'transparent',
+      backgroundColor: 'transparent',
     } as ViewStyle,
     optionCompact: {
       paddingHorizontal: 10,
       paddingVertical: 6,
     } as ViewStyle,
     optionActive: {
-      borderColor: colors.teal,
-      backgroundColor: colors.tealBg,
+      borderColor: colors.borderMedium,
+      backgroundColor: colors.cardBg,
     } as ViewStyle,
     optionText: {
-      fontSize: 12,
-      fontWeight: '700',
+      fontSize: 14,
+      fontWeight: '600',
       color: colors.textSecondary,
     } as TextStyle,
     optionTextActive: {
-      color: colors.teal,
+      color: colors.primaryText,
     } as TextStyle,
   });

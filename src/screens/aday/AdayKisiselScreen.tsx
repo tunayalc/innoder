@@ -3,35 +3,39 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextStyle,
+  TouchableOpacity,
   View,
   ViewStyle,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Button, InputField } from '../../components';
+import { Button, InputField, ScreenScrollView } from '../../components';
 import { useAuth } from '../../hooks';
-import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { useUnsavedChanges } from '../../hooks/useUnsavedChanges';
+import { useAppSelector } from '../../store/hooks';
 import {
   selectApplicationLoading,
-  selectApplications,
   selectUserLoading,
 } from '../../store/selectors';
-import { updatePersonalInfoDraft } from '../../store/thunks/applicationThunks';
+import { apiClient, requireData } from '../../services/api/apiClient';
+import { appConfig } from '../../config/appConfig';
 import { useThemedStyles, type AppColors } from '../../theme';
 import { RootStackNavigationProp } from '../../types';
-import { isValidEmail, isValidPhoneNumber, isValidTCKN } from '../../utils/validation';
+import {
+  isValidEmail,
+  isValidPhoneNumber,
+  isValidTCKN,
+} from '../../utils/validation';
 
 export const AdayKisiselScreen: React.FC = () => {
   const styles = useThemedStyles(createStyles);
   const navigation = useNavigation<RootStackNavigationProp>();
-  const dispatch = useAppDispatch();
   const { user, update } = useAuth();
-  const applications = useAppSelector(selectApplications);
   const isUserLoading = useAppSelector(selectUserLoading);
   const isApplicationLoading = useAppSelector(selectApplicationLoading);
+  const saveError = useAppSelector(state => state.user.error);
 
   const [fullName, setFullName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
@@ -39,11 +43,35 @@ export const AdayKisiselScreen: React.FC = () => {
   const [country, setCountry] = useState(user?.country || 'Türkiye');
   const [city, setCity] = useState(user?.city || '');
   const [birthDate, setBirthDate] = useState(user?.birthDate || '');
-  const [identityNumber, setIdentityNumber] = useState(user?.identityNumber || '');
-  const [passportNumber, setPassportNumber] = useState(user?.passportNumber || '');
+  const [nationality, setNationality] = useState(
+    user?.nationality || 'Türkiye Cumhuriyeti',
+  );
+  const [identityType, setIdentityType] = useState(
+    user?.identityType || 'turkish_id',
+  );
+  const [identityNumber, setIdentityNumber] = useState(
+    user?.identityNumber || '',
+  );
+  const [passportNumber, setPassportNumber] = useState(
+    user?.passportNumber || '',
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const userApplications = applications.filter((application) => application.userId === user?.id);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const draft = JSON.stringify({
+    fullName,
+    email,
+    phone,
+    country,
+    city,
+    birthDate,
+    nationality,
+    identityType,
+    identityNumber,
+    passportNumber,
+    currentPassword,
+  });
+  const [savedDraft, setSavedDraft] = useState(draft);
+  useUnsavedChanges(draft !== savedDraft);
 
   const validate = () => {
     const nextErrors: Record<string, string> = {};
@@ -60,11 +88,22 @@ export const AdayKisiselScreen: React.FC = () => {
     }
     if (!birthDate.trim()) {
       nextErrors.birthDate = 'Doğum tarihi zorunludur';
+    } else if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(birthDate) ||
+      Number.isNaN(Date.parse(birthDate)) ||
+      new Date(birthDate).toISOString().slice(0, 10) !== birthDate ||
+      birthDate > new Date().toISOString().slice(0, 10)
+    ) {
+      nextErrors.birthDate = 'Geçerli bir tarih girin: YYYY-MM-DD';
     }
-    if (!identityNumber.trim()) {
-      nextErrors.identityNumber = 'Kimlik numarası zorunludur';
-    } else if (!isValidTCKN(identityNumber)) {
-      nextErrors.identityNumber = 'Geçerli bir TC Kimlik No giriniz';
+    if (identityType === 'turkish_id') {
+      if (!identityNumber.trim()) {
+        nextErrors.identityNumber = 'Kimlik numarası zorunludur';
+      } else if (!isValidTCKN(identityNumber)) {
+        nextErrors.identityNumber = 'Geçerli bir TC Kimlik No giriniz';
+      }
+    } else if (!passportNumber.trim()) {
+      nextErrors.passportNumber = 'Pasaport numarası zorunludur';
     }
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
@@ -73,38 +112,72 @@ export const AdayKisiselScreen: React.FC = () => {
   const handleSave = async () => {
     if (!user) return;
     if (!validate()) return;
+    if (
+      email.trim().toLowerCase() !== user.email.toLowerCase() &&
+      appConfig.dataSource === 'remote'
+    ) {
+      if (!currentPassword) {
+        setErrors({
+          ...errors,
+          currentPassword: 'E-posta değişikliği için mevcut şifrenizi girin.',
+        });
+        return;
+      }
+      try {
+        const result = requireData(
+          await apiClient.post<{ message: string }>(
+            '/auth/request-email-change',
+            { email: email.trim(), currentPassword },
+          ),
+        );
+        Alert.alert('E-posta Doğrulaması', result.message);
+        setEmail(user.email);
+        setCurrentPassword('');
+      } catch (error) {
+        Alert.alert(
+          'E-posta Değiştirilemedi',
+          error instanceof Error ? error.message : 'Tekrar deneyin.',
+        );
+        return;
+      }
+    }
 
-    update({
+    const saved = await update({
       name: fullName,
-      email,
+      ...(appConfig.dataSource === 'mock' ? { email } : {}),
       phone,
       country,
       city,
       birthDate,
+      nationality,
+      identityType,
       identityNumber,
       passportNumber,
     });
 
-    await Promise.all(
-      userApplications.map((application) =>
-        dispatch(
-          updatePersonalInfoDraft({
-            applicationId: application.id,
-            patch: {
-              fullName,
-              birthDate,
-              identityNumber,
-              passportNumber,
-            },
-            programId: application.programId,
-          }),
-        ) as unknown as Promise<unknown>,
-      ),
+    if (!saved) return;
+    setSavedDraft(
+      JSON.stringify({
+        fullName,
+        email: appConfig.dataSource === 'remote' ? user.email : email,
+        phone,
+        country,
+        city,
+        birthDate,
+        nationality,
+        identityType,
+        identityNumber,
+        passportNumber,
+        currentPassword: '',
+      }),
     );
+    setCurrentPassword('');
 
-    Alert.alert('Bilgiler Güncellendi', 'Kişisel bilgileriniz profil ve program kayıtlarına yansıtıldı.', [
-      { text: 'Tamam', onPress: () => navigation.goBack() },
-    ]);
+    Alert.alert(
+      'Bilgiler Güncellendi',
+      'Kişisel bilgileriniz profil ve program kayıtlarına yansıtıldı.',
+      [{ text: 'Tamam', onPress: () => navigation.goBack() }],
+    );
   };
 
   if (!user) {
@@ -122,13 +195,14 @@ export const AdayKisiselScreen: React.FC = () => {
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.section}>
+      <ScreenScrollView contentContainerStyle={styles.section}>
         <View style={styles.headerCard}>
           <View style={styles.accentBar} />
           <View style={styles.headerContent}>
             <Text style={styles.h2}>Kişisel Bilgiler</Text>
             <Text style={styles.subtitle}>
-              Buradaki bilgiler kullanıcı profiline aittir ve tüm program kayıtlarında ortak kullanılır.
+              Buradaki bilgiler kullanıcı profiline aittir ve tüm program
+              kayıtlarında ortak kullanılır.
             </Text>
           </View>
         </View>
@@ -152,7 +226,17 @@ export const AdayKisiselScreen: React.FC = () => {
           autoCapitalize="none"
           autoCorrect={false}
         />
-
+        {email.trim().toLowerCase() !== user.email.toLowerCase() &&
+        appConfig.dataSource === 'remote' ? (
+          <InputField
+            label="E-posta değişikliği için mevcut şifre"
+            value={currentPassword}
+            onChangeText={setCurrentPassword}
+            secureTextEntry
+            autoComplete="current-password"
+            error={errors.currentPassword}
+          />
+        ) : null}
         <Text style={styles.sectionLabel}>İLETİŞİM</Text>
         <InputField
           label="Telefon"
@@ -184,30 +268,86 @@ export const AdayKisiselScreen: React.FC = () => {
           error={errors.birthDate}
         />
         <InputField
-          label="TC Kimlik Numarası *"
-          value={identityNumber}
-          onChangeText={setIdentityNumber}
-          placeholder="xxxxxxxxxxx"
-          error={errors.identityNumber}
-          keyboardType="number-pad"
-          maxLength={11}
-          secureTextEntry
+          label="Uyruk *"
+          value={nationality}
+          onChangeText={setNationality}
+          placeholder="Türkiye Cumhuriyeti"
         />
-        <InputField
-          label="Pasaport Numarası"
-          value={passportNumber}
-          onChangeText={setPassportNumber}
-          placeholder="U12345678"
-          error={errors.passportNumber}
-          autoCapitalize="characters"
-          autoCorrect={false}
-        />
-
+        <Text style={styles.inputLabel}>Kimlik Belgesi Türü *</Text>
+        <View style={styles.segmentedControl}>
+          <TouchableOpacity
+            style={[
+              styles.segment,
+              identityType === 'turkish_id' && styles.segmentActive,
+            ]}
+            onPress={() => setIdentityType('turkish_id')}
+          >
+            <Text
+              style={[
+                styles.segmentText,
+                identityType === 'turkish_id' && styles.segmentTextActive,
+              ]}
+            >
+              T.C. Kimlik
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.segment,
+              identityType === 'passport' && styles.segmentActive,
+            ]}
+            onPress={() => setIdentityType('passport')}
+          >
+            <Text
+              style={[
+                styles.segmentText,
+                identityType === 'passport' && styles.segmentTextActive,
+              ]}
+            >
+              Pasaport
+            </Text>
+          </TouchableOpacity>
+        </View>
+        {identityType === 'turkish_id' ? (
+          <InputField
+            label="T.C. Kimlik Numarası *"
+            value={identityNumber}
+            onChangeText={setIdentityNumber}
+            placeholder="xxxxxxxxxxx"
+            error={errors.identityNumber}
+            keyboardType="number-pad"
+            maxLength={11}
+            secureTextEntry
+          />
+        ) : (
+          <InputField
+            label="Pasaport Numarası *"
+            value={passportNumber}
+            onChangeText={setPassportNumber}
+            placeholder="U12345678"
+            error={errors.passportNumber}
+            autoCapitalize="characters"
+            autoCorrect={false}
+          />
+        )}
         <Button
-          label={isUserLoading || isApplicationLoading ? 'Kaydediliyor...' : 'Bilgileri Güncelle'}
-          onPress={isUserLoading || isApplicationLoading ? undefined : handleSave}
+          label={
+            isUserLoading || isApplicationLoading
+              ? 'Kaydediliyor...'
+              : 'Bilgileri Güncelle'
+          }
+          loading={isUserLoading || isApplicationLoading}
+          onPress={handleSave}
         />
-      </ScrollView>
+        {saveError ? (
+          <Text
+            accessibilityRole="alert"
+            style={{ color: styles.sectionLabel.color }}
+          >
+            {saveError}
+          </Text>
+        ) : null}
+      </ScreenScrollView>
     </KeyboardAvoidingView>
   );
 };
@@ -224,13 +364,9 @@ const createStyles = (colors: AppColors) =>
       paddingBottom: 40,
     } as ViewStyle,
     headerCard: {
-      backgroundColor: colors.cardBg,
-      borderRadius: 14,
-      padding: 18,
+      paddingVertical: 18,
       flexDirection: 'row',
       gap: 14,
-      borderWidth: 1,
-      borderColor: colors.borderLight,
     } as ViewStyle,
     accentBar: {
       width: 4,
@@ -255,12 +391,41 @@ const createStyles = (colors: AppColors) =>
       fontSize: 12,
       fontWeight: '700',
       color: colors.textMuted,
-      letterSpacing: 0.8,
+      letterSpacing: 0,
       marginTop: 4,
+    } as TextStyle,
+    inputLabel: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    } as TextStyle,
+    segmentedControl: {
+      flexDirection: 'row',
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+      borderRadius: 8,
+      overflow: 'hidden',
+    } as ViewStyle,
+    segment: {
+      flex: 1,
+      minHeight: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.cardBg,
+    } as ViewStyle,
+    segmentActive: {
+      backgroundColor: colors.primary,
+    } as ViewStyle,
+    segmentText: {
+      color: colors.textSecondary,
+      fontWeight: '600',
+    } as TextStyle,
+    segmentTextActive: {
+      color: colors.white,
     } as TextStyle,
     emptyCard: {
       backgroundColor: colors.noticeBg,
-      borderRadius: 12,
+      borderRadius: 8,
       padding: 24,
       alignItems: 'center',
     } as ViewStyle,

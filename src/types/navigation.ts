@@ -7,6 +7,8 @@ export type RootStackParamList = {
   OnboardingIntro: undefined;
   Login: undefined;
   Register: { videosCompleted: boolean } | undefined;
+  ChangePassword: undefined;
+  ForgotPassword: undefined;
   Splash: undefined;
   Auth: undefined;
   Main: { screen: keyof MainTabParamList } | undefined;
@@ -23,6 +25,8 @@ export type RootStackParamList = {
   AdminListe: undefined;
   AdminPasswordRequests: undefined;
   AdminProgramManagement: undefined;
+  AdminManagement: undefined;
+  AdminOperations: {section:'messages'|'deletions'};
   AdminDetay: { applicationId: string };
   AdminDogrulama: { applicationId: string; documentId?: string };
   AdminAudit: undefined;

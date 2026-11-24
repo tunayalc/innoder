@@ -1,8 +1,11 @@
 import type { EuropassCvProfile } from './application';
 
-export type UserStatus = 'verified';
+import type { IdentityType } from './application';
+
+export type UserStatus = 'pending' | 'active' | 'disabled' | 'deletion_requested' | 'anonymized' | 'verified';
 
 export interface User {
+  revision?:number;
   id: string;
   email: string;
   name: string;
@@ -11,17 +14,23 @@ export interface User {
   country?: string;
   city?: string;
   birthDate?: string;
+  nationality?: string;
+  identityType?: IdentityType;
   identityNumber?: string;
   passportNumber?: string;
   pnrNumber?: string;
   europassCv?: EuropassCvProfile;
-  role: 'candidate' | 'admin';
+  role: 'candidate' | 'admin' | 'super_admin';
+  username?: string;
+  mustChangePassword?: boolean;
   kvkkAccepted: boolean;
   credentialRequestPending?: boolean;
   credentialRequestedAt?: string;
   credentialSentAt?: string;
   consentVersion?: string;
   consentedAt?: string;
+  noticeVersion?: string;
+  noticeAcceptedAt?: string;
   status: UserStatus;
   createdAt: string;
   updatedAt: string;

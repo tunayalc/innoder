@@ -26,15 +26,13 @@ export const selectApplicationsByStatus = (status: string) =>
 export const selectPendingApplications = createSelector(
   [selectApplications],
   (applications) =>
-    applications.filter((app) => 
-      app.status === 'submitted' || app.status === 'under_review'
-    )
+    applications.filter((app) => app.status === 'application_stage' && Boolean(app.submittedAt))
 );
 
 export const selectApplicationsNeedingFix = createSelector(
   [selectApplications],
   (applications) =>
-    applications.filter((app) => app.status === 'needs_fix')
+    applications.filter((app) => app.documents.some((document) => document.status === 'missing' || document.status === 'wrong_format'))
 );
 
 export const selectApplicationLoading = createSelector(

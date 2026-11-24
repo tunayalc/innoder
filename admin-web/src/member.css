@@ -1,0 +1,169 @@
+.display-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.display-controls select {
+  width: auto;
+  min-height: 36px;
+  padding: 4px 6px;
+  font-size: 13px;
+  color: var(--secondary);
+}
+.member-title {
+  padding: 20px 0;
+  display: grid;
+  gap: 4px;
+}
+.member-title h2 {
+  font-size: 22px;
+}
+.member-title span,
+.member-row small,
+.member-form small {
+  color: var(--secondary);
+}
+.member-form {
+  display: grid;
+  gap: 24px;
+  max-width: 840px;
+  padding: 20px 0;
+}
+.member-form > button,
+.member-form section > button,
+.member-form a {
+  justify-self: start;
+}
+.member-form a,
+.auth-form a {
+  color: var(--on-accent);
+  text-underline-offset: 3px;
+}
+.member-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.member-form fieldset,
+.scan fieldset {
+  display: grid;
+  gap: 16px;
+  border: 0;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+}
+.member-form legend {
+  font-size: 18px;
+  font-weight: 650;
+  padding: 0 0 14px;
+}
+.member-form h3 {
+  margin-bottom: 8px;
+}
+.form-section {
+  display: grid;
+  gap: 12px;
+}
+.form-section > button {
+  justify-self: start;
+}
+.repeat-row {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  align-items: end;
+}
+.member-list {
+  border-block: 1px solid var(--border);
+}
+.member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  width: 100%;
+  min-width: 0;
+  text-align: start;
+  padding: 16px;
+}
+.member-row:last-child {
+  border-bottom: 0;
+}
+button.member-row:hover {
+  background: var(--surface-low);
+}
+.member-row span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  overflow-wrap: anywhere;
+}
+.member-row > strong {
+  font-size: 13px;
+  color: var(--on-accent);
+}
+.member-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+}
+.member-tabs button {
+  padding: 8px 12px;
+  border: none;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: var(--secondary);
+  min-height: 44px;
+}
+.member-tabs button[aria-current] {
+  border-color: #00cde5;
+  color: var(--text);
+  font-weight: 650;
+}
+.member-select {
+  max-width: 480px;
+  margin-bottom: 16px;
+}
+.choice {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-weight: 400;
+}
+.choice input {
+  flex: none;
+}
+.member-preview {
+  width: 100%;
+  height: min(65vh, 660px);
+  object-fit: contain;
+  border: 0;
+}
+.scan summary {
+  cursor: pointer;
+  color: var(--on-accent);
+  padding: 8px 0;
+}
+.scan summary svg {
+  vertical-align: middle;
+}
+@media (max-width: 640px) {
+  .member-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .member-tabs button {
+    padding-inline: 8px;
+  }
+  .member-row {
+    padding: 12px 8px;
+  }
+  .member-form {
+    padding-block: 14px;
+  }
+}

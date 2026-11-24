@@ -115,7 +115,7 @@ const createStyles = (colors: AppColors) =>
     } as ViewStyle,
     logItem: {
       padding: 14,
-      borderRadius: 12,
+      borderRadius: 8,
       backgroundColor: colors.cardBg,
       borderWidth: 1,
       borderColor: colors.borderLight,

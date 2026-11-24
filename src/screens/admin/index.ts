@@ -1,6 +1,7 @@
 ﻿export { AdminMenuScreen } from './AdminMenuScreen';
 export { AdminPasswordRequestsScreen } from './AdminPasswordRequestsScreen';
 export { AdminProgramManagementScreen } from './AdminProgramManagementScreen';
+export { AdminManagementScreen } from './AdminManagementScreen';
 export { AdminListeScreen } from './AdminListeScreen';
 export { AdminDetayScreen } from './AdminDetayScreen';
 export { AdminDogrulamaScreen } from './AdminDogrulamaScreen';

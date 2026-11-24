@@ -41,10 +41,16 @@ export const PROGRAM_CATALOG: ProgramInfo[] = [
         exampleHint: 'Tutar ve banka bilgileri net görünmeli.',
       },
       {
-        documentType: 'boarding_pass',
-        expectedFormat: 'PDF/JPG (QR/Barcode net görünür)',
-        description: 'Ulaşım belgesi / biniş kartı.',
-        exampleHint: 'PNR ve QR/Barcode alanı kadrajda olmalı.',
+        documentType: 'boarding_pass_outbound',
+        expectedFormat: 'PDF/JPG/PNG (QR/Barcode net görünür)',
+        description: 'Gidiş uçuşuna ait biniş kartı.',
+        exampleHint: 'Aslı dönüş sonrasında elden teslim edilmelidir.',
+      },
+      {
+        documentType: 'boarding_pass_return',
+        expectedFormat: 'PDF/JPG/PNG (QR/Barcode net görünür)',
+        description: 'Dönüş uçuşuna ait biniş kartı.',
+        exampleHint: 'Aslı dönüş sonrasında elden teslim edilmelidir.',
       },
       {
         documentType: 'photo_activity_report',

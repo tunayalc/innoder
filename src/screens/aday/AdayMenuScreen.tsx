@@ -1,13 +1,18 @@
-﻿import React, { useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, TextStyle, View, ViewStyle } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { MenuItem, Pill } from '../../components';
+﻿import React, { useCallback, useMemo, useState } from 'react';
+import { StyleSheet, Text, TextStyle, View, ViewStyle } from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { MenuItem, Pill, ScreenScrollView } from '../../components';
 import { useAuth } from '../../hooks';
 import { getApplicationStatusLabel, useI18n } from '../../i18n';
 import { useAppTheme, useThemedStyles, type AppColors } from '../../theme';
 import { useAppSelector } from '../../store/hooks';
 import { selectApplications } from '../../store/selectors';
 import { RootStackNavigationProp } from '../../types';
+import { documentProgress } from '../../utils/documentProgress';
+import {apiClient,requireData} from '../../services/api/apiClient';
+import {appConfig} from '../../config/appConfig';
+import {isEuropassCvComplete,isMotivationLetterComplete} from '../../utils/europass';
+import {getDocumentTypeLabel} from '../../i18n';
 
 export const AdayMenuScreen: React.FC = () => {
   const navigation = useNavigation<RootStackNavigationProp>();
@@ -16,35 +21,42 @@ export const AdayMenuScreen: React.FC = () => {
   const { user } = useAuth();
   const { t, language } = useI18n();
   const applications = useAppSelector(selectApplications);
+  const [unread,setUnread]=useState<number|null>(null),[summaryError,setSummaryError]=useState('');
+  useFocusEffect(useCallback(()=>{
+    let current=true;
+    if(appConfig.dataSource==='remote')apiClient.get<{unread:number}>('/messages/unread-count').then(response=>{const summary=requireData(response);if(current){setUnread(summary.unread);setSummaryError('');}}).catch(cause=>{if(current)setSummaryError(cause instanceof Error?cause.message:'Mesaj özeti alınamadı.');});
+    return()=>{current=false;};
+  },[]));
 
   const latestApplication = useMemo(
     () =>
       applications
-        .filter((application) => application.userId === user?.id)
+        .filter(application => application.userId === user?.id)
         .sort(
-          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
         )[0] || null,
     [applications, user?.id],
   );
 
-  const missingDocs = useMemo(() => {
-    if (!latestApplication) return 0;
-    return latestApplication.documents.filter((document) => document.status !== 'ok').length;
-  }, [latestApplication]);
-
-  const totalDocs = latestApplication?.documents.length ?? 0;
-  const completedDocs = totalDocs - missingDocs;
+  const progress = documentProgress(latestApplication);
+  const totalDocs = progress.total;
+  const completedDocs = progress.approved;
+  const missingDocs = totalDocs - completedDocs;
   const progressFillStyle = useMemo(
-    () => ({
-      width: totalDocs > 0 ? `${(completedDocs / totalDocs) * 100}%` : '0%',
-    } as ViewStyle),
+    () =>
+      ({
+        width: totalDocs > 0 ? `${(completedDocs / totalDocs) * 100}%` : '0%',
+      } as ViewStyle),
     [completedDocs, totalDocs],
   );
 
   return (
-    <ScrollView contentContainerStyle={styles.section}>
-      <Text style={styles.greeting}>
-        {t('candidateMenu.greeting', { name: user?.name || t('candidateMenu.fallbackName') })}
+    <ScreenScrollView contentContainerStyle={styles.section}>
+      <Text accessibilityRole="header" style={styles.greeting}>
+        {t('candidateMenu.greeting', {
+          name: user?.name || t('candidateMenu.fallbackName'),
+        })}
       </Text>
 
       {latestApplication ? (
@@ -52,22 +64,42 @@ export const AdayMenuScreen: React.FC = () => {
           <View style={styles.statusAccent} />
           <View style={styles.statusContent}>
             <View style={styles.statusRow}>
-              <Text style={styles.statusLabel}>{latestApplication.programName}</Text>
+              <Text style={styles.statusLabel}>
+                {latestApplication.programName}
+              </Text>
               <Pill
-                label={getApplicationStatusLabel(latestApplication.status, language)}
+                label={getApplicationStatusLabel(
+                  latestApplication.status,
+                  language,
+                )}
                 variant={
-                  latestApplication.status === 'approved'
+                  latestApplication.decisionStatus === 'rejected'
+                    ? 'err'
+                    : latestApplication.status === 'returned_home'
                     ? 'ok'
-                    : latestApplication.status === 'needs_fix'
-                      ? 'warn'
-                      : latestApplication.status === 'rejected'
-                        ? 'err'
-                        : 'info'
+                    : latestApplication.documents.some(
+                        document =>
+                          document.status === 'wrong_format' ||
+                          document.status === 'missing',
+                      )
+                    ? 'warn'
+                    : 'info'
                 }
               />
             </View>
             <View style={styles.progressRow}>
-              <View style={styles.progressTrack}>
+              <View
+                accessibilityRole="progressbar"
+                accessibilityLabel={t(
+                  'candidateProgramDetail.documentProgress',
+                )}
+                accessibilityValue={{
+                  min: 0,
+                  max: totalDocs || 1,
+                  now: completedDocs,
+                }}
+                style={styles.progressTrack}
+              >
                 <View style={[styles.progressFill, progressFillStyle]} />
               </View>
               <Text style={styles.progressLabel}>
@@ -83,13 +115,23 @@ export const AdayMenuScreen: React.FC = () => {
         </View>
       ) : null}
 
+      {latestApplication&&latestApplication.decisionStatus!=='rejected'?<>
+        {(!latestApplication.personalInfo.birthDate||!latestApplication.personalInfo.nationality||!(latestApplication.personalInfo.identityType==='passport'?latestApplication.personalInfo.passportNumber:latestApplication.personalInfo.identityNumber))?<MenuItem label={language==='en'?'Complete personal details':'Kişisel Bilgileri Tamamlayın'} iconName="account-edit-outline" onPress={()=>navigation.navigate('AdayKisisel')}/>:null}
+        {!isEuropassCvComplete(latestApplication.personalInfo.europassCv)?<MenuItem label={language==='en'?'Complete your CV':'CV Taslağını Tamamlayın'} iconName="file-account-outline" onPress={()=>navigation.navigate('AdayCvBuilder',{applicationId:latestApplication.id})}/>:null}
+        {!isMotivationLetterComplete(latestApplication.personalInfo.motivationLetter)?<MenuItem label={language==='en'?'Complete your motivation letter':'Motivasyon Mektubunu Tamamlayın'} iconName="file-edit-outline" onPress={()=>navigation.navigate('AdayMotivation',{applicationId:latestApplication.id})}/>:null}
+        {progress.missing.length?<MenuItem label={language==='en'?`${progress.missing.length} documents missing`:`${progress.missing.length} Eksik / Düzeltme Gereken Belge`} subtitle={progress.missing.map(type=>getDocumentTypeLabel(type as import('../../types').DocumentType,language)).join(', ')} iconName="file-alert-outline" onPress={()=>navigation.navigate('AdayBelge',{applicationId:latestApplication.id})}/>:null}
+        {progress.awaitingOriginal?<MenuItem label={language==='en'?`${progress.awaitingOriginal} originals awaiting delivery`:`${progress.awaitingOriginal} Belgenin Aslı Bekleniyor`} iconName="file-sign" onPress={()=>navigation.navigate('AdayProgramDetay',{applicationId:latestApplication.id})}/>:null}
+      </>:null}
+      {unread!==null&&unread>0?<MenuItem label={language==='en'?`${unread} unread messages`:`${unread} Okunmamış Mesaj`} iconName="message-badge-outline" onPress={()=>navigation.navigate('AdayMesaj')}/>:null}
+      {summaryError?<Text accessibilityRole="alert" style={styles.statusHint}>{summaryError}</Text>:null}
+      {applications.filter(application=>application.userId===user?.id).flatMap(application=>application.program.deadlines.filter(deadline=>{const days=(Date.parse(deadline.dateISO)-Date.now())/86400000;return days>=-7&&days<=30;}).map((deadline,index)=><MenuItem key={`${application.id}-${index}`} label={deadline.label} subtitle={`${application.programName} · ${new Date(deadline.dateISO).toLocaleDateString(language==='en'?'en-GB':'tr-TR')}`} iconName="calendar-clock" onPress={()=>navigation.navigate('AdayProgramDetay',{applicationId:application.id})}/>))}
       <Text style={styles.sectionLabel}>{t('candidateMenu.mainBlock')}</Text>
 
       <MenuItem
         label={t('nav.myPrograms')}
         subtitle={t('candidatePrograms.subtitle')}
         iconName="school-outline"
-        iconColor={colors.teal}
+        iconColor={colors.onSuccess}
         iconBg={colors.success}
         onPress={() => navigation.navigate('AdayEgitim')}
       />
@@ -97,7 +139,7 @@ export const AdayMenuScreen: React.FC = () => {
         label={t('nav.personalInfo')}
         subtitle="Kimlik ve ortak profil bilgileri"
         iconName="card-account-details-outline"
-        iconColor={colors.primary}
+        iconColor={colors.onInfo}
         iconBg={colors.info}
         onPress={() => navigation.navigate('AdayKisisel')}
       />
@@ -105,16 +147,18 @@ export const AdayMenuScreen: React.FC = () => {
         label={t('nav.messaging')}
         subtitle={t('candidateMenu.messagesSubtitle')}
         iconName="message-text-outline"
-        iconColor={colors.teal}
+        iconColor={colors.onSuccess}
         iconBg={colors.success}
         onPress={() =>
           navigation.navigate(
             'AdayMesaj',
-            latestApplication ? { applicationId: latestApplication.id } : undefined,
+            latestApplication
+              ? { applicationId: latestApplication.id }
+              : undefined,
           )
         }
       />
-    </ScrollView>
+    </ScreenScrollView>
   );
 };
 
@@ -135,7 +179,7 @@ const createStyles = (colors: AppColors) =>
     statusCard: {
       flexDirection: 'row',
       backgroundColor: colors.cardBg,
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: colors.borderLight,
       overflow: 'hidden',
@@ -151,13 +195,10 @@ const createStyles = (colors: AppColors) =>
       gap: 10,
     } as ViewStyle,
     statusRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       gap: 10,
     } as ViewStyle,
     statusLabel: {
-      flex: 1,
       fontSize: 16,
       fontWeight: '700',
       color: colors.textPrimary,
@@ -195,7 +236,6 @@ const createStyles = (colors: AppColors) =>
       fontWeight: '600',
       color: colors.textMuted,
       textTransform: 'uppercase',
-      letterSpacing: 0.8,
       marginTop: 4,
     } as TextStyle,
   });

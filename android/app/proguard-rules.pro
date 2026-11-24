@@ -8,3 +8,7 @@
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
 # Add any project specific keep options here:
+
+# PDFBox uses this decoder only for optional JPEG2000 content. The application
+# does not decode PDFs itself, so the class is intentionally absent.
+-dontwarn com.gemalto.jp2.JP2Decoder

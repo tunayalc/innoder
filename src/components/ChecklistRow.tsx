@@ -33,16 +33,19 @@ export const ChecklistRow: React.FC<ChecklistRowProps> = ({
 const createStyles = (colors: AppColors) => StyleSheet.create({
   checkRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 14,
-    borderRadius: 16,
+    borderRadius: 8,
     backgroundColor: colors.surfaceContainerHigh,
     gap: 12,
   } as ViewStyle,
   textWrap: {
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 160,
     gap: 3,
   } as ViewStyle,
   bodyText: {

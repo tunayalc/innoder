@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, ViewStyle } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useI18n } from '../i18n';
 import { useAppTheme, useThemedStyles, type AppColors } from '../theme';
 
 interface BackButtonProps {
@@ -11,6 +12,7 @@ interface BackButtonProps {
 
 export const BackButton: React.FC<BackButtonProps> = ({ onPress, tintColor }) => {
   const navigation = useNavigation();
+  const { t } = useI18n();
   const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
 
@@ -24,6 +26,8 @@ export const BackButton: React.FC<BackButtonProps> = ({ onPress, tintColor }) =>
 
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={t('common.back')}
       style={({ pressed }) => [styles.container, pressed && styles.pressed]}
       onPress={handlePress}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -31,7 +35,7 @@ export const BackButton: React.FC<BackButtonProps> = ({ onPress, tintColor }) =>
       <Icon 
         name="chevron-left" 
         size={24}
-        color={tintColor || colors.primary}
+        color={tintColor || colors.textPrimary}
       />
     </Pressable>
   );
@@ -41,7 +45,7 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   container: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 6,
     backgroundColor: colors.surfaceContainerLow,
     alignItems: 'center',
     justifyContent: 'center',

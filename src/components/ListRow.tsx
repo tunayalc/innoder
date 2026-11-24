@@ -21,7 +21,7 @@ export const ListRow: React.FC<ListRowProps> = ({
 
   return (
     <View style={styles.listRow}>
-      <View>
+      <View style={styles.textWrap}>
         <Text style={styles.bodyText}>{name}</Text>
         <Text style={styles.subtitle}>{subtitle}</Text>
       </View>
@@ -33,11 +33,21 @@ export const ListRow: React.FC<ListRowProps> = ({
 const createStyles = (colors: AppColors) => StyleSheet.create({
   listRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 14,
-    borderRadius: 16,
+    borderRadius: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
     backgroundColor: colors.surfaceContainerLow,
+  } as ViewStyle,
+  textWrap: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 160,
+    gap: 4,
   } as ViewStyle,
   bodyText: {
     color: colors.textPrimary,
@@ -46,6 +56,7 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   } as TextStyle,
   subtitle: {
     color: colors.textSecondary,
-    fontSize: 12,
+    fontSize: 13,
+    lineHeight: 19,
   } as TextStyle,
 });

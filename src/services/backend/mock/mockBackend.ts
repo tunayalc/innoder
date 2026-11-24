@@ -1,7 +1,8 @@
-﻿import type { InnoBackend } from '../types';
+import type { InnoBackend } from '../types';
 import { BackendError } from '../types';
 import type {
   Application,
+  AssignedProgram,
   AuditLog,
   Document,
   Message,
@@ -33,9 +34,6 @@ const delay = (ms: number) =>
 const nowISO = () => new Date().toISOString();
 
 const generateId = (prefix: string) => `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-const DEMO_CANDIDATE_EMAIL = 'aday@inno.com';
-const DEMO_CANDIDATE_PASSWORD = '123123';
-
 const createAudit = (
   action: AuditLog['action'],
   userId: string,
@@ -51,11 +49,14 @@ const createAudit = (
 });
 
 const seedIfEmpty = async (): Promise<void> => {
-  // Force fresh seed data for this version - always reload
-  await writeJson(MOCK_STORAGE_KEYS.users, createSeedUsers());
-  await writeJson(MOCK_STORAGE_KEYS.applications, createSeedApplications());
-  await writeJson(MOCK_STORAGE_KEYS.messages, createSeedMessages());
-  await writeJson(MOCK_STORAGE_KEYS.auditLogs, createSeedAuditLogs());
+  const users = await readJson<User[]>(MOCK_STORAGE_KEYS.users, []);
+  if (users.length === 0) await writeJson(MOCK_STORAGE_KEYS.users, createSeedUsers());
+  const applications = await readJson<Application[]>(MOCK_STORAGE_KEYS.applications, []);
+  if (applications.length === 0) await writeJson(MOCK_STORAGE_KEYS.applications, createSeedApplications());
+  const messages = await readJson<Message[]>(MOCK_STORAGE_KEYS.messages, []);
+  if (messages.length === 0) await writeJson(MOCK_STORAGE_KEYS.messages, createSeedMessages());
+  const logs = await readJson<AuditLog[]>(MOCK_STORAGE_KEYS.auditLogs, []);
+  if (logs.length === 0) await writeJson(MOCK_STORAGE_KEYS.auditLogs, createSeedAuditLogs());
 };
 
 const getRequiredDocTypesForProgram = (
@@ -85,7 +86,8 @@ const createDraftApplication = (params: {
     programId: program.id,
     programName: program.name,
     program,
-    status: 'draft',
+    status: 'application_stage',
+    decisionStatus: 'active',
     personalInfo: {
       fullName: params.fullName,
       programSelection: program.id,
@@ -96,6 +98,9 @@ const createDraftApplication = (params: {
       type,
       fileName: '',
       status: 'missing',
+      physicalDeliveryStatus: ['activity_agreement', 'commitment_letter', 'boarding_pass_outbound', 'boarding_pass_return'].includes(type)
+        ? 'awaiting_original'
+        : 'not_required',
       uploadedAt: createdAt,
       pageCount: 0,
     })),
@@ -239,204 +244,10 @@ export const createMockBackend = (): InnoBackend => {
   const writePasswords = async (pw: Record<string, string>) =>
     writeJson(MOCK_STORAGE_KEYS.passwords, pw);
 
-  const ensureCandidateAuthSeed = async (): Promise<void> => {
-    const users = await listUsers();
-    const passwords = await readPasswords();
-    const existing = users.find(
-      (u) => u.email.toLowerCase() === DEMO_CANDIDATE_EMAIL && u.role === 'candidate',
-    );
-
-    if (existing) {
-      if (!passwords[existing.id]) {
-        passwords[existing.id] = DEMO_CANDIDATE_PASSWORD;
-        await writePasswords(passwords);
-      }
-      return;
-    }
-
-    const ts = nowISO();
-    const demoUser: User = {
-      id: 'candidate-demo-001',
-      email: DEMO_CANDIDATE_EMAIL,
-      name: 'Demo Aday',
-      phone: '+905551112233',
-      country: 'Türkiye',
-      city: 'İstanbul',
-      role: 'candidate',
-      kvkkAccepted: true,
-      consentVersion: 'v1',
-      consentedAt: ts,
-      status: 'verified',
-      createdAt: ts,
-      updatedAt: ts,
-    };
-
-    users.push(demoUser);
-    await writeUsers(users);
-
-    passwords[demoUser.id] = DEMO_CANDIDATE_PASSWORD;
-    await writePasswords(passwords);
-  };
-
-  const ensureDemoCandidateProgramSeed = async (user: User): Promise<void> => {
-    if (
-      user.role !== 'candidate' ||
-      user.email.toLowerCase() !== DEMO_CANDIDATE_EMAIL
-    ) {
-      return;
-    }
-
-    const apps = await listApplications();
-    const hasAnyProgram = apps.some((a) => a.userId === user.id);
-    if (hasAnyProgram) return;
-
-    const ts = nowISO();
-    const demoApp = createDraftApplication({
-      userId: user.id,
-      program: createProgramDraftInput({
-        name: 'Program C',
-        year: 2026,
-        documentTypes: [
-          'identity',
-          'form',
-          'visa_payment_receipt_original',
-          'boarding_pass',
-          'photo_activity_report',
-          'extra',
-        ],
-      }),
-      fullName: user.name,
-      createdByUserId: 'admin-001',
-    });
-
-    demoApp.status = 'under_review';
-    demoApp.submittedAt = ts;
-    demoApp.updatedAt = ts;
-    demoApp.personalInfo = {
-      ...demoApp.personalInfo,
-      birthDate: '2000-01-15',
-      identityNumber: '10000000146',
-      motivationLetter: {
-        addressee: 'Inno Association Selection Team',
-        subject: 'Program C Motivation',
-        openingParagraph:
-          'I am applying as a motivated youth participant with prior volunteer experience.',
-        motivationParagraph:
-          'Program C aligns with my learning goals in intercultural communication and youth mobility.',
-        contributionParagraph:
-          'I can contribute with teamwork, event support and content production experience.',
-        closingParagraph:
-          'Thank you for your review. I am available for further steps and interviews.',
-      },
-    };
-
-    demoApp.documents = demoApp.documents.map((doc) => {
-      switch (doc.type) {
-        case 'identity':
-          return {
-            ...doc,
-            fileName: 'demo_kimlik.jpg',
-            status: 'ok',
-            uploadedAt: ts,
-            pageCount: 1,
-          };
-        case 'form':
-          return {
-            ...doc,
-            fileName: 'demo_form.jpg',
-            status: 'wrong_format',
-            uploadedAt: ts,
-            pageCount: 1,
-          };
-        case 'boarding_pass':
-          return {
-            ...doc,
-            fileName: 'demo_boarding_pass.jpg',
-            status: 'ok',
-            parseResult: 'QR_OK:DEMO12345',
-            uploadedAt: ts,
-            pageCount: 1,
-          };
-        case 'visa_payment_receipt_original':
-          return {
-            ...doc,
-            fileName: '',
-            status: 'missing',
-            uploadedAt: ts,
-            pageCount: 1,
-          };
-        case 'photo_activity_report':
-          return {
-            ...doc,
-            fileName: 'demo_faaliyet_raporu.jpg',
-            status: 'unread',
-            uploadedAt: ts,
-            pageCount: 1,
-          };
-        case 'extra':
-          return {
-            ...doc,
-            fileName: 'demo_ek_belge.pdf',
-            status: 'ok',
-            uploadedAt: ts,
-            pageCount: 1,
-          };
-        default:
-          return doc;
-      }
-    });
-
-    apps.push(demoApp);
-    await writeApplications(apps);
-
-    const messages = await listMessages();
-    const hasThread = messages.some((m) => m.applicationId === demoApp.id);
-    if (!hasThread) {
-      messages.push(
-        {
-          id: generateId('msg'),
-          applicationId: createGeneralChatThreadId(user.id),
-          senderId: 'admin-001',
-          senderRole: 'admin',
-          content: 'Merhaba, genel iletişim hattından bize ulaşabilirsiniz.',
-          createdAt: ts,
-        },
-        {
-          id: generateId('msg'),
-          applicationId: demoApp.id,
-          senderId: 'admin-001',
-          senderRole: 'admin',
-          content:
-            'Hoş geldiniz. Program C örnek içeriği demo amaçlı olarak atanmıştır.',
-          createdAt: ts,
-        },
-        {
-          id: generateId('msg'),
-          applicationId: demoApp.id,
-          senderId: user.id,
-          senderRole: 'candidate',
-          content: 'Tesekkurler, ornek program icerigini goruyorum.',
-          createdAt: ts,
-        },
-      );
-      await writeMessages(messages);
-    }
-
-    await appendAudit(
-      createAudit(
-        'APPLICATION_SUBMITTED',
-        user.id,
-        demoApp.id,
-        'Demo aday icin ornek Program C basvurusu seed edildi',
-      ),
-    );
-  };
-
   return {
     auth: {
       loginCandidate: (params) =>
         withMockDelay(async () => {
-          await ensureCandidateAuthSeed();
           const users = await listUsers();
           const user = users.find(
             (u) =>
@@ -457,7 +268,6 @@ export const createMockBackend = (): InnoBackend => {
           if (passwords[user.id] !== params.password) {
             throw new BackendError('UNAUTHORIZED', 'Sifre yanlis.');
           }
-          await ensureDemoCandidateProgramSeed(user);
           return user;
         }),
 
@@ -471,7 +281,7 @@ export const createMockBackend = (): InnoBackend => {
           if (!email || !isValidEmail(email)) {
             throw new BackendError('VALIDATION', 'Gecerli bir e-posta giriniz.');
           }
-          if (!params.kvkkAccepted) {
+          if (!params.kvkkAccepted || !params.noticeAccepted) {
             throw new BackendError(
               'VALIDATION',
               'KVKK aydinlatma ve acik riza onayi zorunludur.',
@@ -493,9 +303,11 @@ export const createMockBackend = (): InnoBackend => {
             eventLink: params.eventLink?.trim() || undefined,
             role: 'candidate',
             kvkkAccepted: true,
-            consentVersion: 'v1',
+            consentVersion: params.consentVersion,
             consentedAt: now,
-            status: 'verified',
+            noticeVersion: params.noticeVersion,
+            noticeAcceptedAt: now,
+            status: 'pending',
             createdAt: now,
             updatedAt: now,
           };
@@ -564,33 +376,36 @@ export const createMockBackend = (): InnoBackend => {
         }),
       loginAdmin: (params) =>
         withMockDelay(async () => {
-          const ADMIN_USERNAME = 'admin';
-          const ADMIN_PASSWORD = '123123';
-
-          if (
-            params.username.trim() !== ADMIN_USERNAME ||
-            params.password !== ADMIN_PASSWORD
-          ) {
+          const users = await listUsers();
+          const adminUser = users.find(
+            (user) => user.role !== 'candidate' &&
+              (user.username?.toLowerCase() === params.username.trim().toLowerCase() || user.email.toLowerCase() === params.username.trim().toLowerCase()),
+          );
+          const passwords = await readPasswords();
+          if (!adminUser || passwords[adminUser.id] !== params.password) {
             throw new BackendError('UNAUTHORIZED', 'Kullanıcı adı veya şifre yanlış.');
           }
-
-          await seedIfEmpty();
-
-          const now = nowISO();
-          const adminUser: User = {
-            id: 'admin-001',
-            email: 'admin@inno.com',
-            name: 'Admin',
-            role: 'admin',
-            kvkkAccepted: true,
-            status: 'verified',
-            createdAt: now,
-            updatedAt: now,
-          };
           return adminUser;
         }),
 
       logout: () => withMockDelay(async () => {}),
+
+      changePassword: ({ userId, currentPassword, newPassword }) =>
+        withMockDelay(async () => {
+          const passwords = await readPasswords();
+          if (passwords[userId] !== currentPassword) throw new BackendError('UNAUTHORIZED', 'Mevcut şifre yanlış.');
+          if (newPassword.length < 12 || !/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/\d/.test(newPassword)) {
+            throw new BackendError('VALIDATION', 'Yeni şifre güvenlik koşullarını karşılamıyor.');
+          }
+          passwords[userId] = newPassword;
+          await writePasswords(passwords);
+          const users = await listUsers();
+          const idx = users.findIndex((item) => item.id === userId);
+          if (idx >= 0) {
+            users[idx] = { ...users[idx], mustChangePassword: false, updatedAt: nowISO() };
+            await writeUsers(users);
+          }
+        }),
 
       updateProfile: ({ userId, patch }) =>
         withMockDelay(async () => {
@@ -607,6 +422,8 @@ export const createMockBackend = (): InnoBackend => {
           };
           users[idx] = updated;
           await writeUsers(users);
+          const applications = await listApplications();
+          await writeApplications(applications.map(application => application.userId === userId ? { ...application, personalInfo:{...application.personalInfo,fullName:updated.name,birthDate:updated.birthDate,nationality:updated.nationality,identityType:updated.identityType,identityNumber:updated.identityNumber,passportNumber:updated.passportNumber,pnrNumber:updated.pnrNumber} } : application));
           return updated;
         }),
       listCandidates: () =>
@@ -643,6 +460,8 @@ export const createMockBackend = (): InnoBackend => {
           const now = nowISO();
           const updatedUser: User = {
             ...users[idx],
+            status: 'active',
+            mustChangePassword: true,
             credentialRequestPending: false,
             credentialSentAt: now,
             updatedAt: now,
@@ -676,10 +495,18 @@ export const createMockBackend = (): InnoBackend => {
     },
 
     programs: {
+      save: input=>withMockDelay(async()=>{
+        const programs=await readJson<AssignedProgram[]>(MOCK_STORAGE_KEYS.programs,[]);
+        const existing=programs.find(program=>program.id===input.id);
+        if(existing&&input.revision!==undefined&&existing.revision!==input.revision)throw new BackendError('VALIDATION','Program başka bir işlemde güncellendi. Listeyi yenileyin.');
+        const saved={...materializeAssignedProgram({id:input.id||generateId('program'),input,createdAt:existing?.createdAt||nowISO()}),revision:(existing?.revision||0)+1,active:input.active??existing?.active??true};
+        await writeJson(MOCK_STORAGE_KEYS.programs,[...programs.filter(program=>program.id!==saved.id),saved]);return saved;
+      }),
       listPrograms: () =>
         withMockDelay(async () => {
           const apps = await listApplications();
-          return apps.map((app) => app.program);
+          const programs=await readJson<AssignedProgram[]>(MOCK_STORAGE_KEYS.programs,[]);
+          return [...new Map([...apps.map(app=>app.program),...programs].map(program=>[program.id,program])).values()];
         }),
       getProgram: (programId: string) =>
         withMockDelay(async () => {
@@ -839,7 +666,6 @@ export const createMockBackend = (): InnoBackend => {
           const ts = nowISO();
           const updated: Application = {
             ...current,
-            status: 'submitted',
             updatedAt: ts,
             submittedAt: ts,
           };
@@ -867,8 +693,11 @@ export const createMockBackend = (): InnoBackend => {
           }
 
           const app = apps[idx];
-          const docIdx = app.documents.findIndex((d) => d.type === params.documentType);
-          if (docIdx === -1) {
+          const docIdx = app.documents.findIndex((d) =>
+            d.type === params.documentType &&
+            (!params.adminUserId || params.documentType !== 'extra' || !d.fileName),
+          );
+          if (docIdx === -1 && !params.adminUserId) {
             throw new BackendError('NOT_FOUND', 'Belge tipi bu program için tanımlı değil.');
           }
 
@@ -891,26 +720,38 @@ export const createMockBackend = (): InnoBackend => {
           }
 
           const updatedDoc: Document = {
-            ...app.documents[docIdx],
+            ...(app.documents[docIdx] || {
+              id: generateId('doc'),
+              applicationId: app.id,
+              type: params.documentType,
+            }),
             fileName: params.fileName,
             fileUrl: params.fileUrl || `local://${params.fileName}`,
             pageCount: params.pageCount ?? 1,
             mimeType: params.mimeType,
-            status,
+            status: params.adminUserId ? 'unread' : status,
+            ...(params.adminUserId ? {
+              physicalDeliveryStatus: ['activity_agreement', 'commitment_letter', 'boarding_pass_outbound', 'boarding_pass_return'].includes(params.documentType)
+                ? 'awaiting_original' as const
+                : 'not_required' as const,
+              physicalDeliveredAt: undefined,
+              physicalDeliveredByUserId: undefined,
+              verifiedByUserId: undefined,
+              verifyNote: undefined,
+            } : {}),
             parseResult: params.parseResult,
             uploadedAt: ts,
             verifiedAt: undefined, // server parse happened; admin verification is separate
           };
 
           const nextDocs = [...app.documents];
-          nextDocs[docIdx] = updatedDoc;
+          if (docIdx === -1) nextDocs.push(updatedDoc);
+          else nextDocs[docIdx] = updatedDoc;
           const nextApp: Application = {
             ...app,
             documents: nextDocs,
             updatedAt: ts,
-            // If admin requested fix, a successful re-upload should move it back to review.
-            status:
-              app.status === 'needs_fix' ? 'under_review' : app.status,
+            status: app.status,
           };
           apps[idx] = nextApp;
           await writeApplications(apps);
@@ -918,9 +759,9 @@ export const createMockBackend = (): InnoBackend => {
           await appendAudit(
             createAudit(
               'DOCUMENT_UPLOADED',
-              app.userId,
+              params.adminUserId || app.userId,
               updatedDoc.id,
-              `${updatedDoc.type} yüklendi (${params.fileName}) -> ${status.toUpperCase()}`,
+              `${updatedDoc.type} yüklendi (${params.fileName}) -> ${updatedDoc.status.toUpperCase()}`,
             ),
           );
 
@@ -953,19 +794,9 @@ export const createMockBackend = (): InnoBackend => {
           const nextDocs = [...app.documents];
           nextDocs[docIdx] = updatedDoc;
 
-          const allOk = nextDocs.every((d) => d.status === 'ok');
-          const anyIssue = nextDocs.some((d) => d.status !== 'ok');
-
-          let nextStatus: Application['status'] = app.status;
-          if (allOk) nextStatus = 'approved';
-          else if (anyIssue && params.status !== 'ok') nextStatus = 'needs_fix';
-          else if (app.status === 'submitted') nextStatus = 'under_review';
-          else if (app.status === 'draft') nextStatus = 'under_review';
-
           const nextApp: Application = {
             ...app,
             documents: nextDocs,
-            status: nextStatus,
             updatedAt: ts,
           };
           apps[idx] = nextApp;
@@ -980,17 +811,6 @@ export const createMockBackend = (): InnoBackend => {
             ),
           );
 
-          if (nextStatus !== app.status) {
-            await appendAudit(
-              createAudit(
-                'STATUS_CHANGED',
-                params.verifiedByUserId,
-                app.id,
-                `Başvuru durumu güncellendi -> ${nextStatus.toUpperCase()}`,
-              ),
-            );
-          }
-
           return { application: nextApp, document: updatedDoc };
         }),
 
@@ -1001,7 +821,13 @@ export const createMockBackend = (): InnoBackend => {
           if (idx === -1) throw new BackendError('NOT_FOUND', 'Başvuru bulunamadı.');
 
           const ts = nowISO();
-          const updated: Application = { ...apps[idx], status: 'approved', updatedAt: ts };
+          const updated: Application = {
+            ...apps[idx],
+            status: 'erasmus_stage',
+            decisionStatus: 'active',
+            decisionReason: undefined,
+            updatedAt: ts,
+          };
           apps[idx] = updated;
           await writeApplications(apps);
 
@@ -1016,6 +842,18 @@ export const createMockBackend = (): InnoBackend => {
           return updated;
         }),
 
+      setStage: ({ applicationId, adminUserId, stage }) =>
+        withMockDelay(async () => {
+          const apps = await listApplications();
+          const idx = apps.findIndex((item) => item.id === applicationId);
+          if (idx === -1) throw new BackendError('NOT_FOUND', 'Başvuru bulunamadı.');
+          const updated: Application = { ...apps[idx], status: stage, updatedAt: nowISO() };
+          apps[idx] = updated;
+          await writeApplications(apps);
+          await appendAudit(createAudit('STATUS_CHANGED', adminUserId, applicationId, `Başvuru aşaması -> ${stage}`));
+          return updated;
+        }),
+
       reject: ({ applicationId, adminUserId, reason }) =>
         withMockDelay(async () => {
           const apps = await listApplications();
@@ -1023,7 +861,12 @@ export const createMockBackend = (): InnoBackend => {
           if (idx === -1) throw new BackendError('NOT_FOUND', 'Başvuru bulunamadı.');
 
           const ts = nowISO();
-          const updated: Application = { ...apps[idx], status: 'rejected', updatedAt: ts };
+          const updated: Application = {
+            ...apps[idx],
+            decisionStatus: 'rejected',
+            decisionReason: reason,
+            updatedAt: ts,
+          };
           apps[idx] = updated;
           await writeApplications(apps);
 
@@ -1036,6 +879,44 @@ export const createMockBackend = (): InnoBackend => {
             ),
           );
           return updated;
+        }),
+
+      setDecision: ({ applicationId, adminUserId, status, reason }) =>
+        withMockDelay(async () => {
+          const apps = await listApplications();
+          const idx = apps.findIndex((item) => item.id === applicationId);
+          if (idx === -1) throw new BackendError('NOT_FOUND', 'Başvuru bulunamadı.');
+          if (status === 'rejected' && !reason?.trim()) throw new BackendError('VALIDATION', 'Ret gerekçesi zorunludur.');
+          const updated: Application = {
+            ...apps[idx], decisionStatus: status,
+            decisionReason: status === 'rejected' ? reason?.trim() : undefined, updatedAt: nowISO(),
+          };
+          apps[idx] = updated;
+          await writeApplications(apps);
+          await appendAudit(createAudit('STATUS_CHANGED', adminUserId, applicationId, `Başvuru kararı -> ${status}`));
+          return updated;
+        }),
+
+      setPhysicalDelivery: ({ applicationId, documentId, adminUserId, status }) =>
+        withMockDelay(async () => {
+          const apps = await listApplications();
+          const idx = apps.findIndex((item) => item.id === applicationId);
+          if (idx === -1) throw new BackendError('NOT_FOUND', 'Başvuru bulunamadı.');
+          const docIdx = apps[idx].documents.findIndex((item) => item.id === documentId);
+          if (docIdx === -1) throw new BackendError('NOT_FOUND', 'Belge bulunamadı.');
+          const document: Document = {
+            ...apps[idx].documents[docIdx],
+            physicalDeliveryStatus: status,
+            physicalDeliveredAt: status === 'delivered' ? nowISO() : undefined,
+            physicalDeliveredByUserId: status === 'delivered' ? adminUserId : undefined,
+          };
+          const documents = [...apps[idx].documents];
+          documents[docIdx] = document;
+          const application = { ...apps[idx], documents, updatedAt: nowISO() };
+          apps[idx] = application;
+          await writeApplications(apps);
+          await appendAudit(createAudit('STATUS_CHANGED', adminUserId, documentId, `Asıl belge teslimi -> ${status}`));
+          return { application, document };
         }),
     },
 
@@ -1104,5 +985,4 @@ export const createMockBackend = (): InnoBackend => {
     },
   };
 };
-
 

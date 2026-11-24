@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -12,7 +11,7 @@ import {
 } from 'react-native';
 import Share from 'react-native-share';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { Button, ChecklistRow, Field, Pill } from '../../components';
+import { Button, ChecklistRow, Field, Pill, ScreenScrollView } from '../../components';
 import {
   APPLICATION_STATUS_LABELS,
   DOCUMENT_STATUS_LABELS,
@@ -26,7 +25,12 @@ import {
   selectApplicationLoading,
 } from '../../store/selectors';
 import { selectMessagesByApplicationId } from '../../store/selectors/messageSelectors';
-import { approveApplication, rejectApplication } from '../../store/thunks/applicationThunks';
+import {
+  rejectApplication,
+  restoreApplicationDecision,
+  setApplicationStage,
+  setDocumentPhysicalDelivery,
+} from '../../store/thunks/applicationThunks';
 import { useAppTheme, useThemedStyles, type AppColors } from '../../theme';
 import {
   AdminDetayRouteProp,
@@ -38,6 +42,10 @@ import {
 import { formatDateShort, getRelativeTime } from '../../utils/date';
 import { openExternalUrl, openMailto } from '../../utils/contact';
 import { generatePDF } from 'react-native-html-to-pdf';
+import {trackPrivateFile} from '../../services/api/privateFiles';
+import {DocumentHistoryList} from '../../components/DocumentHistoryList';
+import { AdminDocumentUpload } from './AdminDocumentUpload';
+import { ProjectBloodGroup } from '../../components/ProjectBloodGroup';
 import { 
   buildMotivationLetterPdfHtml, 
   createMotivationLetterPdfFileName,
@@ -120,6 +128,7 @@ export const AdminDetayScreen: React.FC = () => {
       if (!pdf?.filePath) {
         throw new Error('PDF oluşturulamadı');
       }
+      trackPrivateFile(pdf.filePath);
 
       const fileUrl = pdf.filePath.startsWith('file://')
         ? pdf.filePath
@@ -165,6 +174,7 @@ export const AdminDetayScreen: React.FC = () => {
       if (!pdf?.filePath) {
         throw new Error('PDF oluşturulamadı');
       }
+      trackPrivateFile(pdf.filePath);
 
       const fileUrl = pdf.filePath.startsWith('file://')
         ? pdf.filePath
@@ -223,16 +233,16 @@ export const AdminDetayScreen: React.FC = () => {
   }
 
   const appStatusVariant =
-    application.status === 'approved'
-      ? 'ok'
-      : application.status === 'needs_fix'
-        ? 'warn'
-        : application.status === 'rejected'
-          ? 'err'
+    application.decisionStatus === 'rejected'
+      ? 'err'
+      : application.status === 'returned_home'
+        ? 'ok'
+        : application.status === 'application_stage'
+          ? 'warn'
           : 'info';
 
   return (
-    <ScrollView contentContainerStyle={styles.section}>
+    <ScreenScrollView contentContainerStyle={styles.section}>
       <Text style={styles.h2}>Başvuru Detayı</Text>
 
       <View style={styles.profileRow}>
@@ -263,6 +273,13 @@ export const AdminDetayScreen: React.FC = () => {
             value={`***${application.personalInfo.identityNumber.slice(-4)}`}
           />
         ) : null}
+        {application.personalInfo.passportNumber ? (
+          <Field label="Pasaport No" value={`***${application.personalInfo.passportNumber.slice(-4)}`} />
+        ) : null}
+        {application.personalInfo.nationality ? (
+          <Field label="Uyruk" value={application.personalInfo.nationality} />
+        ) : null}
+        <ProjectBloodGroup key={application.id} applicationId={application.id} readOnly />
         <Field label="Program" value={application.programName} />
         <Field
           label="E-posta"
@@ -284,23 +301,36 @@ export const AdminDetayScreen: React.FC = () => {
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Belgeler</Text>
+        <AdminDocumentUpload key={application.id} application={application} />
         {application.documents.map((doc) => (
-          <TouchableOpacity
-            key={doc.id}
-            activeOpacity={0.75}
-            onPress={() =>
-              navigation.navigate('DocumentViewer', {
-                applicationId,
-                documentId: doc.id,
-              })
-            }
-          >
-            <ChecklistRow
-              label={DOCUMENT_TYPES[doc.type] || doc.type}
-              status={DOCUMENT_STATUS_LABELS[doc.status] || doc.status}
-              variant={statusToVariant(doc.status)}
-            />
-          </TouchableOpacity>
+          <View key={doc.id}>
+            <TouchableOpacity
+              activeOpacity={0.75}
+              onPress={() =>
+                navigation.navigate('DocumentViewer', {
+                  applicationId,
+                  documentId: doc.id,
+                })
+              }
+            >
+              <ChecklistRow
+                label={DOCUMENT_TYPES[doc.type] || doc.type}
+                status={DOCUMENT_STATUS_LABELS[doc.status] || doc.status}
+                variant={statusToVariant(doc.status)}
+              />
+            </TouchableOpacity>
+            {doc.physicalDeliveryStatus && doc.physicalDeliveryStatus !== 'not_required' ? (
+              <Button
+                label={doc.physicalDeliveryStatus === 'delivered' ? 'Aslı Teslim Alındı' : 'Aslı Bekleniyor - Teslim Al'}
+                variant="ghost"
+                onPress={() => dispatch(setDocumentPhysicalDelivery({
+                  applicationId,
+                  documentId: doc.id,
+                  status: doc.physicalDeliveryStatus === 'delivered' ? 'awaiting_original' : 'delivered',
+                }))}
+              />
+            ) : null}
+          </View>
         ))}
       </View>
 
@@ -330,7 +360,7 @@ export const AdminDetayScreen: React.FC = () => {
         <Button
           label={isExportingMotivationPdf ? 'PDF Hazırlanıyor...' : 'Motivasyon Mektubu PDF'}
           onPress={exportMotivationLetterPdf}
-          disabled={isExportingMotivationPdf}
+          loading={isExportingMotivationPdf}
         />
       </View>
 
@@ -353,7 +383,7 @@ export const AdminDetayScreen: React.FC = () => {
         <Button
           label={isExportingCvPdf ? 'PDF Hazırlanıyor...' : 'Europass CV PDF'}
           onPress={exportCvPdf}
-          disabled={isExportingCvPdf}
+          loading={isExportingCvPdf}
         />
       </View>
 
@@ -396,25 +426,34 @@ export const AdminDetayScreen: React.FC = () => {
       />
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Başvuru Kararı</Text>
+        <Text style={styles.cardTitle}>Başvuru Aşaması ve Kararı</Text>
         <Text style={styles.cardHint}>
-          Bu bölüm yalnızca başvuru sürecinin onay/red kararını yönetir.
+          Aşama ilerletme işlemi ret kararından bağımsızdır.
         </Text>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        <Button
-          label={isLoading ? 'İşleniyor...' : 'Başvuruyu Onayla'}
-          onPress={() => {
-            Alert.alert('Onay', 'Başvuruyu onaylamak istiyor musunuz?', [
-              { text: 'İptal', style: 'cancel' },
-              {
-                text: 'Onayla',
-                onPress: () => dispatch(approveApplication({ applicationId })),
-              },
-            ]);
-          }}
-        />
+        {application.status !== 'returned_home' ? (
+          <Button
+            loading={isLoading}
+            label={isLoading
+              ? 'İşleniyor...'
+              : application.status === 'application_stage'
+                ? 'Başvuruyu Erasmus Aşamasına Al'
+                : 'Ülkeye Dönüşü Tamamla'}
+            onPress={() => {
+              const nextStage = application.status === 'application_stage' ? 'erasmus_stage' : 'returned_home';
+              Alert.alert('Aşama Değişikliği', 'Başvurunun aşamasını ilerletmek istiyor musunuz?', [
+                { text: 'İptal', style: 'cancel' },
+                { text: 'Devam Et', onPress: () => dispatch(setApplicationStage({ applicationId, stage: nextStage })) },
+              ]);
+            }}
+          />
+        ) : null}
+
+        {application.decisionStatus === 'rejected' ? (
+          <Button label="Ret Kararını Kaldır" variant="ghost" disabled={isLoading} onPress={() => dispatch(restoreApplicationDecision({ applicationId }))} />
+        ) : null}
 
         <Text style={styles.label}>Reddetme Nedeni</Text>
         <TextInput
@@ -427,7 +466,8 @@ export const AdminDetayScreen: React.FC = () => {
           numberOfLines={3}
           textAlignVertical="top"
         />
-        <Button
+        {application.decisionStatus !== 'rejected' ? <Button
+          loading={isLoading}
           label={isLoading ? 'İşleniyor...' : 'Başvuruyu Reddet'}
           variant="ghost"
           onPress={() => {
@@ -447,9 +487,10 @@ export const AdminDetayScreen: React.FC = () => {
               },
             ]);
           }}
-        />
+        /> : null}
       </View>
-    </ScrollView>
+      <DocumentHistoryList applicationId={applicationId}/>
+    </ScreenScrollView>
   );
 };
 
@@ -481,12 +522,12 @@ const createStyles = (colors: AppColors) =>
       width: 48,
       height: 48,
       borderRadius: 24,
-      backgroundColor: colors.teal,
+      backgroundColor: colors.info,
       alignItems: 'center',
       justifyContent: 'center',
     } as ViewStyle,
     avatarText: {
-      color: colors.white,
+      color: colors.onInfo,
       fontWeight: '700',
       fontSize: 16,
     } as TextStyle,
@@ -505,7 +546,7 @@ const createStyles = (colors: AppColors) =>
     } as TextStyle,
     card: {
       backgroundColor: colors.cardBg,
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: colors.borderLight,
       padding: 16,
@@ -555,9 +596,9 @@ const createStyles = (colors: AppColors) =>
       marginTop: 4,
     } as TextStyle,
     textArea: {
-      borderRadius: 12,
+      borderRadius: 6,
       borderWidth: 1,
-      borderColor: colors.borderMedium,
+      borderColor: colors.outline,
       padding: 12,
       fontSize: 13,
       color: colors.textPrimary,
@@ -571,7 +612,7 @@ const createStyles = (colors: AppColors) =>
     exportMetaItem: {
       flex: 1,
       backgroundColor: colors.inputBg,
-      borderRadius: 12,
+      borderRadius: 6,
       borderWidth: 1,
       borderColor: colors.borderLight,
       padding: 12,

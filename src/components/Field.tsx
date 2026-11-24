@@ -23,7 +23,12 @@ export const Field: React.FC<FieldProps> = ({ label, value, onPress, isLink }) =
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
-      <Wrapper style={styles.inputFake} onPress={onPress}>
+      <Wrapper
+        style={styles.inputFake}
+        onPress={onPress}
+        accessibilityRole={onPress ? (isLink ? 'link' : 'button') : undefined}
+        accessibilityLabel={onPress ? `${label}: ${value}` : undefined}
+      >
         <Text style={[styles.bodyText, isLink && styles.bodyTextLink]}>{value}</Text>
       </Wrapper>
     </View>
@@ -35,13 +40,14 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
     gap: 6,
   } as ViewStyle,
   label: {
-    fontSize: 10,
+    fontSize: 14,
+    fontWeight: '500',
     color: colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
   } as TextStyle,
   inputFake: {
-    borderRadius: 16,
+    borderRadius: 8,
+    minHeight: 48,
+    justifyContent: 'center',
     borderWidth: 0,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -49,10 +55,11 @@ const createStyles = (colors: AppColors) => StyleSheet.create({
   } as ViewStyle,
   bodyText: {
     color: colors.textPrimary,
-    fontSize: 13,
+    fontSize: 16,
+    lineHeight: 24,
   } as TextStyle,
   bodyTextLink: {
-    color: colors.primary,
+    color: colors.primaryText,
     textDecorationLine: 'underline',
     fontWeight: '700',
   } as TextStyle,

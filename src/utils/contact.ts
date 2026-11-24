@@ -16,11 +16,10 @@ export const buildMailtoUrl = (params: {
 };
 
 export const openExternalUrl = async (url: string) => {
-  const supported = await Linking.canOpenURL(url);
-  if (!supported) {
-    throw new Error('Baglanti acilamadi.');
-  }
-
+  if (!/^(https?:\/\/|mailto:)/i.test(url))
+    throw new Error('Desteklenmeyen bağlantı.');
+  // Opening an intent does not require Android package-visibility permission.
+  // canOpenURL may return false even when the system can open a web/mail link.
   await Linking.openURL(url);
 };
 

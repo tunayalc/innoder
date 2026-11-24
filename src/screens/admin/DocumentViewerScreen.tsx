@@ -1,12 +1,31 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ViewStyle, TextStyle, ScrollView } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import {
+  Alert,
+  Platform,
+  View,
+  Text,
+  StyleSheet,
+  ViewStyle,
+  TextStyle,
+} from 'react-native';
+import FileViewer from 'react-native-file-viewer';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useThemedStyles, type AppColors } from '../../theme';
-import { Button, Pill } from '../../components';
+import { Button, Pill, ScreenScrollView } from '../../components';
 import { useAppSelector } from '../../store/hooks';
 import { selectApplicationById } from '../../store/selectors';
-import type { DocumentStatus, DocumentViewerRouteProp, RootStackNavigationProp } from '../../types';
-import { useI18n, getDocumentStatusLabel, getDocumentTypeLabel } from '../../i18n';
+import type {
+  DocumentStatus,
+  DocumentViewerRouteProp,
+  RootStackNavigationProp,
+} from '../../types';
+import {
+  useI18n,
+  getDocumentStatusLabel,
+  getDocumentTypeLabel,
+} from '../../i18n';
+import { openPrivateFile, saveOrSharePrivateDocument } from '../../services/api/privateFiles';
+import { useAuth } from '../../hooks';
 
 const statusToVariant = (status: DocumentStatus) => {
   switch (status) {
@@ -29,11 +48,14 @@ export const DocumentViewerScreen: React.FC = () => {
   const { applicationId, documentId } = route.params;
   const styles = useThemedStyles(createStyles);
   const { t, language } = useI18n();
+  const { isAdmin } = useAuth();
+  const [isOpening, setIsOpening] = useState(false);
+  const [fileAction, setFileAction] = useState<'download' | 'share'>();
 
   const application = useAppSelector(selectApplicationById(applicationId));
 
   const document = useMemo(
-    () => application?.documents.find((d) => d.id === documentId),
+    () => application?.documents.find(d => d.id === documentId),
     [application, documentId],
   );
 
@@ -46,13 +68,71 @@ export const DocumentViewerScreen: React.FC = () => {
     );
   }
 
-  const pages = Math.max(1, document.pageCount || 1);
+  const openDocument = async () => {
+    if (!document.fileUrl) {
+      Alert.alert(
+        'Dosya Bulunamadı',
+        'Bu belge için açılabilir bir dosya bulunmuyor.',
+      );
+      return;
+    }
+    setIsOpening(true);
+    try {
+      let path = document.fileUrl;
+      if (
+        path.startsWith('/api/') ||
+        path.startsWith('http://') ||
+        path.startsWith('https://')
+      ) {
+        const extension =
+          document.mimeType === 'application/pdf'
+            ? 'pdf'
+            : document.mimeType === 'image/png'
+            ? 'png'
+            : 'jpg';
+        await openPrivateFile(path, extension);
+        return;
+      }
+      await FileViewer.open(path.replace(/^file:\/\//, ''), {
+        showOpenWithDialog: true,
+      });
+    } catch (error) {
+      Alert.alert(
+        'Belge Açılamadı',
+        error instanceof Error ? error.message : 'Dosya görüntülenemedi.',
+      );
+    } finally {
+      setIsOpening(false);
+    }
+  };
+
+  const canExport = isAdmin && Boolean(document.fileUrl?.match(/^(\/api\/|https:\/\/)/))
+    && ['application/pdf', 'image/png', 'image/jpeg'].includes(document.mimeType || '');
+  const canSave = Platform.OS === 'ios' || (Platform.OS === 'android' && Number(Platform.Version) >= 29);
+  const exportDocument = async (action: 'download' | 'share') => {
+    if (!canExport || !document.fileUrl) return;
+    setFileAction(action);
+    try {
+      const saved = await saveOrSharePrivateDocument(
+        document.fileUrl, document.fileName || '', document.mimeType || '', action === 'download',
+      );
+      if (action === 'download' && saved && Platform.OS === 'android') {
+        Alert.alert(t('documentViewer.download'), t('documentViewer.saved'));
+      }
+    } catch {
+      Alert.alert(t('documentViewer.exportError'));
+    } finally {
+      setFileAction(undefined);
+    }
+  };
 
   return (
-    <ScrollView contentContainerStyle={styles.section}>
+    <ScreenScrollView contentContainerStyle={styles.section}>
       <View style={styles.headerRow}>
         <View style={styles.headerText}>
-          <Text style={styles.h2}>{getDocumentTypeLabel(document.type, language)}</Text>
+          <Text style={styles.h2}>
+            {getDocumentTypeLabel(document.type, language)}
+          </Text>
           <Text style={styles.subtitle}>
             {document.fileName || t('documentViewer.noFile')}
           </Text>
@@ -64,16 +144,37 @@ export const DocumentViewerScreen: React.FC = () => {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>{t('documentViewer.previewTitle')}</Text>
-        <Text style={styles.cardHint}>{t('documentViewer.previewHint')}</Text>
-      </View>
-
-      <View style={styles.previewWrap}>
-        {Array.from({ length: pages }).map((_, idx) => (
-          <View key={idx} style={styles.page}>
-            <Text style={styles.pageText}>{t('documentViewer.page', { index: idx + 1 })}</Text>
-          </View>
-        ))}
+        <Text style={styles.cardTitle}>Belge Dosyası</Text>
+        <Text style={styles.cardHint}>
+          {document.mimeType || 'Dosya türü bilinmiyor'}
+          {document.sizeBytes
+            ? ` · ${(document.sizeBytes / 1024 / 1024).toFixed(1)} MB`
+            : ''}
+        </Text>
+        <Button
+          label={isOpening ? 'Belge Açılıyor...' : 'Belgeyi Aç'}
+          loading={isOpening}
+          disabled={Boolean(fileAction)}
+          onPress={openDocument}
+        />
+        {canExport && canSave && (
+          <Button
+            label={t('documentViewer.download')}
+            variant="ghost"
+            loading={fileAction === 'download'}
+            disabled={isOpening || fileAction === 'share'}
+            onPress={() => exportDocument('download')}
+          />
+        )}
+        {canExport && (
+          <Button
+            label={t('documentViewer.share')}
+            variant="ghost"
+            loading={fileAction === 'share'}
+            disabled={isOpening || fileAction === 'download'}
+            onPress={() => exportDocument('share')}
+          />
+        )}
       </View>
 
       {document.parseResult ? (
@@ -83,18 +184,20 @@ export const DocumentViewerScreen: React.FC = () => {
         </View>
       ) : null}
 
-      <Button
-        label={t('documentViewer.verifyDecision')}
-        onPress={() =>
-          navigation.navigate('AdminDogrulama', { applicationId, documentId })
-        }
-      />
+      {isAdmin ? (
+        <Button
+          label={t('documentViewer.verifyDecision')}
+          onPress={() =>
+            navigation.navigate('AdminDogrulama', { applicationId, documentId })
+          }
+        />
+      ) : null}
       <Button
         label={t('documentViewer.messaging')}
         variant="ghost"
         onPress={() => navigation.navigate('AdayMesaj', { applicationId })}
       />
-    </ScrollView>
+    </ScreenScrollView>
   );
 };
 
@@ -127,7 +230,7 @@ const createStyles = (colors: AppColors) =>
     } as TextStyle,
     card: {
       backgroundColor: colors.cardBg,
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: colors.borderLight,
       padding: 16,
@@ -148,7 +251,7 @@ const createStyles = (colors: AppColors) =>
     } as ViewStyle,
     page: {
       height: 260,
-      borderRadius: 16,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: colors.borderLight,
       backgroundColor: colors.placeholder,

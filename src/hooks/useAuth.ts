@@ -5,7 +5,6 @@ import { User } from '../types';
 import {
   loginUser as loginUserThunk,
   loginCandidate as loginCandidateThunk,
-  loginDemoCandidate as loginDemoCandidateThunk,
   loginAdmin as loginAdminThunk,
   registerCandidate as registerCandidateThunk,
   logout as logoutThunk,
@@ -38,15 +37,14 @@ export const useAuth = () => {
       email: string;
       eventLink?: string;
       kvkkAccepted: boolean;
+      noticeAccepted: boolean;
+      noticeVersion: string;
+      consentVersion: string;
     }) => {
       return dispatch(registerCandidateThunk(params));
     },
     [dispatch],
   );
-
-  const loginDemoCandidate = useCallback((rememberMe = false) => {
-    dispatch(loginDemoCandidateThunk(rememberMe));
-  }, [dispatch]);
 
   const loginAdmin = useCallback(
     (params: { username: string; password: string; rememberMe?: boolean }) => {
@@ -61,7 +59,7 @@ export const useAuth = () => {
 
   const update = useCallback(
     (data: Partial<User>) => {
-      dispatch(updateProfileThunk(data));
+      return dispatch(updateProfileThunk(data));
     },
     [dispatch],
   );
@@ -70,11 +68,10 @@ export const useAuth = () => {
     user,
     isAuthenticated,
     role,
-    isAdmin: role === 'admin',
+    isAdmin: role === 'admin' || role === 'super_admin',
     isCandidate: role === 'candidate',
     login,
     loginCandidate,
-    loginDemoCandidate,
     registerCandidate,
     loginAdmin,
     logout,

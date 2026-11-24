@@ -53,13 +53,13 @@ export const ContactLinksCard: React.FC<ContactLinksCardProps> = ({ title, subti
 
       <View style={styles.infoBlock}>
         <Text style={styles.infoLabel}>{t('common.email')}</Text>
-        <Pressable onPress={handleEmail} hitSlop={8}>
+        <Pressable accessibilityRole="link" accessibilityLabel={CONTACT_LINKS.email} style={styles.emailLink} onPress={handleEmail}>
           <Text style={styles.infoValue}>{CONTACT_LINKS.email}</Text>
         </Pressable>
       </View>
 
       <View style={styles.actionsRow}>
-        <TouchableOpacity style={styles.instagramButton} onPress={handleInstagram}>
+        <TouchableOpacity accessibilityRole="link" accessibilityLabel="Instagram" style={styles.instagramButton} onPress={handleInstagram}>
           <Icon name="instagram" size={22} color="#E1306C" />
         </TouchableOpacity>
       </View>
@@ -91,15 +91,17 @@ const createStyles = (colors: AppColors) =>
       fontSize: 12,
       fontWeight: '700',
       color: colors.textMuted,
-      textTransform: 'uppercase',
-      letterSpacing: 0.6,
     } as TextStyle,
     infoValue: {
       fontSize: 14,
-      color: colors.primary,
+      color: colors.primaryText,
       fontWeight: '700',
       textDecorationLine: 'underline',
     } as TextStyle,
+    emailLink: {
+      minHeight: 44,
+      justifyContent: 'center',
+    } as ViewStyle,
     actionsRow: {
       flexDirection: 'row',
       justifyContent: 'flex-end',
@@ -109,7 +111,7 @@ const createStyles = (colors: AppColors) =>
     instagramButton: {
       width: 44,
       height: 44,
-      borderRadius: 22,
+      borderRadius: 6,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: colors.surfaceContainerHigh,

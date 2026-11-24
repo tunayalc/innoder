@@ -1,0 +1,189 @@
+
+> inno-association-mobile@0.0.1 check:all
+> npm run typecheck && npm run lint && npm test -- --runInBand && npm run server:typecheck && npm run server:test && npm run admin:typecheck && npm run admin:test
+
+
+> inno-association-mobile@0.0.1 typecheck
+> tsc --noEmit
+
+
+> inno-association-mobile@0.0.1 lint
+> eslint App.tsx src
+
+
+> inno-association-mobile@0.0.1 test
+> jest --runInBand
+
+PASS src/screens/aday/AdayMesajScreen.test.tsx
+PASS src/components/mobileComponents.test.tsx
+PASS src/services/backend/mock/mockBackend.test.ts
+PASS src/store/thunks/applicationThunks.test.ts
+PASS src/theme/typography.test.ts
+PASS src/services/api/apiClient.test.ts
+PASS src/utils/motivationLetterPdf.test.ts
+PASS src/services/scanPdf.test.ts
+PASS src/services/programFactory.test.ts
+PASS src/utils/contact.test.ts
+PASS src/theme/colors.test.ts
+PASS src/utils/documentProgress.test.ts
+PASS src/utils/youthpassExcel.test.ts
+PASS src/utils/validation.test.ts
+PASS src/utils/europass.test.ts
+
+Test Suites: 15 passed, 15 total
+Tests:       64 passed, 64 total
+Snapshots:   0 total
+Time:        0.692 s, estimated 1 s
+Ran all test suites.
+
+> inno-association-mobile@0.0.1 server:typecheck
+> npm --prefix server run typecheck
+
+
+> @inno/server@1.0.0 typecheck
+> tsc --noEmit
+
+
+> inno-association-mobile@0.0.1 server:test
+> npm --prefix server test
+
+
+> @inno/server@1.0.0 test
+> node --import tsx --test src/**/*.test.ts
+
+▶ real PostgreSQL API workflow and isolation
+  ✔ registration, approval, forced password change and session revocation form one workflow (110.678791ms)
+  ✔ public support and deletion work without an account; reset tokens are not cached or executed (0.869625ms)
+  ✔ API responses are not cached and malformed or throttled requests keep their HTTP status (8.496375ms)
+  ✔ temporary-password access is blocked except account and password routes (1.596542ms)
+  ✔ legacy checklist expands and assignment freezes the program requirements (7.178833ms)
+  ✔ revision conflicts return 409 and empty CV does not pass submission (2.465959ms)
+  ✔ uploads validate real PDFs, version required documents and retain independent extra files (17.457583ms)
+  ✔ invalid, oversized and unauthorized uploads never create a document (6.051916ms)
+  ✔ institutional templates are private real PDFs and candidate uploads are forbidden (3.74925ms)
+  ✔ profile clearing propagates atomically without losing CV drafts (3.22875ms)
+  ✔ only one concurrent refresh consumes a refresh token (28.387167ms)
+  ✔ rejection does not alter the stage and last super admin cannot request deletion (3.457458ms)
+  ✔ bounded pagination, safe exports and private PDF responses (23.36475ms)
+  ✔ complete application, PDF, mobility and return workflow (53.957875ms)
+  ✔ temporary password changes invalidate old sessions and logout revokes the current session (61.898208ms)
+  ✔ deletion completion reflects actual file cleanup and retries safely (5.719333ms)
+  ✔ one thousand applications are paged without message hydration (14.304333ms)
+  ✔ general messages are paged, scoped and counted without loading other conversations (4.168208ms)
+  ✔ legacy API writes retain automatic snapshots and document versions during rollback (0.986958ms)
+  ✔ email confirmation is single use and SMTP failure leaves the existing address unchanged (18.061958ms)
+  ✔ failed physical file cleanup stays pending and is retried (1.840208ms)
+✔ real PostgreSQL API workflow and isolation (922.354583ms)
+✔ passwords are hashed and verified with Argon2id (50.789666ms)
+✔ password policy requires length, mixed case and a number (0.148583ms)
+✔ access token preserves the authorization claims (2.204834ms)
+✔ SMTP password is decoded without dotenv interpolation (0.154417ms)
+✔ accepts only PDF, JPEG and PNG uploads (0.357459ms)
+✔ rejects a file whose signature does not match its MIME type (2.019875ms)
+✔ stores a valid file outside the public web root (6.307209ms)
+✔ decodes JPEG and PNG pixels without a native CPU dependency and rejects broken image data (351.303458ms)
+✔ image workers bound the queue instead of allowing unbounded parallel decoding (171.888542ms)
+✔ legacy boarding pass expands into two independent requirements (0.576625ms)
+✔ pagination is opt in and bounded (1.701708ms)
+✔ incomplete CV and motivation objects are not accepted as complete (1.606417ms)
+✔ birth date rejects rollover dates and future dates but supports clearing (0.998083ms)
+✔ CSV formula prefixes and leading control characters are escaped (0.113541ms)
+ℹ tests 36
+ℹ suites 0
+ℹ pass 36
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1481.7715
+
+> inno-association-mobile@0.0.1 admin:typecheck
+> npm --prefix admin-web run typecheck
+
+
+> @inno/admin-web@1.0.0 typecheck
+> tsc --noEmit --pretty false -p tsconfig.json && tsc --noEmit --pretty false -p tsconfig.node.json
+
+
+> inno-association-mobile@0.0.1 admin:test
+> npm --prefix admin-web test
+
+
+> @inno/admin-web@1.0.0 test
+> node --test tests/*.test.mjs
+
+✔ concurrent JSON, download and preview 401s share a single rotating refresh (12.32575ms)
+✔ late 401 reuses the already refreshed token without rotating again (1.682042ms)
+✔ requests started during refresh wait for the shared result (1.077667ms)
+✔ refresh rejection 400 clears tokens and emits one event across concurrent requests (1.646083ms)
+✔ refresh rejection 401 clears tokens and emits one event across concurrent requests (0.831666ms)
+✔ refresh rejection 403 clears tokens and emits one event across concurrent requests (0.728917ms)
+✔ me expires an access-only session on 401 (0.65725ms)
+✔ downloadCsv expires an access-only session on 401 (0.64525ms)
+✔ previewDocument expires an access-only session on 401 (0.663375ms)
+✔ a refresh-only stored session can recover (0.919709ms)
+✔ a second 401 expires the refreshed session without a retry loop (0.840875ms)
+✔ temporary refresh failure 429 preserves the session and allows a later retry (0.824667ms)
+✔ temporary refresh failure 500 preserves the session and allows a later retry (0.699ms)
+✔ temporary refresh failure 503 preserves the session and allows a later retry (0.658083ms)
+✔ offline refresh is actionable, preserves tokens and can be retried (0.639916ms)
+✔ clearing a session while refresh is pending prevents resurrection and retries (0.565125ms)
+✔ old request with status 200 cannot affect a newly logged-in session (0.5945ms)
+✔ old request with status 401 cannot affect a newly logged-in session (0.574709ms)
+✔ login completion after clearSession cannot restore tokens (0.551958ms)
+✔ wrong login credentials are public and never refresh an old session (0.578208ms)
+✔ candidate login never saves its session (0.545708ms)
+✔ forgotPassword uses the existing public endpoint and returns its privacy-preserving message (0.533833ms)
+✔ wrong current password does not expire the session (refresh first: false) (0.854292ms)
+✔ wrong current password does not expire the session (refresh first: true) (0.73575ms)
+✔ successful password change returns the result and clears the revoked session (0.56875ms)
+✔ logout clears stored credentials even on offline failure (0.562541ms)
+✔ logout clears stored credentials even on server failure (0.574042ms)
+✔ logout retries with the rotated refresh token so the active server session is revoked (0.6455ms)
+✔ a late logout cannot clear a new login (1.558916ms)
+✔ logout without a session is a no-op (0.555209ms)
+✔ applications exposes readable network errors without expiring the session (0.576917ms)
+✔ downloadCsv exposes readable network errors without expiring the session (0.570958ms)
+✔ previewDocument exposes readable network errors without expiring the session (0.548042ms)
+✔ abort errors retain their identity (0.548459ms)
+✔ JSON and file HTTP errors retain server messages, including authorization failures (0.737125ms)
+✔ non-JSON and malformed error payloads have useful fallback messages (0.760875ms)
+✔ malformed success and refresh responses do not surface parser errors or store invalid tokens (0.779709ms)
+✔ body-stream network errors are readable for both JSON and file responses (0.856209ms)
+✔ download handles filename "attachment; filename*=UTF-8''%C3%96%C4%9Frenci%20belgesi.pdf" and cleans up DOM and URL (0.837875ms)
+✔ download handles filename "attachment; filename=\"report; final.pdf\"" and cleans up DOM and URL (0.782083ms)
+✔ download handles filename "attachment; filename=report.pdf" and cleans up DOM and URL (0.658333ms)
+✔ download handles filename "attachment; filename*=UTF-8''%invalid; filename=report.pdf" and cleans up DOM and URL (0.748958ms)
+✔ download handles filename "" and cleans up DOM and URL (0.880541ms)
+✔ preview returns a caller-owned object URL for application/pdf (0.782333ms)
+✔ preview returns a caller-owned object URL for image/jpeg (0.707166ms)
+✔ preview returns a caller-owned object URL for image/png (0.709167ms)
+✔ preview rejects unsupported or active document types without creating a URL (0.752792ms)
+✔ a file body arriving after logout cannot create a preview URL (0.695042ms)
+✔ existing search, CSV and ZIP endpoint semantics stay unchanged (0.870583ms)
+✔ new workflow endpoints preserve pagination, revisions and encoded thread IDs (0.895333ms)
+✔ revision conflicts retain their status and cannot be mistaken for a successful save (0.788875ms)
+✔ compact application view retains search, stage filters, exports and accessible selection (91.944458ms)
+✔ application errors retain an alert and retry action instead of an ordinary empty state (23.015208ms)
+✔ loading application list exposes its busy state and disables export (22.378916ms)
+✔ light web design tokens match the mobile theme (0.514292ms)
+✔ dark web design tokens match the mobile theme (0.219042ms)
+✔ production CSP allows authenticated blob previews without enabling object embeds (0.329084ms)
+✔ Inter is self-hosted, preloaded, and distributed with its license (0.250375ms)
+✔ mobile font families match bundled Android and iOS resources (1.754ms)
+✔ calendar filters include the full local day in the admin timezone (0.988333ms)
+✔ untrusted personal-info values cannot crash filtering or render object children (0.324584ms)
+✔ null personal info is displayed as an unnamed candidate (0.044333ms)
+✔ Turkish search matches dotted and dotless case correctly (0.047958ms)
+✔ invalid dates do not throw during table rendering (0.038833ms)
+✔ password rules match the server policy (0.075792ms)
+✔ nested modal scroll locks release safely in order 0,1 (0.056042ms)
+✔ nested modal scroll locks release safely in order 1,0 (0.033916ms)
+ℹ tests 67
+ℹ suites 0
+ℹ pass 67
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 281.482

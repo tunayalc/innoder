@@ -24,5 +24,5 @@
     "jsx": "react-jsx"
   },
   "include": ["**/*.ts", "**/*.tsx", "src/**/*.d.ts"],
-  "exclude": ["**/node_modules", "**/Pods", "babel.config.js", "metro.config.js", "jest.config.js"]
+  "exclude": ["**/node_modules", "**/Pods", "server", "admin-web", "babel.config.js", "metro.config.js", "jest.config.js"]
 }

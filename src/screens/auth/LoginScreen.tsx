@@ -14,29 +14,29 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { appConfig } from '../../config/appConfig';
 import {
   Button,
+  BackButton,
   InputField,
   SettingsButton,
+  BrandWordmark,
 } from '../../components';
 import { useAuth } from '../../hooks';
 import { useI18n } from '../../i18n';
 import { useAppSelector } from '../../store/hooks';
 import { selectRememberMe, selectUserError, selectUserLoading } from '../../store/selectors';
-import { useAppTheme, useThemedStyles, type AppColors } from '../../theme';
+import { layout, useAppTheme, useThemedStyles, type AppColors } from '../../theme';
 
 export const LoginScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
-  const { login, loginDemoCandidate, loginAdmin } = useAuth();
+  const { login } = useAuth();
   const { t } = useI18n();
   const isLoading = useAppSelector(selectUserLoading);
   const error = useAppSelector(selectUserError);
   const rememberedPreference = useAppSelector(selectRememberMe);
-  const isMockMode = appConfig.dataSource === 'mock';
   const [identifier, setIdentifier] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [rememberMe, setRememberMe] = React.useState(rememberedPreference);
@@ -46,6 +46,7 @@ export const LoginScreen: React.FC = () => {
   }, [rememberedPreference]);
 
   const handleLogin = () => {
+    if (isLoading) return;
     if (!identifier.trim() || !password.trim()) {
       Alert.alert(t('common.errorTitle'), t('auth.fillIdentifierPassword'));
       return;
@@ -56,26 +57,18 @@ export const LoginScreen: React.FC = () => {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { paddingTop: insets.top }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View pointerEvents="none" style={styles.topOrb} />
-      <View pointerEvents="none" style={styles.bottomOrb} />
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 },
+          { paddingBottom: insets.bottom + 24 },
         ]}
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.topBar}>
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => navigation.goBack()}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Text style={styles.backBtnLabel}>{t('common.back')}</Text>
-          </TouchableOpacity>
+          <BackButton />
 
           <View style={styles.topControls}>
             <SettingsButton />
@@ -83,7 +76,8 @@ export const LoginScreen: React.FC = () => {
         </View>
 
         <View style={styles.header}>
-          <Text style={styles.title}>{t('auth.loginTitle')}</Text>
+          <BrandWordmark compact />
+          <Text accessibilityRole="header" style={styles.title}>{t('auth.loginTitle')}</Text>
           <Text style={styles.subtitle}>{t('auth.loginSubtitle')}</Text>
         </View>
 
@@ -96,6 +90,8 @@ export const LoginScreen: React.FC = () => {
             keyboardType="default"
             autoCapitalize="none"
             autoCorrect={false}
+            autoComplete="username"
+            editable={!isLoading}
             style={styles.formControl}
           />
 
@@ -107,12 +103,19 @@ export const LoginScreen: React.FC = () => {
             onChangeText={setPassword}
             placeholder={t('auth.passwordPlaceholder')}
             secureTextEntry
+            autoComplete="current-password"
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="go"
+            onSubmitEditing={handleLogin}
+            editable={!isLoading}
             style={styles.formControl}
           />
 
           <View style={styles.rememberRow}>
             <Text style={styles.rememberText}>{t('auth.rememberMe')}</Text>
             <Switch
+              accessibilityLabel={t('auth.rememberMe')}
               value={rememberMe}
               onValueChange={setRememberMe}
               trackColor={{ false: colors.muted, true: colors.teal }}
@@ -120,39 +123,22 @@ export const LoginScreen: React.FC = () => {
             />
           </View>
 
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          {error ? <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.errorText}>{error}</Text> : null}
 
           <View style={styles.spacer16} />
 
           <Button
             label={isLoading ? t('auth.loginButtonLoading') : t('auth.loginButton')}
             onPress={handleLogin}
+            loading={isLoading}
             style={styles.formControlButton}
             pressedOpacity={0.86}
           />
 
           <View style={styles.spacer12} />
-
-          {isMockMode ? (
-            <>
-              <Button
-                label={isLoading ? t('auth.demoButtonLoading') : t('auth.demoButton')}
-                onPress={() => loginDemoCandidate(rememberMe)}
-                variant="ghost"
-                style={styles.demoButton}
-                pressedOpacity={0.86}
-              />
-              <View style={styles.spacer12} />
-              <Button
-                label={t('auth.adminDemoButton')}
-                onPress={() => loginAdmin({ username: 'admin', password: '123123', rememberMe })}
-                variant="ghost"
-                style={styles.demoButton}
-                pressedOpacity={0.86}
-              />
-            </>
-          ) : null}
-
+          <TouchableOpacity accessibilityRole="button" style={styles.textLink} onPress={() => navigation.navigate('ForgotPassword')}>
+            <Text style={styles.helperText}>Şifremi unuttum</Text>
+          </TouchableOpacity>
           <View style={styles.spacer16} />
           <Text style={styles.helperText}>{t('auth.loginRoleHint')}</Text>
           <View style={styles.spacer12} />
@@ -161,6 +147,7 @@ export const LoginScreen: React.FC = () => {
 
         <View style={styles.footer}>
           <TouchableOpacity
+            accessibilityRole="button"
             style={styles.registerLink}
             onPress={() => navigation.navigate('Register')}
           >
@@ -181,27 +168,13 @@ const createStyles = (colors: AppColors) =>
       flex: 1,
       backgroundColor: colors.background,
     } as ViewStyle,
-    topOrb: {
-      position: 'absolute',
-      top: -120,
-      right: -40,
-      width: 230,
-      height: 230,
-      borderRadius: 115,
-      backgroundColor: colors.orbOrange,
-    } as ViewStyle,
-    bottomOrb: {
-      position: 'absolute',
-      bottom: 40,
-      left: -70,
-      width: 210,
-      height: 210,
-      borderRadius: 105,
-      backgroundColor: colors.tealLight,
-    } as ViewStyle,
     scrollContent: {
+      paddingTop: 16,
+      width: '100%',
+      maxWidth: layout.formMaxWidth,
+      alignSelf: 'center',
       flexGrow: 1,
-      paddingHorizontal: 16,
+      paddingHorizontal: layout.screenPadding,
       justifyContent: 'flex-start',
       gap: 14,
     } as ViewStyle,
@@ -219,41 +192,14 @@ const createStyles = (colors: AppColors) =>
       gap: 8,
       flex: 1,
     } as ViewStyle,
-    backBtn: {
-      alignSelf: 'flex-start',
-      minHeight: 42,
-      paddingHorizontal: 16,
-      paddingVertical: 8,
-      borderRadius: 20,
-      backgroundColor: colors.rowBg,
-      justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: colors.borderLight,
-    } as ViewStyle,
-    backBtnLabel: {
-      fontSize: 14,
-      lineHeight: 18,
-      color: colors.textPrimary,
-      fontWeight: '800',
-    } as TextStyle,
     header: {
-      marginBottom: 2,
-      backgroundColor: colors.surfaceContainerLow,
-      borderRadius: 28,
-      paddingHorizontal: 20,
-      paddingVertical: 20,
-      borderWidth: 1,
-      borderColor: colors.borderLight,
-      shadowColor: colors.primary,
-      shadowOpacity: 0.08,
-      shadowRadius: 14,
-      shadowOffset: { width: 0, height: 5 },
+      paddingVertical: 16,
+      gap: 14,
     } as ViewStyle,
     title: {
-      fontSize: 34,
-      fontWeight: '800',
+      fontSize: 28,
+      fontWeight: '700',
       color: colors.textPrimary,
-      letterSpacing: -0.6,
       marginBottom: 8,
     } as TextStyle,
     subtitle: {
@@ -262,16 +208,7 @@ const createStyles = (colors: AppColors) =>
       lineHeight: 22,
     } as TextStyle,
     form: {
-      paddingHorizontal: 16,
-      paddingVertical: 18,
-      borderRadius: 24,
-      backgroundColor: colors.cardBg,
-      borderWidth: 1,
-      borderColor: colors.borderLight,
-      shadowColor: colors.primary,
-      shadowOpacity: 0.06,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 3 },
+      paddingVertical: 8,
     } as ViewStyle,
     formControl: {
       minHeight: 52,
@@ -284,19 +221,12 @@ const createStyles = (colors: AppColors) =>
       justifyContent: 'space-between',
     } as ViewStyle,
     rememberText: {
+      flexShrink: 1,
       fontSize: 14,
-      fontWeight: '700',
+      fontWeight: '500',
       color: colors.textPrimary,
     } as TextStyle,
     formControlButton: {
-      minHeight: 54,
-      width: '100%',
-      shadowColor: colors.primary,
-      shadowOpacity: 0.2,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 4 },
-    } as ViewStyle,
-    demoButton: {
       minHeight: 54,
       width: '100%',
     } as ViewStyle,
@@ -315,8 +245,8 @@ const createStyles = (colors: AppColors) =>
       marginTop: 10,
     } as TextStyle,
     helperText: {
-      fontSize: 12,
-      lineHeight: 18,
+      fontSize: 14,
+      lineHeight: 21,
       color: colors.textSecondary,
     } as TextStyle,
     footer: {
@@ -326,6 +256,8 @@ const createStyles = (colors: AppColors) =>
       gap: 12,
     } as ViewStyle,
     registerLink: {
+      minHeight: 44,
+      justifyContent: 'center',
       paddingHorizontal: 12,
       paddingVertical: 6,
     } as ViewStyle,
@@ -334,7 +266,11 @@ const createStyles = (colors: AppColors) =>
       color: colors.textSecondary,
     } as TextStyle,
     registerStrong: {
-      color: colors.primary,
-      fontWeight: '800',
+      color: colors.primaryText,
+      fontWeight: '600',
     } as TextStyle,
+    textLink: {
+      minHeight: 44,
+      justifyContent: 'center',
+    } as ViewStyle,
   });
