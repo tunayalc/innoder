@@ -1,5 +1,6 @@
 import type { Application } from '../types';
 import { getDocumentRequiredStage } from '../services/programFactory';
+import { documentSlot, itemSlot } from './documentSlots';
 
 export const documentProgress = (application?: Application | null) => {
   const order = { application_stage: 0, erasmus_stage: 1, returned_home: 2 };
@@ -8,7 +9,7 @@ export const documentProgress = (application?: Application | null) => {
       (application?.program.checklist || [])
         .filter(
           item =>
-            item.documentType !== 'extra' &&
+            (item.documentType !== 'extra' || item.key) &&
             order[
               item.requiredStage || getDocumentRequiredStage(item.documentType)
             ] <= order[application?.status || 'application_stage'],
@@ -16,7 +17,7 @@ export const documentProgress = (application?: Application | null) => {
         .flatMap(item =>
           item.documentType === 'boarding_pass'
             ? ['boarding_pass_outbound', 'boarding_pass_return']
-            : [item.documentType],
+            : [itemSlot(item)],
         ),
     ),
   ];
@@ -24,12 +25,12 @@ export const documentProgress = (application?: Application | null) => {
     doc => doc.isCurrent !== false,
   );
   const approved = required.filter(type =>
-    current.some(doc => doc.type === type && doc.status === 'ok'),
+    current.some(doc => documentSlot(doc) === type && doc.status === 'ok'),
   ).length;
   const uploaded = required.filter(type =>
     current.some(
       doc =>
-        doc.type === type && !['missing', 'wrong_format'].includes(doc.status),
+        documentSlot(doc) === type && !['missing', 'wrong_format'].includes(doc.status),
     ),
   ).length;
   return {
@@ -40,7 +41,7 @@ export const documentProgress = (application?: Application | null) => {
       type =>
         !current.some(
           doc =>
-            doc.type === type &&
+            documentSlot(doc) === type &&
             !['missing', 'wrong_format'].includes(doc.status),
         ),
     ),

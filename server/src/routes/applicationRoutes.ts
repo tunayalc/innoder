@@ -98,23 +98,29 @@ const requiredMissing = async (
   stage: string,
 ) => {
   const uploaded = await db.query(
-    "SELECT DISTINCT type FROM documents WHERE application_id = $1 AND is_current AND status NOT IN ('missing', 'wrong_format')",
+    "SELECT DISTINCT type, requirement_key FROM documents WHERE application_id = $1 AND is_current AND status NOT IN ('missing', 'wrong_format')",
     [row.id],
   );
   const types = new Set(uploaded.rows.map(item => item.type));
+  const keys = new Set(uploaded.rows.map(item => item.requirement_key));
   return (
     row.program_snapshot.checklist as Array<{
       documentType?: string;
+      key?: string;
+      label?: string;
       requiredStage?: string;
     }>
   )
     .filter(
       item =>
-        item.documentType !== 'extra' &&
+        (item.documentType !== 'extra' || item.key) &&
         (item.requiredStage || stageForType(item.documentType)) === stage,
     )
-    .map(item => item.documentType)
-    .filter((type): type is string => Boolean(type) && !types.has(type));
+    .filter(item =>
+      item.key ? !keys.has(item.key) : !types.has(item.documentType),
+    )
+    .map(item => (item.key ? item.label || item.key : item.documentType))
+    .filter((type): type is string => Boolean(type));
 };
 const filters = (query: unknown, user?: ReturnType<typeof authUser>) => {
   const parsed = z
@@ -157,8 +163,9 @@ const filters = (query: unknown, user?: ReturnType<typeof authUser>) => {
   if (parsed.data.hasIssues !== undefined) {
     const issues = `(EXISTS(SELECT 1 FROM documents d WHERE d.application_id=a.id AND d.is_current AND d.status IN ('missing','wrong_format'))
       OR EXISTS(SELECT 1 FROM jsonb_array_elements(a.program_snapshot->'checklist') AS required(item)
-        WHERE item->>'documentType'<>'extra' AND (a.stage<>'application_stage' OR COALESCE(item->>'requiredStage',CASE WHEN item->>'documentType' IN ('boarding_pass_outbound','boarding_pass_return','photo_activity_report') THEN 'erasmus_stage' ELSE 'application_stage' END)='application_stage')
-        AND NOT EXISTS(SELECT 1 FROM documents d WHERE d.application_id=a.id AND d.is_current AND d.type=item->>'documentType' AND d.status='ok')))`;
+        WHERE (item->>'documentType'<>'extra' OR item ? 'key') AND (a.stage<>'application_stage' OR COALESCE(item->>'requiredStage',CASE WHEN item->>'documentType' IN ('boarding_pass_outbound','boarding_pass_return','photo_activity_report') THEN 'erasmus_stage' ELSE 'application_stage' END)='application_stage')
+        AND NOT EXISTS(SELECT 1 FROM documents d WHERE d.application_id=a.id AND d.is_current AND d.status='ok'
+          AND (CASE WHEN item ? 'key' THEN d.requirement_key=item->>'key' ELSE d.type=item->>'documentType' END))))`;
     where.push(parsed.data.hasIssues === 'true' ? issues : `NOT ${issues}`);
   }
   if (parsed.data.applicationIds) {
@@ -500,7 +507,21 @@ export const registerApplicationRoutes = (
       const params = z
         .object({ id: z.uuid(), type: documentTypes })
         .safeParse(request.params);
-      if (!params.success) throw new HttpError(400, 'Belge türü geçersiz.');
+      const query = z
+        .object({
+          requirement: z
+            .string()
+            .regex(/^custom_[a-z0-9]{6,32}$/)
+            .optional(),
+        })
+        .safeParse(request.query);
+      if (
+        !params.success ||
+        !query.success ||
+        (query.data.requirement && params.data.type !== 'extra')
+      )
+        throw new HttpError(400, 'Belge türü geçersiz.');
+      const requirement = query.data.requirement;
       const owner = (
         await db.query('SELECT user_id FROM applications WHERE id = $1', [
           params.data.id,
@@ -526,7 +547,18 @@ export const registerApplicationRoutes = (
         );
         const saved = stored;
         const result = await withTransaction(db, async client => {
-          await lockedApplication(client, request, params.data.id);
+          const application = await lockedApplication(
+            client,
+            request,
+            params.data.id,
+          );
+          if (
+            requirement &&
+            !(
+              application.program_snapshot.checklist as Array<{ key?: string }>
+            ).some(item => item.key === requirement)
+          )
+            throw new HttpError(400, 'Bu belge artık istenmiyor.');
           if (key) {
             const previous = (
               await client.query(
@@ -556,8 +588,13 @@ export const registerApplicationRoutes = (
               'UPDATE documents SET is_current = false WHERE application_id = $1 AND type = $2 AND is_current',
               [params.data.id, params.data.type],
             );
+          if (requirement)
+            await client.query(
+              'UPDATE documents SET is_current = false WHERE application_id = $1 AND requirement_key = $2 AND is_current',
+              [params.data.id, requirement],
+            );
           const inserted = await client.query(
-            `INSERT INTO documents(application_id,type,file_name,storage_path,mime_type,size_bytes,page_count,physical_delivery_status,version,upload_key,content_hash) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+            `INSERT INTO documents(application_id,type,file_name,storage_path,mime_type,size_bytes,page_count,physical_delivery_status,version,upload_key,content_hash,requirement_key) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
             [
               params.data.id,
               params.data.type,
@@ -572,6 +609,7 @@ export const registerApplicationRoutes = (
               version,
               key || null,
               saved.contentHash,
+              requirement || null,
             ],
           );
           await appendAudit(client, request, {
@@ -579,7 +617,7 @@ export const registerApplicationRoutes = (
             action: 'document_uploaded',
             entityType: 'document',
             entityId: inserted.rows[0].id,
-            metadata: { type: params.data.type, version },
+            metadata: { type: params.data.type, version, requirement },
           });
           return inserted.rows[0];
         });

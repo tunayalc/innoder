@@ -46,6 +46,7 @@ import {trackPrivateFile} from '../../services/api/privateFiles';
 import {DocumentHistoryList} from '../../components/DocumentHistoryList';
 import { AdminDocumentUpload } from './AdminDocumentUpload';
 import { ProjectBloodGroup } from '../../components/ProjectBloodGroup';
+import { documentLabel } from '../../utils/documentSlots';
 import { 
   buildMotivationLetterPdfHtml, 
   createMotivationLetterPdfFileName,
@@ -341,7 +342,7 @@ export const AdminDetayScreen: React.FC = () => {
               }
             >
               <ChecklistRow
-                label={DOCUMENT_TYPES[doc.type] || doc.type}
+                label={doc.requirementKey ? documentLabel(doc, application?.program) : DOCUMENT_TYPES[doc.type] || doc.type}
                 status={DOCUMENT_STATUS_LABELS[doc.status] || doc.status}
                 variant={statusToVariant(doc.status)}
               />
@@ -497,7 +498,7 @@ export const AdminDetayScreen: React.FC = () => {
           }}
         /> : null}
       </View>
-      <DocumentHistoryList applicationId={applicationId}/>
+      <DocumentHistoryList applicationId={applicationId} program={application?.program}/>
     </ScreenScrollView>
   );
 };

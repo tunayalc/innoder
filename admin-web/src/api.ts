@@ -530,6 +530,7 @@ export const api = {
   uploadApplicationDocument: (
     id: string,
     type: string,
+    requirementKey: string | undefined,
     file: File,
     idempotencyKey: string,
     signal: AbortSignal,
@@ -540,7 +541,11 @@ export const api = {
     return request<Document>(
       `/api/applications/${encodeURIComponent(
         id,
-      )}/documents/${encodeURIComponent(type)}`,
+      )}/documents/${encodeURIComponent(type)}${
+        requirementKey
+          ? `?requirement=${encodeURIComponent(requirementKey)}`
+          : ''
+      }`,
       {
         method: 'POST',
         body,

@@ -1,5 +1,5 @@
 import { language, translate as tr } from './locale';
-import type { Application } from './types';
+import type { Application, ChecklistItem, Document, Program } from './types';
 
 export const STAGES = {
   application_stage: tr('Başvuru Aşaması'),
@@ -37,6 +37,35 @@ export const UPLOADABLE_DOCUMENT_TYPES = [
   'boarding_pass_outbound',
   'boarding_pass_return',
 ] as const;
+// A slot is what a member uploads against: a fixed document type, or
+// "extra:<key>" for a document the admin named in the program checklist.
+export const itemSlot = (item: ChecklistItem) =>
+  item.key ? `extra:${item.key}` : item.documentType;
+export const documentSlot = (doc: Pick<Document, 'type' | 'requirementKey'>) =>
+  doc.requirementKey ? `extra:${doc.requirementKey}` : doc.type;
+export const parseSlot = (slot: string) =>
+  slot.startsWith('extra:')
+    ? { type: 'extra', requirementKey: slot.slice(6) }
+    : { type: slot, requirementKey: undefined };
+export const slotLabel = (slot: string, program?: Program) => {
+  const { type, requirementKey } = parseSlot(slot);
+  if (requirementKey)
+    return (
+      program?.checklist.find(item => item.key === requirementKey)?.label ||
+      DOCUMENTS.extra
+    );
+  return DOCUMENTS[type] || type;
+};
+export const documentLabel = (
+  doc: Pick<Document, 'type' | 'requirementKey'>,
+  program?: Program,
+) => slotLabel(documentSlot(doc), program);
+export const newRequirementKey = () =>
+  `custom_${Array.from(crypto.getRandomValues(new Uint8Array(6)), byte =>
+    byte.toString(36).padStart(2, '0'),
+  )
+    .join('')
+    .slice(0, 12)}`;
 export const USER_STATUS: Record<string, string> = {
   active: tr('Aktif'),
   pending: tr('Onay bekliyor'),

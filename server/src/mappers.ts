@@ -64,6 +64,7 @@ export const mapDocument = (row: Record<string, unknown>) => ({
   id: row.id,
   applicationId: row.application_id,
   type: row.type,
+  requirementKey: row.requirement_key ?? undefined,
   fileName: row.file_name,
   fileUrl: `/api/documents/${row.id}/download`,
   pageCount: row.page_count ?? undefined,

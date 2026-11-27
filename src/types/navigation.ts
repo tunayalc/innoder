@@ -16,7 +16,7 @@ export type RootStackParamList = {
   AdayKisisel: undefined;
   AdayCvBuilder: { applicationId: string } | undefined;
   AdayMotivation: { applicationId: string } | undefined;
-  AdayBelge: { applicationId: string; capturedPhotoUri?: string; docType?: import('./application').DocumentType } | undefined;
+  AdayBelge: { applicationId: string; capturedPhotoUri?: string; docType?: string } | undefined;
   BelgeCamera: { docType: string; applicationId: string };
   AdayMesaj: { applicationId: string } | undefined;
   AdminTabs: NavigatorScreenParams<AdminTabParamList> | undefined;

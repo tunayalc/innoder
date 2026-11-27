@@ -133,6 +133,7 @@ export interface ApplicationBackend {
   uploadDocument(params: {
     applicationId: string;
     documentType: Document['type'];
+    requirementKey?: string; // Ties an 'extra' upload to a document the admin named.
     fileName: string;
     fileUrl?: string;
     pageCount: number;

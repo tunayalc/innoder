@@ -8,7 +8,13 @@ import {
 } from 'react';
 import { Archive, Download, Edit3, Plus, Send, Trash2 } from 'lucide-react';
 import { api } from './api';
-import { DOCUMENTS, formatDate, UPLOADABLE_DOCUMENT_TYPES } from './domain';
+import {
+  documentLabel,
+  DOCUMENTS,
+  formatDate,
+  newRequirementKey,
+  UPLOADABLE_DOCUMENT_TYPES,
+} from './domain';
 import { useCollection } from './hooks';
 import {
   EmptyState,
@@ -19,6 +25,7 @@ import {
   SearchField,
 } from './ui';
 import type {
+  ChecklistItem,
   DeletionRequest,
   Message,
   Program,
@@ -335,8 +342,9 @@ const ProgramEditor = ({
               <input
                 type="checkbox"
                 checked={
-                  draft.checklist?.some(item => item.documentType === type) ||
-                  false
+                  draft.checklist?.some(
+                    item => item.documentType === type && !item.key,
+                  ) || false
                 }
                 onChange={e =>
                   setDraft({
@@ -357,7 +365,7 @@ const ProgramEditor = ({
                           },
                         ]
                       : (draft.checklist || []).filter(
-                          item => item.documentType !== type,
+                          item => item.documentType !== type || item.key,
                         ),
                   })
                 }
@@ -366,6 +374,20 @@ const ProgramEditor = ({
             </label>
           ))}
         </fieldset>
+        <CustomDocuments
+          items={(draft.checklist || []).filter(item => item.key)}
+          disabled={busy}
+          onChange={custom => {
+            setDirty(true);
+            setDraft({
+              ...draft,
+              checklist: [
+                ...(draft.checklist || []).filter(item => !item.key),
+                ...custom,
+              ],
+            });
+          }}
+        />
         <button className="primary" disabled={busy || !draft.checklist?.length}>
           {busy ? tr('Kaydediliyor...') : tr('Programı kaydet')}
         </button>
@@ -882,8 +904,10 @@ export const DeletionRequestsView = () => {
 
 export const DocumentHistory = ({
   applicationId,
+  program,
 }: {
   applicationId: string;
+  program?: Program;
 }) => {
   const [open, setOpen] = useState(false),
     [error, setError] = useState('');
@@ -904,7 +928,7 @@ export const DocumentHistory = ({
         history.items.map(doc => (
           <div className="history-line" key={doc.id}>
             <span>
-              {DOCUMENTS[doc.type] || doc.type} · v{doc.version || 1} ·{' '}
+              {documentLabel(doc, program)} · v{doc.version || 1} ·{' '}
               {doc.isCurrent ? tr('Güncel') : tr('Önceki')}
               <small>{formatDate(doc.uploadedAt)}</small>
             </span>
@@ -925,3 +949,97 @@ export const DocumentHistory = ({
     </section>
   );
 };
+
+// Documents the admin names for this program; members see each one by this name.
+function CustomDocuments({
+  items,
+  disabled,
+  onChange,
+}: {
+  items: ChecklistItem[];
+  disabled: boolean;
+  onChange: (items: ChecklistItem[]) => void;
+}) {
+  const update = (key: string, patch: Partial<ChecklistItem>) =>
+    onChange(items.map(item => (item.key === key ? { ...item, ...patch } : item)));
+  return (
+    <fieldset className="custom-documents">
+      <legend>{tr('Programa özel belgeler')}</legend>
+      <p className="muted">
+        {tr(
+          'Listede olmayan bir belge isteyin. Adaylar bu belgeyi yazdığınız adla görür ve ayrıca yükler; programdaki mevcut başvurulara da eklenir.',
+        )}
+      </p>
+      {items.map((item, index) => (
+        <div className="custom-document" key={item.key}>
+          <label>
+            {tr('Belge adı')}
+            <input
+              required
+              minLength={2}
+              maxLength={120}
+              placeholder={tr('Örn. Sağlık sigortası poliçesi')}
+              value={item.label || ''}
+              disabled={disabled}
+              onChange={e => update(item.key!, { label: e.target.value })}
+            />
+          </label>
+          <label>
+            {tr('Açıklama (isteğe bağlı)')}
+            <textarea
+              rows={2}
+              maxLength={1000}
+              placeholder={tr('Adaya ne yüklemesi gerektiğini kısaca anlatın.')}
+              value={item.description || ''}
+              disabled={disabled}
+              onChange={e =>
+                update(item.key!, { description: e.target.value || undefined })
+              }
+            />
+          </label>
+          <label>
+            {tr('Hangi aşamada istenir')}
+            <select
+              value={item.requiredStage || 'application_stage'}
+              disabled={disabled}
+              onChange={e => update(item.key!, { requiredStage: e.target.value })}
+            >
+              <option value="application_stage">{tr('Başvuru Aşaması')}</option>
+              <option value="erasmus_stage">
+                {tr('Hareketlilik / Erasmus Aşaması')}
+              </option>
+            </select>
+          </label>
+          <button
+            type="button"
+            className="secondary small"
+            disabled={disabled}
+            aria-label={`${item.label || tr('Özel belge') + ' ' + (index + 1)} ${tr('kaldır')}`}
+            onClick={() => onChange(items.filter(other => other.key !== item.key))}
+          >
+            <Trash2 size={16} /> {tr('Kaldır')}
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        className="secondary small"
+        disabled={disabled || items.length >= 20}
+        onClick={() =>
+          onChange([
+            ...items,
+            {
+              documentType: 'extra',
+              key: newRequirementKey(),
+              label: '',
+              expectedFormat: 'PDF / JPG / PNG',
+              requiredStage: 'application_stage',
+            },
+          ])
+        }
+      >
+        <Plus size={16} /> {tr('Özel belge ekle')}
+      </button>
+    </fieldset>
+  );
+}

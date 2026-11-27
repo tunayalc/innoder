@@ -2,7 +2,13 @@ import { translate as tr } from './locale';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Upload } from 'lucide-react';
 import { api } from './api';
-import { DOCUMENTS, UPLOADABLE_DOCUMENT_TYPES } from './domain';
+import {
+  documentSlot,
+  itemSlot,
+  parseSlot,
+  slotLabel,
+  UPLOADABLE_DOCUMENT_TYPES,
+} from './domain';
 import type { Application, Document } from './types';
 import { errorMessage, Feedback } from './ui';
 import { useLeaveWarning } from './workflows';
@@ -38,8 +44,16 @@ export const ApplicationDocumentUpload = ({
   const request = useRef<AbortController | undefined>(undefined);
   useLeaveWarning(Boolean(file));
   useEffect(() => () => request.current?.abort(), []);
+  // A slot is a fixed type or "extra:<key>" for a document the admin named.
   const replaces =
-    type !== 'extra' && application.documents.some(doc => doc.type === type);
+    type !== 'extra' &&
+    application.documents.some(doc => documentSlot(doc) === type);
+  const slots = [
+    ...UPLOADABLE_DOCUMENT_TYPES,
+    ...(application.program?.checklist || []).flatMap(item =>
+      item.key ? [itemSlot(item)] : [],
+    ),
+  ].filter(slot => !allowedTypes || allowedTypes.includes(slot));
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -52,9 +66,11 @@ export const ApplicationDocumentUpload = ({
     setSuccess('');
     try {
       key.current ??= crypto.randomUUID();
+      const slot = parseSlot(type);
       const document = await api.uploadApplicationDocument(
         application.id,
-        type,
+        slot.type,
+        slot.requirementKey,
         file,
         key.current,
         controller.signal,
@@ -108,11 +124,9 @@ export const ApplicationDocumentUpload = ({
               }}
             >
               <option value="">{tr('Belge türü seçin')}</option>
-              {UPLOADABLE_DOCUMENT_TYPES.filter(
-                kind => !allowedTypes || allowedTypes.includes(kind),
-              ).map(kind => (
-                <option key={kind} value={kind}>
-                  {DOCUMENTS[kind]}
+              {slots.map(slot => (
+                <option key={slot} value={slot}>
+                  {slotLabel(slot, application.program)}
                 </option>
               ))}
             </select>

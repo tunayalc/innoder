@@ -54,6 +54,7 @@ class ApplicationService {
     fileName: string,
     mimeType: string,
     options?: RequestOptions,
+    requirementKey?: string,
   ): Promise<Document | null> {
     const formData = new FormData();
     formData.append('file', {
@@ -62,7 +63,9 @@ class ApplicationService {
       type: mimeType,
     } as any);
     const response = await apiClient.postForm<Document>(
-      `/applications/${applicationId}/documents/${documentType}`,
+      `/applications/${applicationId}/documents/${documentType}${
+        requirementKey ? `?requirement=${encodeURIComponent(requirementKey)}` : ''
+      }`,
       formData,
       options,
     );

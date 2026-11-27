@@ -23,6 +23,7 @@ import { useAppSelector } from '../../store/hooks';
 import { selectApplications } from '../../store/selectors';
 import type { Application, DocumentType, RootStackNavigationProp } from '../../types';
 import { documentProgress } from '../../utils/documentProgress';
+import { documentSlot, itemSlot, parseSlot, slotLabel } from '../../utils/documentSlots';
 import { isEuropassCvComplete, isMotivationLetterComplete } from '../../utils/europass';
 
 type DocTab = 'missing' | 'review' | 'approved';
@@ -68,8 +69,14 @@ export const AdayMenuScreen: React.FC = () => {
 
   const currentDocs = (application?.documents || []).filter(doc => doc.isCurrent !== false);
   const checklist = application?.program.checklist || [];
-  const expectedFormat = (type: string) => checklist.find(item => item.documentType === type)?.expectedFormat;
-  const wrongFormat = new Set(currentDocs.filter(doc => doc.status === 'wrong_format').map(doc => doc.type));
+  // Slots are fixed types or "extra:<key>" for documents the admin named.
+  const expectedFormat = (slot: string) => checklist.find(item => itemSlot(item) === slot)?.expectedFormat;
+  const wrongFormat = new Set(currentDocs.filter(doc => doc.status === 'wrong_format').map(documentSlot));
+  const slotTitle = (slot: string) =>
+    parseSlot(slot).requirementKey
+      ? slotLabel(slot, application?.program)
+      : getDocumentTypeLabel(slot as DocumentType, language);
+  const slotIcon = (slot: string) => documentIcon[parseSlot(slot).type];
   const reviewDocs = currentDocs.filter(doc => doc.status === 'unread');
   const approvedDocs = currentDocs.filter(doc => doc.status === 'ok');
 
@@ -99,7 +106,7 @@ export const AdayMenuScreen: React.FC = () => {
   const todoCount =
     (active ? progress.missing.length : 0) + (active && personalIncomplete ? 1 : 0) + (cvIncomplete ? 1 : 0) + (letterIncomplete ? 1 : 0);
 
-  const openDocuments = (docType?: DocumentType) =>
+  const openDocuments = (docType?: string) =>
     application && navigation.navigate('AdayBelge', { applicationId: application.id, docType });
   const openMessages = () => navigation.navigate('AdayMesaj', application ? { applicationId: application.id } : undefined);
 
@@ -175,15 +182,15 @@ export const AdayMenuScreen: React.FC = () => {
             {todoCount ? (
               <Carousel>
                 {progress.missing.map(type => {
-                  const docType = type as DocumentType;
+                  const docType = type;
                   const fix = wrongFormat.has(docType);
                   return (
                     <TaskCard
                       key={type}
-                      icon={documentIcon[docType] || 'file-upload-outline'}
+                      icon={slotIcon(docType) || 'file-upload-outline'}
                       tone={fix ? 'warn' : 'brand'}
                       statusLabel={fix ? tx('Düzeltme gerekli', 'Needs a fix') : tx('Eksik', 'Missing')}
-                      title={getDocumentTypeLabel(docType, language)}
+                      title={slotTitle(docType)}
                       meta={expectedFormat(type)}
                       onPress={() => openDocuments(docType)}
                     >
@@ -243,11 +250,11 @@ export const AdayMenuScreen: React.FC = () => {
                 ? progress.missing.map(type => (
                     <FeatureRow
                       key={type}
-                      icon={documentIcon[type as DocumentType] || 'file-outline'}
-                      tone={wrongFormat.has(type as DocumentType) ? 'warn' : 'brand'}
-                      title={getDocumentTypeLabel(type as DocumentType, language)}
-                      description={wrongFormat.has(type as DocumentType) ? tx('Yeniden yüklemen gerekiyor', 'Please upload again') : expectedFormat(type)}
-                      onPress={() => openDocuments(type as DocumentType)}
+                      icon={slotIcon(type) || 'file-outline'}
+                      tone={wrongFormat.has(type) ? 'warn' : 'brand'}
+                      title={slotTitle(type)}
+                      description={wrongFormat.has(type) ? tx('Yeniden yüklemen gerekiyor', 'Please upload again') : expectedFormat(type)}
+                      onPress={() => openDocuments(type)}
                     />
                   ))
                 : (docTab === 'review' ? reviewDocs : approvedDocs).map(doc => (
@@ -255,7 +262,7 @@ export const AdayMenuScreen: React.FC = () => {
                       key={doc.id}
                       icon={documentIcon[doc.type] || 'file-outline'}
                       tone={docTab === 'review' ? 'info' : 'ok'}
-                      title={getDocumentTypeLabel(doc.type, language)}
+                      title={slotTitle(documentSlot(doc))}
                       description={doc.fileName}
                       onPress={() => navigation.navigate('DocumentViewer', { applicationId: application.id, documentId: doc.id })}
                     />

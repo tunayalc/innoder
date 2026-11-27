@@ -5,13 +5,16 @@ import { apiClient, requireData } from '../services/api/apiClient';
 import { openPrivateFile } from '../services/api/privateFiles';
 import { getDocumentTypeLabel, useI18n } from '../i18n';
 import { useThemedStyles, type AppColors } from '../theme';
-import type { Document } from '../types';
+import type { AssignedProgram, Document } from '../types';
 import { appConfig } from '../config/appConfig';
+import { documentLabel } from '../utils/documentSlots';
 
 export const DocumentHistoryList = ({
   applicationId,
+  program,
 }: {
   applicationId: string;
+  program?: Pick<AssignedProgram, 'checklist'>;
 }) => {
   const [documents, setDocuments] = useState<Document[] | null>(null),
     [loading, setLoading] = useState(false),
@@ -52,7 +55,7 @@ export const DocumentHistoryList = ({
       {documents?.map(document => (
         <View key={document.id} style={styles.row}>
           <Text style={styles.text}>
-            {getDocumentTypeLabel(document.type, language)} · v
+            {document.requirementKey ? documentLabel(document, program) : getDocumentTypeLabel(document.type, language)} · v
             {document.version || 1} · {document.isCurrent ? 'Güncel' : 'Önceki'}
           </Text>
           <Button

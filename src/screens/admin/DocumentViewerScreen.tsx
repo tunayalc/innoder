@@ -26,6 +26,7 @@ import {
 } from '../../i18n';
 import { openPrivateFile, saveOrSharePrivateDocument } from '../../services/api/privateFiles';
 import { useAuth } from '../../hooks';
+import { documentLabel } from '../../utils/documentSlots';
 
 const statusToVariant = (status: DocumentStatus) => {
   switch (status) {
@@ -131,7 +132,7 @@ export const DocumentViewerScreen: React.FC = () => {
       <View style={styles.headerRow}>
         <View style={styles.headerText}>
           <Text style={styles.h2}>
-            {getDocumentTypeLabel(document.type, language)}
+            {document.requirementKey ? documentLabel(document, application?.program) : getDocumentTypeLabel(document.type, language)}
           </Text>
           <Text style={styles.subtitle}>
             {document.fileName || t('documentViewer.noFile')}

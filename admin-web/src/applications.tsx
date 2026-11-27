@@ -32,7 +32,8 @@ import { DocumentHistory, ThreadView, confirmLeave } from './workflows';
 import {
   applicantName,
   dateBoundaryISO,
-  DOCUMENTS,
+  documentLabel,
+  documentSlot,
   formatBytes,
   formatDate,
   normalizeApplication,
@@ -50,7 +51,7 @@ import {
   Pagination,
   SearchField,
 } from './ui';
-import type { Application, Document, Stage, User } from './types';
+import type { Application, Document, Program, Stage, User } from './types';
 
 const STAGE_ICONS = {
   application_stage: CircleDashed,
@@ -814,7 +815,7 @@ const ApplicationDrawer = ({
                 </div>
               )}
             </section>
-            <DocumentHistory applicationId={item.id} />
+            <DocumentHistory applicationId={item.id} program={item.program} />
             <details
               className="detail-section"
               onToggle={event => setMessagesOpen(event.currentTarget.open)}
@@ -892,8 +893,8 @@ const ApplicationDrawer = ({
                             ...current.documents.filter(
                               previous =>
                                 previous.id !== doc.id &&
-                                (doc.type === 'extra' ||
-                                  previous.type !== doc.type),
+                                ((doc.type === 'extra' && !doc.requirementKey) ||
+                                  documentSlot(previous) !== documentSlot(doc)),
                             ),
                             doc,
                           ],
@@ -910,6 +911,7 @@ const ApplicationDrawer = ({
                 <DocumentRow
                   key={doc.id}
                   applicationId={item.id}
+                  program={item.program}
                   document={doc}
                   onChange={() => {
                     void load();
@@ -959,10 +961,12 @@ const defaultMessage = (status: Document['status']) =>
 
 const DocumentRow = ({
   applicationId,
+  program,
   document: doc,
   onChange,
 }: {
   applicationId: string;
+  program?: Program;
   document: Document;
   onChange: () => void;
 }) => {
@@ -1020,7 +1024,7 @@ const DocumentRow = ({
         )}
       </div>
       <div className="document-main">
-        <strong>{DOCUMENTS[doc.type] || doc.type}</strong>
+        <strong>{documentLabel(doc, program)}</strong>
         <span>
           {doc.fileName} · {formatBytes(doc.sizeBytes)}
         </span>
@@ -1117,7 +1121,7 @@ const DocumentRow = ({
                 await api.verifyDocument(applicationId, doc.id, status, note);
                 setReview(false);
                 if (notify && needsFix(status)) {
-                  const content = `[${DOCUMENTS[doc.type] || doc.type}] ${
+                  const content = `[${documentLabel(doc, program)}] ${
                     note.trim() || defaultMessage(status)
                   }`;
                   try {
@@ -1200,7 +1204,7 @@ const DocumentRow = ({
         {preview && (
           <Modal
             wide
-            title={DOCUMENTS[doc.type] || tr('Belge önizleme')}
+            title={documentLabel(doc, program) || tr('Belge önizleme')}
             subtitle={doc.fileName}
             onClose={closePreview}
           >

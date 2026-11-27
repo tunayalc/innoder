@@ -1,5 +1,14 @@
 // Only authored UI copy is translated. Never send applicant data to a translator.
 const english: Record<string, string> = {
+  'Programa özel belgeler': 'Program-specific documents',
+  'Listede olmayan bir belge isteyin. Adaylar bu belgeyi yazdığınız adla görür ve ayrıca yükler; programdaki mevcut başvurulara da eklenir.': 'Ask for a document that is not in the list. Candidates see it under the name you write and upload it separately; it is also added to existing applications in this program.',
+  'Belge adı': 'Document name',
+  'Örn. Sağlık sigortası poliçesi': 'e.g. Health insurance policy',
+  'Açıklama (isteğe bağlı)': 'Description (optional)',
+  'Adaya ne yüklemesi gerektiğini kısaca anlatın.': 'Briefly tell the candidate what to upload.',
+  'Hangi aşamada istenir': 'Required at stage',
+  'Özel belge': 'Custom document',
+  'Özel belge ekle': 'Add custom document',
   'Önce etkinlik bağlantısını kontrol edip onaylayın.': 'Check and approve the event link first.',
   'Aday etkinlik bağlantısı paylaşmadığı için hesap etkinleştirilemez.': 'The account cannot be activated because the candidate did not share an event link.',
   'Bağlantıyı açıp kontrol ettim; aday bu etkinliğe katılıyor.': 'I opened and checked the link; the candidate is taking part in this event.',

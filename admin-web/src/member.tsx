@@ -15,7 +15,16 @@ import {
 } from 'lucide-react';
 import { api } from './api';
 import type { Application, Document, User } from './types';
-import { CONTACT_LINKS, DOCUMENTS, STAGES, formatDate } from './domain';
+import {
+  CONTACT_LINKS,
+  DOCUMENTS,
+  STAGES,
+  documentLabel,
+  documentSlot,
+  formatDate,
+  itemSlot,
+  slotLabel,
+} from './domain';
 import { useCollection } from './hooks';
 import { usePage } from './usePage';
 import {
@@ -48,6 +57,8 @@ const documentStatus = {
   wrong_format: tr('Düzeltme istendi'),
   unread: tr('İnceleme bekliyor'),
 };
+// Upload slots required up to the current stage. A slot is a fixed document type
+// or "extra:<key>" for a document the admin named in the program checklist.
 function stageTypes(item: Application) {
   const stages = Object.keys(STAGES);
   return [
@@ -65,7 +76,7 @@ function stageTypes(item: Application) {
         .flatMap(r =>
           r.documentType === 'boarding_pass'
             ? ['boarding_pass_outbound', 'boarding_pass_return']
-            : [r.documentType],
+            : [itemSlot(r)],
         ),
     ),
   ];
@@ -75,7 +86,7 @@ const requiredTypes = (item: Application) =>
 const validDoc = (item: Application, type: string) =>
   item.documents.some(
     d =>
-      d.type === type &&
+      documentSlot(d) === type &&
       d.isCurrent !== false &&
       (d.status === 'ok' || d.status === 'unread'),
   );
@@ -159,7 +170,10 @@ function MyPrograms({
   const approvedOf = (item: Application) =>
     requiredTypes(item).filter(type =>
       item.documents.some(
-        d => d.type === type && d.isCurrent !== false && d.status === 'ok',
+        d =>
+          documentSlot(d) === type &&
+          d.isCurrent !== false &&
+          d.status === 'ok',
       ),
     ).length;
   const percent = (value: number, total: number) =>
@@ -456,7 +470,7 @@ function MemberApplication({
                 </div>
                 {missing.length > 0 && (
                   <p>
-                    {missing.map(type => DOCUMENTS[type] || type).join(', ')}
+                    {missing.map(type => slotLabel(type, item?.program)).join(', ')}
                   </p>
                 )}
               </section>
@@ -638,7 +652,7 @@ function MemberDocuments({
         <h3>{tr('Gerekli belgeler')}</h3>
         {item.program?.checklist.map((r, i) => (
           <p key={i}>
-            <strong>{DOCUMENTS[r.documentType] || r.documentType}</strong> ·{' '}
+            <strong>{slotLabel(itemSlot(r), item.program)}</strong> ·{' '}
             {r.expectedFormat} {r.description}
           </p>
         ))}
@@ -703,7 +717,7 @@ function MemberDocuments({
             <div key={d.id} className="member-row">
               <span>
                 <strong>
-                  {DOCUMENTS[d.type] || d.type} · v{d.version || 1}
+                  {documentLabel(d, item.program)} · v{d.version || 1}
                 </strong>
                 <small>
                   {d.fileName} · {documentStatus[d.status]}

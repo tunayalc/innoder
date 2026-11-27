@@ -34,6 +34,8 @@ export interface Document {
   id: string;
   applicationId: string;
   type: DocumentType;
+  // Set when the document answers a checklist item the admin named.
+  requirementKey?: string;
   fileName: string;
   fileUrl?: string;
   pageCount?: number;
@@ -57,6 +59,9 @@ export interface ProgramDeadline {
 
 export interface ProgramChecklistItem {
   documentType: DocumentType;
+  // A key marks a document the admin named; it is uploaded as 'extra'.
+  key?: string;
+  label?: string;
   requiredStage?: ApplicationStatus;
   expectedFormat: string;
   description?: string;

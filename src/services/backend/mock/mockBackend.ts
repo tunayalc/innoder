@@ -697,16 +697,25 @@ export const createMockBackend = (): InnoBackend => {
           }
 
           const app = apps[idx];
+          const named = params.requirementKey
+            ? app.program.checklist.find((x) => x.key === params.requirementKey)
+            : undefined;
+          if (params.requirementKey && !named) {
+            throw new BackendError('VALIDATION', 'Bu belge artık istenmiyor.');
+          }
           const docIdx = app.documents.findIndex((d) =>
-            d.type === params.documentType &&
-            (!params.adminUserId || params.documentType !== 'extra' || !d.fileName),
+            params.requirementKey
+              ? d.requirementKey === params.requirementKey
+              : d.type === params.documentType &&
+                !d.requirementKey &&
+                (!params.adminUserId || params.documentType !== 'extra' || !d.fileName),
           );
-          if (docIdx === -1 && !params.adminUserId) {
+          if (docIdx === -1 && !params.adminUserId && !named) {
             throw new BackendError('NOT_FOUND', 'Belge tipi bu program için tanımlı değil.');
           }
 
-          const expected = app.program.checklist.find(
-            (x) => x.documentType === params.documentType,
+          const expected = named || app.program.checklist.find(
+            (x) => x.documentType === params.documentType && !x.key,
           );
 
           const ts = nowISO();
@@ -728,6 +737,7 @@ export const createMockBackend = (): InnoBackend => {
               id: generateId('doc'),
               applicationId: app.id,
               type: params.documentType,
+              requirementKey: params.requirementKey,
             }),
             fileName: params.fileName,
             fileUrl: params.fileUrl || `local://${params.fileName}`,

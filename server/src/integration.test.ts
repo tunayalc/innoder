@@ -351,6 +351,112 @@ test(
         },
       );
       await t.test(
+        'admin-named documents reach existing applications, gate submission and version per key',
+        async () => {
+          const program = (
+            await api.inject({ url: `/api/programs/${programId}`, headers })
+          ).json();
+          const custom = {
+            documentType: 'extra',
+            key: 'custom_insure01',
+            label: 'Sağlık sigortası poliçesi',
+            expectedFormat: 'PDF',
+            description: 'Hareketlilik süresini kapsayan poliçe.',
+          };
+          const patch = (checklist: unknown[]) =>
+            api.inject({
+              method: 'PATCH',
+              url: `/api/programs/${programId}`,
+              headers,
+              payload: { checklist },
+            });
+          const { key: _key, ...withoutKey } = custom;
+          assert.equal(
+            (await patch([...program.checklist, withoutKey])).statusCode,
+            400,
+          );
+          assert.equal(
+            (await patch([...program.checklist, custom, custom])).statusCode,
+            400,
+          );
+          const saved = await patch([...program.checklist, custom]);
+          assert.equal(saved.statusCode, 200, saved.body);
+          const readApplication = async () =>
+            (
+              await api.inject({
+                url: `/api/applications/${applicationId}`,
+                headers,
+              })
+            ).json();
+          assert.deepEqual(
+            (await readApplication()).program.checklist.find(
+              (item: { key?: string }) => item.key === custom.key,
+            ),
+            custom,
+          );
+          const submit = await api.inject({
+            method: 'POST',
+            url: `/api/applications/${applicationId}/submit`,
+            headers: candidateHeaders,
+          });
+          assert.equal(submit.statusCode, 400, submit.body);
+          assert.ok(
+            JSON.stringify(submit.json()).includes(custom.label),
+            submit.body,
+          );
+          const uploadFor = (key: string, requirement: string, type = 'extra') =>
+            api.inject({
+              method: 'POST',
+              url: `/api/applications/${applicationId}/documents/${type}?requirement=${requirement}`,
+              headers: {
+                ...candidateHeaders,
+                'content-type': 'multipart/form-data; boundary=TESTBOUNDARY',
+                'idempotency-key': key,
+              },
+              payload: Buffer.concat([
+                Buffer.from(
+                  '--TESTBOUNDARY\r\nContent-Disposition: form-data; name="file"; filename="policy.pdf"\r\nContent-Type: application/pdf\r\n\r\n',
+                ),
+                bytes,
+                Buffer.from('\r\n--TESTBOUNDARY--\r\n'),
+              ]),
+            });
+          assert.equal(
+            (await uploadFor('test_custom_bad_01', 'custom_unknown1')).statusCode,
+            400,
+          );
+          assert.equal(
+            (await uploadFor('test_custom_bad_02', custom.key, 'identity')).statusCode,
+            400,
+          );
+          const first = await uploadFor('test_custom_key_01', custom.key);
+          assert.equal(first.statusCode, 201, first.body);
+          assert.equal(first.json().requirementKey, custom.key);
+          const second = await uploadFor('test_custom_key_02', custom.key);
+          assert.equal(second.statusCode, 201, second.body);
+          const current = (await readApplication()).documents.filter(
+            (doc: { requirementKey?: string }) => doc.requirementKey === custom.key,
+          );
+          assert.deepEqual(
+            current.map((doc: { id: string }) => doc.id),
+            [second.json().id],
+          );
+          // Later checks count this application's documents.
+          await db!.query(
+            'DELETE FROM documents WHERE application_id = $1 AND requirement_key IS NOT NULL',
+            [applicationId],
+          );
+          const restored = await patch(program.checklist);
+          assert.equal(restored.statusCode, 200, restored.body);
+          assert.equal(
+            (await readApplication()).program.checklist.some(
+              (item: { key?: string }) => item.key,
+            ),
+            false,
+          );
+        },
+      );
+      await t.test(
         'invalid, oversized and unauthorized uploads never create a document',
         async () => {
           const multipart = (content: Buffer) =>

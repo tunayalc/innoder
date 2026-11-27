@@ -812,9 +812,22 @@ test('admin upload sends the chosen file and keeps its retry key through a sessi
     return attempts.length === 1 ? unauthorized() : json({ id: 'document-1' }, 201);
   });
   const file = new File(['sample file'], 'reference.pdf', { type: 'application/pdf' });
-  const result = await h.api.uploadApplicationDocument('app-1', 'extra', file, 'upload-key-admin-1', new AbortController().signal);
+  const result = await h.api.uploadApplicationDocument('app-1', 'extra', undefined, file, 'upload-key-admin-1', new AbortController().signal);
   assert.equal(result.id, 'document-1');
   assert.deepEqual(attempts, ['Bearer access-old', 'Bearer access-new']);
+});
+
+test('a named program document is uploaded as extra with its requirement key', async t => {
+  const h = await setup(t);
+  const urls = [];
+  h.fetch.mock.mockImplementation(async url => {
+    urls.push(url);
+    return json({ id: 'document-2', type: 'extra', requirementKey: 'custom_insure01' }, 201);
+  });
+  const file = new File(['policy'], 'policy.pdf', { type: 'application/pdf' });
+  const result = await h.api.uploadApplicationDocument('app-1', 'extra', 'custom_insure01', file, 'upload-key-custom-1', new AbortController().signal);
+  assert.equal(result.requirementKey, 'custom_insure01');
+  assert.ok(urls[0].endsWith('/api/applications/app-1/documents/extra?requirement=custom_insure01'), urls[0]);
 });
 
 test('existing search, CSV and ZIP endpoint semantics stay unchanged', async t => {

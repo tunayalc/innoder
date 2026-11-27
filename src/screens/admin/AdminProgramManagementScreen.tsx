@@ -199,12 +199,17 @@ export const AdminProgramManagementScreen: React.FC = () => {
     if (editing) {
       draft.steps = parseTextLines(programStepsText);
       draft.commonMistakes = [...editing.commonMistakes];
-      draft.checklist = draft.checklist?.map(item => ({
-        ...item,
-        ...editing.checklist.find(
-          existing => existing.documentType === item.documentType,
-        ),
-      }));
+      // Documents the admin named on the web are edited there; keep them as they are.
+      draft.checklist = [
+        ...(draft.checklist || []).map(item => ({
+          ...item,
+          ...editing.checklist.find(
+            existing =>
+              existing.documentType === item.documentType && !existing.key,
+          ),
+        })),
+        ...editing.checklist.filter(existing => existing.key),
+      ];
     }
     return draft;
   };
@@ -381,7 +386,9 @@ export const AdminProgramManagementScreen: React.FC = () => {
                   .join('\n'),
               );
               setSelectedDocumentTypes(
-                program.checklist.map(item => item.documentType),
+                program.checklist
+                  .filter(item => !item.key)
+                  .map(item => item.documentType),
               );
             }}
           >

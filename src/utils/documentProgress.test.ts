@@ -13,3 +13,8 @@ test('a legacy boarding pass never completes both new travel requirements',()=>{
   const result=documentProgress(application({status:'returned_home',program:{checklist:[{documentType:'boarding_pass'}]} as Application['program'],documents:[{id:'legacy',type:'boarding_pass',status:'ok'}] as Application['documents']}));
   expect(result.total).toBe(2);expect(result.approved).toBe(0);
 });
+test('a document the admin named is required and only its own upload completes it',()=>{
+  const program={checklist:[{documentType:'identity'},{documentType:'extra',key:'custom_insure01',label:'Sağlık sigortası'}]} as Application['program'];
+  expect(documentProgress(application({program,documents:[{id:'1',type:'identity',status:'ok'},{id:'2',type:'extra',status:'ok'}] as Application['documents']}))).toMatchObject({total:2,approved:1,missing:['extra:custom_insure01']});
+  expect(documentProgress(application({program,documents:[{id:'1',type:'identity',status:'ok'},{id:'3',type:'extra',requirementKey:'custom_insure01',status:'unread'}] as Application['documents']}))).toMatchObject({total:2,approved:1,uploaded:2,missing:[]});
+});

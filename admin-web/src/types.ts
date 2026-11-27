@@ -35,6 +35,7 @@ export interface Document {
   isCurrent?: boolean;
   id: string;
   type: string;
+  requirementKey?: string;
   fileName: string;
   mimeType: string;
   sizeBytes: number;
@@ -83,6 +84,16 @@ export interface Page<T> {
   pageSize: number;
   stageCounts?: Record<string, number>;
 }
+// An item with a key is a document the admin named; it is uploaded as 'extra'.
+export interface ChecklistItem {
+  documentType: string;
+  key?: string;
+  label?: string;
+  expectedFormat: string;
+  requiredStage?: string;
+  description?: string;
+  exampleHint?: string;
+}
 export interface Program {
   programKind?: 'other' | 'esc';
   collectBloodGroup?: boolean;
@@ -93,12 +104,7 @@ export interface Program {
   active: boolean;
   steps: string[];
   deadlines: Array<{ label: string; dateISO: string }>;
-  checklist: Array<{
-    documentType: string;
-    expectedFormat: string;
-    requiredStage?: string;
-    description?: string;
-  }>;
+  checklist: ChecklistItem[];
   commonMistakes: string[];
 }
 export interface Message {

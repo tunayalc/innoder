@@ -180,6 +180,7 @@ export const createRemoteBackend = (): InnoBackend => ({
     async uploadDocument({
       applicationId,
       documentType,
+      requirementKey,
       fileUrl = '',
       fileName,
       mimeType,
@@ -200,6 +201,7 @@ export const createRemoteBackend = (): InnoBackend => ({
             ? { 'Idempotency-Key': idempotencyKey }
             : undefined,
         },
+        requirementKey,
       );
       if (!doc) throw new BackendError('UNKNOWN', 'Upload failed');
       const app = await applicationService.getApplicationById(applicationId);

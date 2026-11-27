@@ -21,7 +21,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { pick, types as docTypes } from '@react-native-documents/picker';
 import { launchImageLibrary, Asset } from 'react-native-image-picker';
 import { Button, Pill, ScreenScrollView } from '../../components';
-import { DOCUMENT_STATUS_LABELS, DOCUMENT_TYPES } from '../../constants';
+import { DOCUMENT_STATUS_LABELS } from '../../constants';
 import { useAuth } from '../../hooks';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
@@ -33,12 +33,12 @@ import { uploadDocument } from '../../store/thunks/applicationThunks';
 import { useThemedStyles, type AppColors } from '../../theme';
 import {
   DocumentStatus,
-  DocumentType,
   RootStackNavigationProp,
   RootStackParamList,
 } from '../../types';
 import { getDocumentRequiredStage } from '../../services/programFactory';
 import { createScanPdf } from '../../services/scanPdf';
+import { documentSlot, itemSlot, parseSlot, slotLabel } from '../../utils/documentSlots';
 import BlobUtil from 'react-native-blob-util';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { DocumentHistoryList } from '../../components/DocumentHistoryList';
@@ -105,8 +105,9 @@ export const AdayBelgeScreen: React.FC = () => {
     );
   }, [application]);
 
-  const [selectedDocType, setSelectedDocType] = useState<DocumentType | null>(
-    checklistItems[0]?.documentType || null,
+  // The selection is a slot: a fixed type or "extra:<key>" for a named document.
+  const [selectedDocType, setSelectedDocType] = useState<string | null>(
+    checklistItems[0] ? itemSlot(checklistItems[0]) : null,
   );
   const [captureFormat, setCaptureFormat] = useState<CaptureFormat>('jpg');
   const [capturedPages, setCapturedPages] = useState<Asset[]>([]);
@@ -145,7 +146,7 @@ export const AdayBelgeScreen: React.FC = () => {
   useEffect(() => {
     if (
       requestedDocType &&
-      checklistItems.some(item => item.documentType === requestedDocType)
+      checklistItems.some(item => itemSlot(item) === requestedDocType)
     )
       setSelectedDocType(requestedDocType);
   }, [checklistItems, requestedDocType]);
@@ -154,10 +155,10 @@ export const AdayBelgeScreen: React.FC = () => {
     if (checklistItems.length === 0) return;
     if (
       selectedDocType &&
-      checklistItems.some(item => item.documentType === selectedDocType)
+      checklistItems.some(item => itemSlot(item) === selectedDocType)
     )
       return;
-    setSelectedDocType(checklistItems[0].documentType);
+    setSelectedDocType(itemSlot(checklistItems[0]));
   }, [checklistItems, selectedDocType]);
 
   useEffect(() => {
@@ -174,7 +175,7 @@ export const AdayBelgeScreen: React.FC = () => {
 
   const selectedChecklistItem = useMemo(
     () =>
-      checklistItems.find(item => item.documentType === selectedDocType) ||
+      checklistItems.find(item => itemSlot(item) === selectedDocType) ||
       null,
     [checklistItems, selectedDocType],
   );
@@ -310,11 +311,13 @@ export const AdayBelgeScreen: React.FC = () => {
         );
       if (size > MAX_FILE_BYTES)
         throw new Error('Oluşturulan belge 20 MB sınırını aşıyor.');
+      const slot = parseSlot(selectedDocType);
       const success = await dispatch(
         uploadDocument({
           applicationId: application.id,
-          documentType: selectedDocType,
-          fileName: pdfFileName || `${selectedDocType}.${ext}`,
+          documentType: slot.type,
+          requirementKey: slot.requirementKey,
+          fileName: pdfFileName || `${slot.type}.${ext}`,
           fileUrl,
           pageCount: capturedPages.length || 1,
           mimeType,
@@ -390,27 +393,27 @@ export const AdayBelgeScreen: React.FC = () => {
       <Text style={styles.sectionLabel}>PROGRAMA ÖZEL BELGELER</Text>
       <View style={styles.typeRow}>
         {checklistItems.map(item => {
+          const slot = itemSlot(item);
           const document = application.documents.find(
-            entry => entry.type === item.documentType,
+            entry => entry.isCurrent !== false && documentSlot(entry) === slot,
           );
           return (
             <TouchableOpacity
-              key={item.documentType}
+              key={slot}
               disabled={uploading}
               style={[
                 styles.typeChip,
-                selectedDocType === item.documentType && styles.typeChipActive,
+                selectedDocType === slot && styles.typeChipActive,
               ]}
-              onPress={() => setSelectedDocType(item.documentType)}
+              onPress={() => setSelectedDocType(slot)}
             >
               <Text
                 style={[
                   styles.typeChipText,
-                  selectedDocType === item.documentType &&
-                    styles.typeChipTextActive,
+                  selectedDocType === slot && styles.typeChipTextActive,
                 ]}
               >
-                {DOCUMENT_TYPES[item.documentType] || item.documentType}
+                {slotLabel(slot, application.program)}
               </Text>
               <Pill
                 label={DOCUMENT_STATUS_LABELS[document?.status || 'missing']}
@@ -426,7 +429,7 @@ export const AdayBelgeScreen: React.FC = () => {
       {selectedChecklistItem ? (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>
-            {DOCUMENT_TYPES[selectedChecklistItem.documentType]}
+            {slotLabel(itemSlot(selectedChecklistItem), application.program)}
           </Text>
           <Text style={styles.cardHint}>
             {selectedChecklistItem.expectedFormat}
@@ -595,7 +598,7 @@ export const AdayBelgeScreen: React.FC = () => {
         />
       ) : null}
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      <DocumentHistoryList applicationId={application.id} />
+      <DocumentHistoryList applicationId={application.id} program={application.program} />
     </ScreenScrollView>
   );
 };

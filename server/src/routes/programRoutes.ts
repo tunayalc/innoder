@@ -22,13 +22,34 @@ const documentTypes = z.enum([
   'boarding_pass',
 ]);
 
-const checklistItem = z.object({
-  documentType: documentTypes,
-  requiredStage: z.enum(['application_stage', 'erasmus_stage']).optional(),
-  expectedFormat: z.string().min(1).max(200),
-  description: z.string().max(1000).optional(),
-  exampleHint: z.string().max(1000).optional(),
-});
+// A checklist item with a key is a document the admin named themselves. It is
+// uploaded as an 'extra' document tied to that key and is required like the others.
+const checklistItem = z
+  .object({
+    documentType: documentTypes,
+    key: z
+      .string()
+      .regex(/^custom_[a-z0-9]{6,32}$/)
+      .optional(),
+    label: z.string().trim().min(2).max(120).optional(),
+    requiredStage: z.enum(['application_stage', 'erasmus_stage']).optional(),
+    expectedFormat: z.string().min(1).max(200),
+    description: z.string().max(1000).optional(),
+    exampleHint: z.string().max(1000).optional(),
+  })
+  .refine(
+    item =>
+      !item.key === !item.label &&
+      (!item.key || item.documentType === 'extra'),
+    'Özel belge için ad gerekir.',
+  );
+const checklist = z
+  .array(checklistItem)
+  .min(1)
+  .refine(items => {
+    const keys = items.flatMap(item => (item.key ? [item.key] : []));
+    return new Set(keys).size === keys.length;
+  }, 'Özel belge anahtarları benzersiz olmalıdır.');
 
 const programSchema = z.object({
   name: z.string().trim().min(2).max(200),
@@ -44,7 +65,7 @@ const programSchema = z.object({
       }),
     )
     .default([]),
-  checklist: z.array(checklistItem).min(1),
+  checklist,
   commonMistakes: z.array(z.string().min(1).max(500)).default([]),
 });
 
@@ -187,6 +208,19 @@ export const registerProgramRoutes = (
             current.id,
           ],
         );
+        // Applications keep a frozen copy of the program, but documents the admin
+        // names later must reach the people who are already in the program.
+        if (data.checklist)
+          await client.query(
+            `UPDATE applications a SET program_snapshot = jsonb_set(a.program_snapshot, '{checklist}',
+               COALESCE((SELECT jsonb_agg(item) FROM jsonb_array_elements(a.program_snapshot->'checklist') item
+                 WHERE NOT item ? 'key'), '[]'::jsonb) || $2::jsonb)
+             WHERE a.program_id = $1 AND a.decision_status = 'active' AND a.stage <> 'returned_home'`,
+            [
+              current.id,
+              JSON.stringify(data.checklist.filter(item => item.key)),
+            ],
+          );
         if (current.collect_blood_group && !collectBloodGroup)
           await client.query(
             'DELETE FROM application_blood_groups b USING applications a WHERE b.application_id=a.id AND a.program_id=$1',

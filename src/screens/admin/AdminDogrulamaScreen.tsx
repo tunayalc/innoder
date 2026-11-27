@@ -17,7 +17,7 @@ import { useI18n } from '../../i18n';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { selectApplicationById } from '../../store/selectors';
 import { selectApplicationLoading } from '../../store/selectors/applicationSelectors';
-import { DOCUMENT_TYPES, DOCUMENT_STATUS_LABELS } from '../../constants';
+import { DOCUMENT_STATUS_LABELS } from '../../constants';
 import {
   DocumentStatus,
   AdminDogrulamaRouteProp,
@@ -25,6 +25,7 @@ import {
 } from '../../types';
 import { verifyDocument } from '../../store/thunks/applicationThunks';
 import { sendMessageThunk } from '../../store/thunks/messageThunks';
+import { documentLabel } from '../../utils/documentSlots';
 
 type StatusOption = {
   key: DocumentStatus;
@@ -116,7 +117,7 @@ export const AdminDogrulamaScreen: React.FC = () => {
         sendMessageThunk({
           applicationId: application.id,
           relatedDocumentId: selectedDocId,
-          content: `[${DOCUMENT_TYPES[selectedDoc!.type]}] ${msgContent}`,
+          content: `[${documentLabel(selectedDoc!, application?.program)}] ${msgContent}`,
         }),
       );
       if (!sent) {
@@ -180,7 +181,7 @@ export const AdminDogrulamaScreen: React.FC = () => {
             setNotes('');
           }}
         >
-          <Text style={styles.docName}>{DOCUMENT_TYPES[doc.type]}</Text>
+          <Text style={styles.docName}>{documentLabel(doc, application?.program)}</Text>
           <Pill
             label={DOCUMENT_STATUS_LABELS[doc.status]}
             variant={
