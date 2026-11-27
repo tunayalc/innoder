@@ -1,5 +1,13 @@
 // Only authored UI copy is translated. Never send applicant data to a translator.
 const english: Record<string, string> = {
+  'Dosya (PDF · en fazla 20 MB)': 'File (PDF · up to 20 MB)',
+  'Dosya (JPG, PNG · en fazla 20 MB)': 'File (JPG, PNG · up to 20 MB)',
+  'PDF ya da fotoğraf': 'PDF or photo',
+  'Sadece PDF': 'PDF only',
+  'Sadece fotoğraf (JPG/PNG)': 'Photo only (JPG/PNG)',
+  'Dosya türü': 'File type',
+  'Bu belge PDF olarak yüklenmeli.': 'This document must be a PDF.',
+  'Bu belge fotoğraf (JPG veya PNG) olarak yüklenmeli.': 'This document must be a photo (JPG or PNG).',
   'Programa özel belgeler': 'Program-specific documents',
   'Listede olmayan bir belge isteyin. Adaylar bu belgeyi yazdığınız adla görür ve ayrıca yükler; programdaki mevcut başvurulara da eklenir.': 'Ask for a document that is not in the list. Candidates see it under the name you write and upload it separately; it is also added to existing applications in this program.',
   'Belge adı': 'Document name',

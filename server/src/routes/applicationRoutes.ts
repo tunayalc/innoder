@@ -552,13 +552,22 @@ export const registerApplicationRoutes = (
             request,
             params.data.id,
           );
-          if (
-            requirement &&
-            !(
-              application.program_snapshot.checklist as Array<{ key?: string }>
-            ).some(item => item.key === requirement)
-          )
-            throw new HttpError(400, 'Bu belge artık istenmiyor.');
+          if (requirement) {
+            const item = (
+              application.program_snapshot.checklist as Array<{
+                key?: string;
+                fileKind?: 'pdf' | 'image' | 'any';
+              }>
+            ).find(entry => entry.key === requirement);
+            if (!item) throw new HttpError(400, 'Bu belge artık istenmiyor.');
+            if (item.fileKind === 'pdf' && file.mimetype !== 'application/pdf')
+              throw new HttpError(400, 'Bu belge PDF olarak yüklenmelidir.');
+            if (item.fileKind === 'image' && file.mimetype === 'application/pdf')
+              throw new HttpError(
+                400,
+                'Bu belge fotoğraf (JPG veya PNG) olarak yüklenmelidir.',
+              );
+          }
           if (key) {
             const previous = (
               await client.query(

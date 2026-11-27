@@ -441,6 +441,17 @@ test(
             current.map((doc: { id: string }) => doc.id),
             [second.json().id],
           );
+          assert.equal(
+            (await patch([...program.checklist, { ...custom, fileKind: 'image' }])).statusCode,
+            200,
+          );
+          const wrongKind = await uploadFor('test_custom_kind_1', custom.key);
+          assert.equal(wrongKind.statusCode, 400, wrongKind.body);
+          assert.match(wrongKind.json().message, /JPG veya PNG/);
+          assert.equal(
+            (await patch([...program.checklist, { ...withoutKey, fileKind: 'pdf' }])).statusCode,
+            400,
+          );
           // Later checks count this application's documents.
           await db!.query(
             'DELETE FROM documents WHERE application_id = $1 AND requirement_key IS NOT NULL',

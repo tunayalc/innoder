@@ -62,6 +62,7 @@ export interface ProgramChecklistItem {
   // A key marks a document the admin named; it is uploaded as 'extra'.
   key?: string;
   label?: string;
+  fileKind?: 'pdf' | 'image' | 'any';
   requiredStage?: ApplicationStatus;
   expectedFormat: string;
   description?: string;

@@ -60,6 +60,13 @@ export const documentLabel = (
   doc: Pick<Document, 'type' | 'requirementKey'>,
   program?: Program,
 ) => slotLabel(documentSlot(doc), program);
+// What a named document accepts; the text is shown to members as the format.
+export const FILE_KINDS = {
+  any: { label: tr('PDF ya da fotoğraf'), format: 'PDF / JPG / PNG', accept: '.pdf,.jpg,.jpeg,.png' },
+  pdf: { label: tr('Sadece PDF'), format: 'PDF', accept: '.pdf' },
+  image: { label: tr('Sadece fotoğraf (JPG/PNG)'), format: 'JPG / PNG', accept: '.jpg,.jpeg,.png' },
+} as const;
+export type FileKind = keyof typeof FILE_KINDS;
 export const newRequirementKey = () =>
   `custom_${Array.from(crypto.getRandomValues(new Uint8Array(6)), byte =>
     byte.toString(36).padStart(2, '0'),

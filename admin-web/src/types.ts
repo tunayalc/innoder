@@ -89,6 +89,7 @@ export interface ChecklistItem {
   documentType: string;
   key?: string;
   label?: string;
+  fileKind?: 'pdf' | 'image' | 'any';
   expectedFormat: string;
   requiredStage?: string;
   description?: string;

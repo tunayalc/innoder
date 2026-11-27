@@ -11,8 +11,10 @@ import { api } from './api';
 import {
   documentLabel,
   DOCUMENTS,
+  FILE_KINDS,
   formatDate,
   newRequirementKey,
+  type FileKind,
   UPLOADABLE_DOCUMENT_TYPES,
 } from './domain';
 import { useCollection } from './hooks';
@@ -998,6 +1000,26 @@ function CustomDocuments({
             />
           </label>
           <label>
+            {tr('Dosya türü')}
+            <select
+              value={item.fileKind || 'any'}
+              disabled={disabled}
+              onChange={e => {
+                const fileKind = e.target.value as FileKind;
+                update(item.key!, {
+                  fileKind,
+                  expectedFormat: FILE_KINDS[fileKind].format,
+                });
+              }}
+            >
+              {(Object.keys(FILE_KINDS) as FileKind[]).map(kind => (
+                <option key={kind} value={kind}>
+                  {FILE_KINDS[kind].label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
             {tr('Hangi aşamada istenir')}
             <select
               value={item.requiredStage || 'application_stage'}
@@ -1032,7 +1054,8 @@ function CustomDocuments({
               documentType: 'extra',
               key: newRequirementKey(),
               label: '',
-              expectedFormat: 'PDF / JPG / PNG',
+              fileKind: 'any',
+              expectedFormat: FILE_KINDS.any.format,
               requiredStage: 'application_stage',
             },
           ])

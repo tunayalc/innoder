@@ -32,6 +32,8 @@ const checklistItem = z
       .regex(/^custom_[a-z0-9]{6,32}$/)
       .optional(),
     label: z.string().trim().min(2).max(120).optional(),
+    // Only for named documents: which files the member may upload.
+    fileKind: z.enum(['pdf', 'image', 'any']).optional(),
     requiredStage: z.enum(['application_stage', 'erasmus_stage']).optional(),
     expectedFormat: z.string().min(1).max(200),
     description: z.string().max(1000).optional(),
@@ -40,7 +42,8 @@ const checklistItem = z
   .refine(
     item =>
       !item.key === !item.label &&
-      (!item.key || item.documentType === 'extra'),
+      (!item.key || item.documentType === 'extra') &&
+      (!item.fileKind || Boolean(item.key)),
     'Özel belge için ad gerekir.',
   );
 const checklist = z

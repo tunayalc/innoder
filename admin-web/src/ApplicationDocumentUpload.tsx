@@ -4,6 +4,7 @@ import { Upload } from 'lucide-react';
 import { api } from './api';
 import {
   documentSlot,
+  FILE_KINDS,
   itemSlot,
   parseSlot,
   slotLabel,
@@ -54,6 +55,19 @@ export const ApplicationDocumentUpload = ({
       item.key ? [itemSlot(item)] : [],
     ),
   ].filter(slot => !allowedTypes || allowedTypes.includes(slot));
+  const requirementKey = parseSlot(type).requirementKey;
+  const fileKind =
+    (requirementKey &&
+      application.program?.checklist.find(item => item.key === requirementKey)
+        ?.fileKind) ||
+    'any';
+  const kindError =
+    fileKind === 'pdf'
+      ? tr('Bu belge PDF olarak yüklenmeli.')
+      : tr('Bu belge fotoğraf (JPG veya PNG) olarak yüklenmeli.');
+  const fitsKind = (mime: string) =>
+    fileKind === 'any' ||
+    (fileKind === 'pdf') === (mime === 'application/pdf');
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -121,6 +135,9 @@ export const ApplicationDocumentUpload = ({
               onChange={event => {
                 setType(event.target.value);
                 key.current = undefined;
+                setFile(undefined);
+                setError('');
+                if (input.current) input.current.value = '';
               }}
             >
               <option value="">{tr('Belge türü seçin')}</option>
@@ -132,11 +149,15 @@ export const ApplicationDocumentUpload = ({
             </select>
           </label>
           <label>
-            {tr('Dosya (PDF, JPG, PNG · en fazla 20 MB)')}
+            {fileKind === 'pdf'
+              ? tr('Dosya (PDF · en fazla 20 MB)')
+              : fileKind === 'image'
+              ? tr('Dosya (JPG, PNG · en fazla 20 MB)')
+              : tr('Dosya (PDF, JPG, PNG · en fazla 20 MB)')}
             <input
               ref={input}
               type="file"
-              accept=".pdf,.jpg,.jpeg,.png"
+              accept={FILE_KINDS[fileKind].accept}
               disabled={busy}
               onChange={event => {
                 const selected = event.target.files?.[0];
@@ -160,6 +181,11 @@ export const ApplicationDocumentUpload = ({
                   );
                   return;
                 }
+                if (!fitsKind(mime)) {
+                  event.target.value = '';
+                  setError(kindError);
+                  return;
+                }
                 setFile(
                   selected.type
                     ? selected
@@ -168,7 +194,7 @@ export const ApplicationDocumentUpload = ({
               }}
             />
           </label>
-          {allowScan && (
+          {allowScan && fileKind !== 'image' && (
             <ScanPages
               disabled={busy}
               onFile={f => {

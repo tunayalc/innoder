@@ -180,6 +180,14 @@ export const AdayBelgeScreen: React.FC = () => {
     [checklistItems, selectedDocType],
   );
   const selectedExpected=selectedChecklistItem?.expectedFormat;
+  // Documents the admin named may accept only PDFs or only photos.
+  const fileKind = selectedChecklistItem?.key
+    ? selectedChecklistItem.fileKind || 'any'
+    : 'any';
+  const formats = (['jpg', 'pdf'] as const).filter(
+    format =>
+      fileKind === 'any' || (fileKind === 'pdf') === (format === 'pdf'),
+  );
 
   useEffect(() => {
     if (!selectedExpected) return;
@@ -276,6 +284,14 @@ export const AdayBelgeScreen: React.FC = () => {
       );
       return;
     }
+    if (fileKind === 'image' && (pdfUri || capturedPages.length > 1)) {
+      Alert.alert('Uyarı', 'Bu belge tek bir fotoğraf (JPG veya PNG) olarak yüklenmeli.');
+      return;
+    }
+    if (fileKind === 'pdf' && captureFormat !== 'pdf' && !pdfUri) {
+      Alert.alert('Uyarı', 'Bu belge PDF olarak yüklenmeli.');
+      return;
+    }
     const selectedSize =
       captureFormat === 'pdf' ? pdfFileSize : capturedPages[0]?.fileSize || 0;
     if (selectedSize > MAX_FILE_BYTES) {
@@ -350,6 +366,7 @@ export const AdayBelgeScreen: React.FC = () => {
     capturedPages,
     captureFormat,
     dispatch,
+    fileKind,
     pdfFileName,
     pdfFileSize,
     pdfUri,
@@ -449,7 +466,7 @@ export const AdayBelgeScreen: React.FC = () => {
 
       <Text style={styles.sectionLabel}>FORMAT</Text>
       <View style={styles.formatRow}>
-        {(['jpg', 'pdf'] as const).map(format => (
+        {formats.map(format => (
           <TouchableOpacity
             key={format}
             disabled={uploading}
@@ -554,6 +571,7 @@ export const AdayBelgeScreen: React.FC = () => {
             </ScrollView>
           </>
         ) : null}
+        {fileKind !== 'image' ? (
         <TouchableOpacity style={styles.scanBox} onPress={handleDocumentPick}>
           <View style={styles.scanGuide}>
             <Text style={styles.scanHintText}>
@@ -561,6 +579,7 @@ export const AdayBelgeScreen: React.FC = () => {
             </Text>
           </View>
         </TouchableOpacity>
+        ) : null}
         {pdfFileName ? (
           <View style={styles.rowBetween}>
             <Text style={styles.bodyText} numberOfLines={1}>
